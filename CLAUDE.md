@@ -1,48 +1,77 @@
 # Eluminia
 
-Eluminia est un RPG éducatif 2D destiné aux enfants, construit avec Phaser 3,
-TypeScript et Vite.
+Eluminia est un jeu vidéo éducatif dont la progression est alimentée par la
+scolarité réelle de l'enfant (photos de cours → IA → missions). Cible POC :
+CM1–CM2, mathématiques, fractions.
 
-## État du projet (inspection 2026-07-29)
+## État du projet (grand ménage 2026-08-01 : pivot 3D définitif)
 
-- Framework : Phaser `^3.87.0`, TypeScript strict (`tsc --noEmit` dans le
-  build), Vite 6. Résolution logique 960×540, `Scale.FIT` + `CENTER_BOTH`,
-  port de dev : 5173 (défaut Vite, à détecter dans la sortie).
-- Entrée : `index.html` → `src/main.ts` → `src/game/config.ts`.
-- Scènes : `src/game/scenes/` (BootScene = chargement + détourage runtime,
-  VillageScene = monde, caméra, collisions, interactions).
-- Entités : `src/game/entities/` (Player, Lina) · UI : `src/game/ui/`
-  (Hud, DialogueBox, QuestionPanel, InventoryPanel, widgets) · Effets :
-  `src/game/fx/environment.ts` · Utilitaires : `src/game/utils/`
-  (keying = détourage flood-fill, textures = découpes et textures de lumière).
-- État global : `src/game/state.ts` (xp, niveau, pièces, planches, drapeaux UI).
-- Assets : `public/art/` (voir `.claude/skills/eluminia/asset-rules.md` —
-  fonds opaques, titres incrustés, noms parfois mélangés : tout est documenté).
-- QA assets : `scripts/art-qa/rulers.ps1` et `scripts/art-qa/crops-qa.ps1`
-  (contrôle visuel des découpes AVANT intégration — obligatoire).
-- Anciens prototypes : pages autonomes dans `public/*.html` (accueil,
-  cinematique, aventure, poc-royaume, defi-pont, poc-combat, monde-pixel) et
-  `archive/prototype-phaser-v1/`. Ne pas les casser, ne pas les étendre.
-- Le dépôt git n'a AUCUN commit : ne rien supprimer sans archiver.
+Le POC 2D (Phaser 3 + TypeScript + Vite, `src/`, `public/art/`, pipelines
+d'assets/personnages/cartes, prototypes autonomes) a été **entièrement
+supprimé** après le pivot 3D acté le 2026-08-01 (décision de Camille, testée
+et validée sur 4 critères : qualité en jeu, animation, 60 FPS réel,
+soutenabilité de l'effort). L'état d'avant suppression reste consultable dans
+l'historique git (1er commit du dépôt). Ne PAS tenter de le restaurer sans
+demande explicite de Camille.
+
+Le jeu est aujourd'hui un **spike 3D procédural** :
+
+- **Zéro build, zéro bundler, zéro TypeScript.** Chaque planète est un seul
+  fichier HTML autonome sous `public/`, Three.js `0.160.0` chargé par
+  importmap depuis `unpkg` (`<script type="module">` direct dans le fichier).
+  `npm run dev` (Vite) sert `public/` en statique — Vite ne fait aucune
+  transformation, c'est un simple serveur de fichiers avec live-reload.
+- **Zéro asset externe.** Décor, personnages, PNJ, portails : tout est généré
+  par code (géométries Three.js primitives + toon shading `MeshToonMaterial`
+  + contours peints par inverted-hull, palette bonbon Eluminia). Ne PAS
+  introduire de pipeline d'assets (images, GLB) sans décision explicite de
+  Camille — le style procédural est un choix assumé, pas un pis-aller.
+- `index.html` (racine) fait un simple renvoi vers `/spike3d-village.html`.
+- `public/spike3d-village.html` — planète de départ : prairie procédurale,
+  PNJ Elda (dialogue), village (puits/place/maisons/clôtures), pont des
+  fractions (mini-jeu : sauter sur la bonne fraction), portail vers la
+  planète voisine, HUD DOM (XP/niveau, ressources, barre d'action, quête).
+  Hook de debug : `window.__spikeDebug` (voir le fichier pour l'API exacte).
+- `public/spike3d-planet2.html` — 2e planète (palette mauve/cyan, cristaux,
+  rochers flottants), son propre portail de retour. Même hook `window.__spikeDebug`.
+- **Portails** : vraie navigation de page (`location.href`, PAS un téléport
+  de scène) avec `?from=portal` pour faire apparaître le héros à côté du
+  portail d'arrivée. Fondu CSS (`#portal-fade`) autour de la navigation.
+- **Vue système dézoomée** : pas de caméra séparée — extension continue du
+  zoom orthographique existant (`controls.minZoom`) ; au-delà du zoom de jeu
+  normal, un facteur `spaceT` fait fondre le ciel vers l'espace étoilé et
+  révèle la planète voisine à distance fixe. Courbure "petite planète"
+  appliquée à tout le décor via un shader partagé (`applyCurvature`).
+- **Caméra** : orthographique isométrique, style validé explicitement par
+  Camille (« j'adore le style que tu as posé »). Ne JAMAIS changer l'angle ou
+  le type de caméra sans demande explicite, même si une référence externe
+  (ex. Guild Wars 2) semble suggérer une 3e personne rapprochée.
+- Outils de génération d'images (`scripts/generate-image.mjs`,
+  `scripts/lib/image-gen.mjs`, serveur MCP `eluminia-images`) conservés
+  comme infra réutilisable mais **actuellement inutilisés** par le jeu
+  (100 % procédural) — ne pas les brancher sans besoin réel identifié.
 
 ## Priorités
 
-1. Qualité visuelle vérifiée. 2. Cohérence artistique. 3. Simplicité de prise
-en main. 4. Fiabilité. 5. Performance. 6. Réutilisabilité des assets.
+1. Qualité visuelle vérifiée en jeu réel. 2. Cohérence artistique (toon
+shading, palette bonbon, contours peints). 3. 60 FPS confirmé par Camille.
+4. Simplicité de prise en main. 5. Fiabilité. 6. Performance.
 
 ## Règles absolues
 
-- Ne jamais utiliser de formes temporaires visibles.
-- Ne jamais prétendre qu'un asset existe sans le vérifier.
-- Ne jamais étirer une image ; ne jamais agrandir fortement un petit PNG.
-- Ne jamais mélanger filtrage pixel art et illustration peinte.
-- Toute modification visuelle importante doit être contrôlée par une capture
-  (`npm run capture`) puis ANALYSÉE — un build réussi ne suffit pas.
-- Toute nouvelle découpe d'asset passe par le banc `scripts/art-qa/` avant code.
-- Les régressions fonctionnelles sont interdites (déplacement, dialogue,
-  question, XP, inventaire).
-- Assets : `public/art/` · Revues : `art/reviews/` · Besoins d'images :
-  `art/generated/`.
+- Ne jamais utiliser de formes temporaires visibles (capsule de test, etc.)
+  dans une capture livrée à Camille.
+- Ne jamais prétendre qu'un changement visuel est correct sans capture
+  vérifiée (`npm run capture`) — un build/chargement sans erreur ne suffit
+  jamais.
+- Ne jamais ajouter de voile plein écran (vignette/teinte globale) : les
+  effets lumineux sont ponctuels et localisés.
+- **Ne jamais juger le FPS via une capture headless** (Playwright/SwiftShader
+  = rendu logiciel, ~3 FPS structurel, sans rapport avec le FPS réel) — le
+  FPS ne se valide qu'en navigateur réel, par Camille.
+- Les régressions fonctionnelles sont interdites (déplacement, dialogue PNJ,
+  saut sur le pont, traversée du portail, HUD).
+- Ne jamais changer l'angle/type de caméra sans demande explicite de Camille.
 - Utiliser `/eluminia` pour toute nouvelle scène ou itération importante.
 
 ## Budget et économie de tokens (règle absolue)
@@ -54,37 +83,36 @@ en main. 4. Fiabilité. 5. Performance. 6. Réutilisabilité des assets.
   un sous-agent ne lance jamais de sous-agent ; pas d'agents parallèles sans
   justification écrite.
 - Ne pas explorer tout le dépôt pour une modification locale ; ignorer
-  node_modules, dist, archive/ et les fichiers générés sauf nécessité.
+  node_modules et les fichiers générés sauf nécessité.
 - Une seule capture et une seule revue visuelle par itération ; maximum 1 cycle
   de correction automatique, ensuite s'arrêter et faire un rapport.
-- Build ciblé d'abord ; `verify-eluminia` complet uniquement en fin d'itération.
 - Réponses et rapports courts : constats, pas de paraphrase.
 - Si le périmètre s'élargit, ou avant toute action coûteuse (boucle, génération
-  d'images en série, analyse massive) : s'arrêter et demander l'accord.
+  d'images en série, analyse massive, suppression de fichiers) : s'arrêter et
+  demander l'accord.
 - Abandonner les hypothèses obsolètes ; en session longue, résumer le contexte
-  utile et recommander une NOUVELLE session dès que le contexte devient lourd
-  (nombreuses images, itération terminée). Une tâche = une session.
+  utile et recommander une NOUVELLE session dès que le contexte devient lourd.
+  Une tâche = une session.
 - Modèle : Sonnet par défaut. Opus/Fable uniquement sur demande explicite de
   Camille (`/model`) pour architecture ou bug difficile.
 
 ## Commandes
 
 ```
-npm run dev          # serveur de développement (port affiché par Vite)
-npm run build        # tsc strict + build Vite
-npm run capture      # capture Playwright -> art/reviews/latest.png
-npm run visual-check # contrôles automatiques post-capture
-npm run verify-eluminia  # build + capture + visual-check
+npm run dev      # serveur de développement (port affiché par Vite, 5173 par défaut)
+npm run capture  # capture Playwright -> art/reviews/latest.png
+                 # GAME_URL surchargeable, ex :
+                 # GAME_URL="http://localhost:5173/spike3d-village.html" npm run capture
 ```
+
+Pas de `build` : rien à compiler, `public/*.html` est servi tel quel.
 
 ## Génération d'images
 
 Serveur MCP local **eluminia-images** (`.mcp.json` →
 `scripts/mcp-image-server.mjs`, moteur OpenAI gpt-image-1) : outil MCP
 `generate_image`, ou CLI `node scripts/generate-image.mjs --prompt "..."
---filename x.png [--transparent]`. La bible graphique `public/art/image.png`
-est jointe automatiquement comme référence de style ; sortie dans
-`public/art/generated/`. Prérequis : `OPENAI_API_KEY` dans l'environnement —
-sans clé, retomber sur les prompts manuels (`art/generated/image-prompts.md`,
-générés par Camille via son outil externe). Détails :
-`.claude/skills/eluminia/asset-rules.md`.
+--filename x.png [--transparent]`. Prérequis : `OPENAI_API_KEY` dans
+l'environnement. **Actuellement non utilisé** par le jeu (style 100 %
+procédural) — ne l'utiliser que sur demande explicite de Camille pour un
+besoin identifié (ex. texture, icône UI).

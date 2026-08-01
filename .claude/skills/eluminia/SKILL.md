@@ -1,127 +1,139 @@
 ---
 name: eluminia
-description: Transforme une demande narrative ou fonctionnelle en une itération jouable, testée et visuellement vérifiée du jeu Eluminia.
+description: Transforme une demande narrative ou fonctionnelle en une itération jouable, testée et visuellement vérifiée du spike 3D Eluminia.
 argument-hint: "<scénario ou amélioration demandée>"
 ---
 
 # Rôle
 
-Tu es le studio de production autonome d'Eluminia.
+Tu es le studio de production autonome d'Eluminia — actuellement le spike 3D
+procédural (`public/spike3d-village.html`, `public/spike3d-planet2.html`).
+Voir `CLAUDE.md` pour l'état exact du projet (pivot 3D du 2026-08-01, ancien
+jeu 2D Phaser entièrement supprimé).
 
 L'utilisateur fournit uniquement une expression de besoin. Exemples :
 
-- « Ajoute un village dans lequel le pont s'est effondré. »
-- « Rends la fontaine plus vivante. »
-- « Le héros rencontre un renard magique. »
-- « Ajoute une quête de fractions pour un élève de CM1. »
-- « Le rendu est trop flou et les personnages sont pixelisés. »
+- « Ajoute un PNJ qui vend des potions près du puits. »
+- « Le pont des fractions est trop facile, ajoute un niveau de difficulté. »
+- « La caméra saccade quand on tourne autour du portail. »
+- « L'interface ne respecte pas la charte graphique. »
 
-Tu conduis toute l'itération sans demander à l'utilisateur : des coordonnées, une
-architecture technique, des noms de classes, un découpage de tâches, un prompt
-destiné à une autre IA, ou une correction manuelle du code.
+Tu conduis toute l'itération sans demander à l'utilisateur : des coordonnées,
+une architecture technique, un découpage de tâches ou une correction manuelle
+du code. En revanche, si le périmètre de la demande est ambigu ou s'élargit
+en cours de route, ARRÊTE-toi et demande — ne devine pas une décision de
+Camille (angle caméra, ajout d'une nouvelle mécanique, suppression de
+fichiers).
 
 Lis aussi, dans ce dossier : `visual-quality.md` (critères), `asset-rules.md`
-(règles assets et détourage), `acceptance-criteria.md` (acceptation finale).
+(style procédural, palette, perf), `acceptance-criteria.md` (acceptation
+finale).
 
 # Pipeline obligatoire
 
 ## Phase A — Comprendre le besoin
 
 Transforme la demande en fiche d'itération : objectif utilisateur, expérience
-joueur attendue, scène ou système concerné, changements fonctionnels,
-changements visuels, assets nécessaires, risques, critères d'acceptation,
-éléments explicitement hors périmètre.
+joueur attendue, fichier(s) concerné(s) (`spike3d-village.html` et/ou
+`spike3d-planet2.html`), changements fonctionnels, changements visuels,
+risques, critères d'acceptation, éléments explicitement hors périmètre.
 
-Écris cette fiche dans `art/reviews/current-plan.md`. Ne modifie pas encore le code.
+Écris cette fiche dans `art/reviews/current-plan.md`. Ne modifie pas encore
+le code.
 
 ## Phase B — Inspecter l'existant
 
-Avant toute modification, inspecte UNIQUEMENT ce qui est concerné par la
-demande (pas d'exploration complète du dépôt, ~10 fichiers lus maximum) parmi :
-scènes Phaser (`src/game/scenes/`),
-composants UI (`src/game/ui/`), entités (`src/game/entities/`), effets
-(`src/game/fx/`), assets disponibles sous `public/art/` (dimensions réelles,
-transparence — la plupart ont un FOND OPAQUE détouré à l'exécution, voir
-`asset-rules.md`), filtrage, échelles, résolution logique (960×540, Scale.FIT),
-caméra, collisions, état global (`src/game/state.ts`), scripts npm, erreurs
-présentes.
+Chaque planète est UN SEUL fichier HTML autonome (HTML + CSS + JS module,
+Three.js par importmap CDN, zéro build, zéro TypeScript). Avant toute
+modification, inspecte UNIQUEMENT ce qui est concerné par la demande dans le
+fichier ciblé : le `<style>` (HUD DOM), la scène Three.js (géométries,
+matériaux, lumières, caméra), la logique de jeu (déplacement, collisions
+`obstacles[]`, dialogue, mini-jeu du pont), les hooks de debug
+(`window.__spikeDebug`).
 
-Réutilise les composants et assets adaptés. Ne duplique pas ce qui existe.
+Réutilise les fonctions déjà présentes (`toon()`, `addOutline()`,
+`addGlowOutline()`, `scatter()`, `makeSignSprite()`, etc.) — ne duplique pas.
 
-## Phase C — Planifier les assets
+## Phase C — Assets (cas rare)
 
-Crée ou mets à jour `art/generated/manifest.json` (format documenté dans le
-fichier lui-même). Règles :
-
-- chercher d'abord dans `public/art/` ;
-- utiliser les assets existants lorsqu'ils suffisent ;
-- jamais de formes géométriques visibles comme remplacement final ;
-- jamais d'agrandissement excessif d'un petit PNG, jamais d'étirement ;
-- ne jamais prétendre qu'un asset a été généré si aucun générateur n'est connecté.
-
-Un générateur est connecté : l'outil MCP `generate_image` du serveur
-`eluminia-images` (ou son équivalent CLI `node scripts/generate-image.mjs`).
-Il joint automatiquement la bible graphique comme référence de style et écrit
-dans `public/art/generated/` — voir `asset-rules.md` pour les règles d'usage.
-Après chaque génération : vérifier l'image (Read) avant intégration.
-Si `OPENAI_API_KEY` est absente (échec propre de l'outil) : écrire les prompts
-détaillés dans `art/generated/image-prompts.md`, utiliser les assets existants
-cohérents, signaler les assets bloquants dans le rapport final.
+Le jeu est **100 % procédural** (géométries Three.js + toon shading + contours
+peints) : pas de pipeline d'assets à gérer dans le cas général. N'introduis
+une image/texture générée que si le besoin l'exige explicitement (ex. une
+icône UI illisible en CSS pur) — voir `asset-rules.md` pour le générateur
+disponible mais actuellement inutilisé. Ne jamais présenter un ajout d'image
+comme la solution par défaut ; ne jamais prétendre qu'un asset a été généré
+si aucun générateur n'a effectivement tourné.
 
 ## Phase D — Implémenter
 
-Seulement les changements nécessaires. Contraintes : Phaser 3, TypeScript
-strict (`npm run build` inclut tsc), architecture existante respectée, aucune
-régression fonctionnelle, aucune dépendance inutile, aucun élément temporaire
-visible, aucune collision visible, aucun asset déformé, pas de double
-redimensionnement, pas de mise à l'échelle CSS du canvas, filtrage cohérent
-(illustrations peintes = linéaire, jamais pixelArt ; ne jamais mélanger),
-HUD discret, transitions fluides, personnages ancrés au sol (origin 0.5/1 +
-ombre), profondeur cohérente (depth = y), 60 FPS (pools réutilisés).
+Seulement les changements nécessaires. Contraintes : Three.js pur (pas de
+framework, pas de bundler, pas de TypeScript), style toon existant respecté
+(`toon()`/`addOutline()` pour tout objet de décor, palette bonbon — voir
+`asset-rules.md`), aucune régression fonctionnelle, aucun élément temporaire
+visible (capsule de debug, etc.), performance (instancer les objets répétés
+nombreux via `THREE.InstancedMesh`, cf. l'herbe/les fleurs), caméra
+orthographique isométrique **inchangée sauf demande explicite**, aucun voile
+plein écran, HUD DOM discret et proportionné (règles de `visual-quality.md`),
+aucun élément (DOM ou sprite 3D) partiellement hors cadre à l'angle de
+caméra par défaut.
 
-## Phase E — Construire et lancer
+## Phase E — Lancer
 
-`npm install` si nécessaire, puis `npm run build`. Lance le serveur de
-développement (`npm run dev`, port par défaut 5173 — détecte le port réel dans
-la sortie de Vite). Conserve le serveur actif le temps de la capture.
+`npm run dev` (Vite, port par défaut 5173 — détecter le port réel dans la
+sortie). Aucun build : les fichiers `public/*.html` sont servis tels quels.
+Conserve le serveur actif le temps de la capture.
 
 ## Phase F — Capturer le jeu
 
-`node scripts/capture-game.mjs` (ou `npm run capture`). GAME_URL surchargeable
-en variable d'environnement. La capture est écrite dans `art/reviews/latest.png`
-et les erreurs console dans `art/reviews/browser-errors.json`.
+`GAME_URL="http://localhost:<port>/spike3d-village.html" npm run capture`
+(adapter l'URL au fichier concerné — la racine `/` fait un simple renvoi et
+peut ne pas se stabiliser à temps pour la capture). Écrit
+`art/reviews/latest.png` et `art/reviews/browser-errors.json`.
+
+**Piège gravé** : en capture headless (Playwright/SwiftShader = rendu
+logiciel), le FPS mesuré n'a AUCUN rapport avec le FPS réel (quelques FPS
+structurels de fond) et le `dt` de la boucle de jeu est clampé — ne JAMAIS
+juger la fluidité sur cette base, ni conclure à un bug sur un test avec délai
+court après une interaction simulée. Le FPS ne se valide qu'en navigateur
+réel, par Camille.
 
 ## Phase G — Revue visuelle
 
 UNE SEULE revue par itération : lance le sous-agent `eluminia-visual-reviewer`
 (il lit l'image et écrit `art/reviews/latest-review.md`) et appuie-toi sur son
-rapport — ne relis PAS `latest.png` toi-même. Un build qui réussit ne suffit
-jamais : la revue visuelle est obligatoire, mais jamais en double.
+rapport — ne relis PAS `latest.png` toi-même. Un chargement sans erreur ne
+suffit jamais : la revue visuelle est obligatoire, mais jamais en double
+(budget d'UN sous-agent par tâche, cf. `CLAUDE.md`).
 
-Seulement si le sous-agent est indisponible : analyse toi-même l'image (outil
-Read, une seule lecture) selon les 30 points de `visual-quality.md` et écris la
-revue dans `art/reviews/latest-review.md` au format :
+Seulement si le sous-agent est indisponible OU si le budget d'un sous-agent
+par tâche est déjà consommé dans cette itération : analyse toi-même l'image
+(outil Read, une seule lecture) selon les points de `visual-quality.md` et
+écris la revue dans `art/reviews/latest-review.md` au format :
 
 ```
 # Résultat
 - Conforme : oui/non
-- Build : succès/échec
+- Chargement : succès/échec
 - Amélioration visuelle visible : oui/non
 - Régressions : liste
 # Défauts bloquants
-# Défauts secondaires
+# Défauts majeurs
+# Défauts mineurs
 # Corrections à appliquer
-# Assets manquants
 ```
 
 ## Phase H — Corriger automatiquement
 
-Si un défaut bloquant est détecté : corrige, reconstruis, recapture, réanalyse.
-Maximum 1 cycle complet de correction automatique. S'il reste des défauts
-bloquants après ce cycle : les lister dans le rapport final et S'ARRÊTER —
-Camille décidera de la suite. Les défauts bloquants sont listés dans
-`visual-quality.md`. Ne prétends JAMAIS qu'un problème est corrigé sans
-l'avoir vérifié sur une nouvelle capture.
+Si un défaut bloquant listé dans `visual-quality.md` est détecté : corrige,
+recapture, réanalyse. Maximum 1 cycle complet de correction automatique.
+S'il reste des défauts bloquants après ce cycle : les lister dans le rapport
+final et S'ARRÊTER — Camille décidera de la suite. Ne prétends JAMAIS qu'un
+problème est corrigé sans l'avoir vérifié sur une nouvelle capture.
+
+Un défaut trouvé mais HORS PÉRIMÈTRE de la demande initiale (ex. un bug
+préexistant sans lien avec la fonctionnalité touchée) n'est PAS corrigé
+silencieusement : il est signalé dans le rapport pour décision de Camille,
+même s'il est bloquant au sens de `visual-quality.md`.
 
 ## Phase I — Historique
 
@@ -131,9 +143,10 @@ Après chaque itération : copie `current-plan.md` et `latest-review.md` dans
 
 ## Phase J — Rapport final
 
-Réponds avec uniquement : 1. résumé de l'itération ; 2. fichiers créés ;
-3. fichiers modifiés ; 4. assets utilisés ; 5. assets manquants ; 6. résultat
-du build ; 7. nombre de cycles de correction ; 8. principaux défauts corrigés ;
-9. limites restantes ; 10. chemin de la capture finale.
+Réponds avec uniquement : 1. résumé de l'itération ; 2. fichiers modifiés ;
+3. résultat de la capture/revue ; 4. nombre de cycles de correction ;
+5. principaux défauts corrigés ; 6. limites restantes (y compris tout défaut
+hors périmètre signalé) ; 7. chemin de la capture finale.
 
-Aucun commentaire vague (« rendu professionnel ») : uniquement des constats vérifiés.
+Aucun commentaire vague (« rendu professionnel ») : uniquement des constats
+vérifiés.

@@ -1,84 +1,80 @@
-# Critères de qualité visuelle — Eluminia
+# Critères de qualité visuelle — Eluminia (spike 3D)
 
-## Les 30 points de contrôle (Phase G)
+## Points de contrôle (Phase G)
 
-1. netteté du décor · 2. netteté des personnages · 3. cohérence
-personnages/décor · 4. proportions · 5. ancrage au sol · 6. ombres de contact ·
-7. profondeur · 8. placement des PNJ · 9. HUD · 10. dialogue · 11. boutons ·
-12. icônes · 13. effets · 14. particules · 15. cadrage · 16. caméra · 17. zones
-vides · 18. chevauchements · 19. éléments coupés · 20. artefacts de détourage ·
-21. fonds blancs (ou noirs) résiduels · 22. collisions de debug visibles ·
-23. flou global · 24. pixelisation · 25. étirement · 26. lisibilité du texte ·
-27. cohérence des marges · 28. surcharge visuelle · 29. performance probable ·
-30. conformité à la demande utilisateur.
+1. netteté du toon shading (pas de flou/aliasing excessif) · 2. cohérence des
+contours peints (épaisseur régulière, couleur `0x3d2f52`) · 3. cohérence
+palette bonbon entre objets · 4. proportions des objets/personnages entre eux
+· 5. ancrage au sol (pas d'objet flottant non voulu) · 6. ombres portées
+cohérentes avec le soleil · 7. lisibilité de la scène à l'angle iso par
+défaut · 8. placement des PNJ (accessibles, pas dans un obstacle) · 9. HUD
+DOM (position, proportion, lisibilité) · 10. dialogue (lisible, ne déborde
+pas) · 11. boutons/slots d'action · 12. icônes/badges · 13. effets (halos,
+particules) localisés · 14. performance probable (nombre de draw calls,
+`InstancedMesh` pour les objets répétés) · 15. cadrage caméra (rien de
+significatif coupé au bord de l'écran) · 16. caméra (angle iso conservé) ·
+17. zones vides ou surchargées · 18. chevauchements d'objets 3D · 19.
+éléments 3D ou DOM partiellement hors cadre · 20. artefacts de shader
+(courbure, tessellation visible) · 21. couleurs délavées vs la scène de
+référence connue · 22. collisions de debug visibles · 23. flou global · 24.
+scintillement/z-fighting · 25. étirement d'une géométrie (scale non uniforme
+non voulu) · 26. lisibilité du texte HUD · 27. cohérence des marges HUD · 28.
+surcharge visuelle · 29. performance probable · 30. conformité à la demande
+utilisateur.
 
-## Défauts BLOQUANTS (déclenchent un cycle de correction, max 3)
+## Défauts BLOQUANTS (déclenchent un cycle de correction, max 1)
 
-- fond flou ; personnage pixelisé ; image étirée ; asset mal détouré
-  (liseré, bloc de fond, texte de planche incrusté visible) ;
-- UI hors écran ; dialogue illisible ;
-- collision cassée ; personnage inaccessible ;
+- UI (DOM) hors écran ou tronquée ; dialogue illisible ;
+- élément 3D significatif (PNJ, panneau, portail) partiellement hors cadre à
+  l'angle de caméra par défaut ;
+- collision cassée ; PNJ ou objectif de quête inaccessible ;
 - effet visuel masquant le gameplay ;
-- fond blanc ou noir résiduel visible ;
-- mise à l'échelle destructrice (upscale fort d'un petit PNG) ;
-- régression de gameplay ; erreur de build ; erreur console importante.
+- angle/type de caméra modifié sans demande explicite ;
+- mise à l'échelle destructrice (scale non uniforme non voulu, géométrie
+  étirée) ;
+- régression de gameplay (déplacement, dialogue, pont, portail, HUD) ;
+- erreur console au chargement.
 
-## Calibrage de l'UI (règle ajoutée après comparaison Guild Wars 2)
+Un défaut hors périmètre de la demande initiale (préexistant, sans lien avec
+la fonctionnalité touchée) reste signalé même s'il est bloquant, mais n'est
+PAS corrigé automatiquement — cf. Phase H de `SKILL.md`.
 
-- AUCUN élément de HUD ne doit dépasser ~6 % de la hauteur d'écran (panneau
-  XP, icônes) ; les polices de HUD restent ≤ 14 px logiques.
-- Résolution logique : hauteur 900 (PC) — une UI dessinée pour 540 devient
-  géante en plein écran : BLOQUANT.
+## Calibrage du HUD (DOM, règle héritée du calibrage GW2)
+
+- AUCUN élément de HUD ne doit dépasser ~6 % de la hauteur d'écran (mesuré
+  sur une capture 1600×900 → seuil ≈ 54 px) ; police ≤ 14 px logiques.
 - Tout badge/icône vit ENTIÈREMENT dans son panneau (marge ≥ 6 px) : un
   débordement d'écran ou de panneau est BLOQUANT.
-- La coquille de jeu attendue : barre XP compacte (haut-gauche), suivi de
-  quête (haut-droit), mini-carte (bas-droit), inventaire près de la mini-carte.
 - Vérification : comparer mentalement la capture à un jeu commercial (GW2,
   Prodigy) — si un élément d'UI attire l'œil avant le monde, il est trop gros.
 
-## Fidélité des couleurs (règle ajoutée après l'incident « tout est terne »)
+## Fidélité des couleurs
 
 - INTERDIT : tout voile plein écran (vignette MULTIPLY, overlay SCREEN,
-  teinte globale). Ces couches délavent et jaunissent le décor entier.
-- Le décor affiché doit garder les couleurs du fichier source : en cas de
-  doute, comparer la capture à l'asset d'origine (Read des deux).
-- Les effets lumineux sont PONCTUELS et LOCALISÉS (halo d'une lanterne, rai
-  près de la fontaine), jamais étalés sur la scène.
-- BLOQUANT : une capture globalement plus terne/jaune que l'asset source.
+  teinte globale). Ces couches délavent et jaunissent la scène entière.
+- Les effets lumineux sont PONCTUELS et LOCALISÉS (halo d'une lanterne,
+  particules d'un portail), jamais étalés sur la scène.
+- BLOQUANT : une capture globalement plus terne/jaune qu'attendu du style
+  toon/palette bonbon établi.
 
-## Animations de personnages (règle ajoutée après les bugs du cycle de marche)
+## Performance — ce qui NE se juge PAS en headless
 
-Toute itération qui touche aux animations DOIT être validée sur DEUX bancs,
-jamais sur une capture statique seule :
-
-1. `node scripts/dump-frames.mjs` → `art/reviews/frames/` : les textures de
-   frames EXACTEMENT telles que le moteur les a fabriquées au boot.
-   - BLOQUANT : une frame dont la hauteur s'écarte de plus de 10 % de la
-     médiane de sa planche (personnage qui « pulse » ou rétrécit en jeu) ;
-   - BLOQUANT : fond résiduel visible (rectangle gris/blanc autour du
-     personnage) ; fragment d'une cellule voisine ; membre coupé.
-2. `node scripts/capture-walk.mjs` → `art/reviews/walk/` : rafales en jeu
-   dans les 4 directions + transition gauche→haut (le cas piège du miroir).
-   - BLOQUANT : sprite aminci/écrasé pendant un changement de direction
-     (interpolation du retournement passant par zéro) ; taille du héros
-     différente d'une direction à l'autre ; frame de fond blanc.
-3. L'ordre des poses doit lire comme un cycle de marche (contact → amorti →
-   croisement → contact opposé) : un pas « mécanique » ou saccadé se corrige
-   par réordonnancement (WALK_ORDER dans Player.ts) ou régénération.
-4. Échelle : les frames d'une même planche partagent un facteur COMMUN
-   (normalisation par la médiane dans addAnimSet) — jamais de normalisation
-   par frame.
+- **Le FPS affiché dans une capture Playwright est sans rapport avec le FPS
+  réel** (rendu logiciel SwiftShader ≈ quelques FPS structurels). Ne jamais
+  conclure à un problème ou à une réussite de performance sur cette base —
+  seul un retour de Camille en navigateur réel fait foi.
+- Ce qui reste vérifiable en headless : le nombre d'objets non instanciés
+  ajoutés (repérable en lisant le code — tout ajout de N objets répétés
+  similaires doit utiliser `THREE.InstancedMesh`, pas N appels individuels).
 
 ## Repères propres au projet
 
-- Résolution logique 960×540, Scale.FIT, CENTER_BOTH — le canvas ne doit pas
-  être redimensionné par du CSS supplémentaire.
-- Décor : illustration peinte → filtrage linéaire (pixelArt désactivé).
-- Le décor du village est affiché ×1,7 (source 675×412 → monde 1148×700) :
-  c'est la limite d'agrandissement acceptée, ne pas aller au-delà.
-- Personnages ~96 px (héros) : hauteur d'une porte du décor.
-- Caméra : zoom 1.08, lerp 0.09, anticipation ±46 px — le héros n'est jamais
-  exactement centré ; il se tient au tiers inférieur (followOffset y=90).
-- Profondeur : depth = y (pieds) ; occlusions par découpes du décor
-  (fontaine, bannières).
-- HUD : ardoise sombre translucide + liseré or, jamais envahissant.
+- Caméra orthographique isométrique, style validé explicitement par Camille —
+  ne jamais changer l'angle ou le type sans demande explicite, même si une
+  référence externe semble suggérer autre chose.
+- Décor 100 % procédural : toon shading (`MeshToonMaterial` + gradient map),
+  contours peints par inverted-hull (`addOutline`/`addGlowOutline`), palette
+  bonbon (voir `asset-rules.md`).
+- Courbure « petite planète » : tout matériau de décor doit passer par
+  `applyCurvature()` pour rester cohérent avec le sol et la coque de planète
+  lors du dézoom (vue système).

@@ -1,78 +1,51 @@
-# Règles assets — Eluminia
+# Règles assets — Eluminia (spike 3D)
 
-## Emplacements
+## Principe : 100 % procédural
 
-- `public/art/eluminia_poc_assets/` — décor du village, héros, Lina, portrait,
-  panneau de dialogue, bouton, icônes (fonds BLANCS opaques).
-- `public/art/eluminia_sprint01_environment_fx/` — effets d'environnement :
-  strips d'animation, végétation, overlays, UI v2 (fonds NOIRS à vignette,
-  titres incrustés par le générateur dans la plupart des planches).
-- `public/art/` (racine) — planches de concept (`image.png` = bible graphique
-  « Les Gardiens du Savoir », `planche-2.png`) et ancrage historique.
-- `public/art/generated/` — destination des futurs assets générés.
-- `art/generated/` — manifest et prompts (hors public, non servi).
+Le jeu ne charge AUCUNE image ni modèle 3D externe. Tout le rendu vient de
+géométries Three.js primitives + matériaux toon + contours peints, générés
+par code au chargement de la page. C'est un choix assumé (validé par
+Camille), pas un pis-aller — ne propose pas de pipeline d'assets comme
+solution par défaut.
 
-## Particularités CONNUES des planches existantes
+## Recettes déjà en place (à réutiliser, ne pas dupliquer)
 
-- AUCUN asset n'a de transparence : détourage à l'exécution obligatoire.
-- Fonds noirs (sprint FX) : fusion additive (ADD) pour les éléments lumineux ;
-  flood-key (tolérance 72) pour les éléments opaques ; UI : tolérance 60.
-- Titres incrustés (« FIREFLIES », « INTEGRATION GUIDE »…) : découpes ciblées.
-- Noms de fichiers UI du sprint 01 MÉLANGÉS : `quest-icon.png` = sac
-  d'inventaire, `xp-icon.png` = icône de quête, blason XP dans
-  `button-background.png`, `inventory-icon.png` = étincelles bleues.
+- `toon(geo, color, opts)` — matériau `MeshToonMaterial` + gradient map
+  `warmGradient` + contour peint automatique (`addOutline`). Utiliser pour
+  TOUT objet de décor visible.
+- `addOutline(mesh, scale)` — contour peint par inverted-hull (couleur
+  `OUTLINE = 0x3d2f52`, jamais noir pur).
+- `addGlowOutline(mesh, scale, color)` — variante lumineuse (portails,
+  éléments magiques), invisible par défaut, à activer via `.visible = true`.
+- `applyCurvature(material)` — injecte la déformation « petite planète » dans
+  le shader ; OBLIGATOIRE sur tout matériau de décor pour rester cohérent
+  avec le sol lors du dézoom (vue système). `toonPlain()` (sans courbure) est
+  réservé aux objets déjà sphériques (icônes de planète).
+- `scatter(count, radiusMin, radiusMax, fn)` — dispersion aléatoire évitant le
+  corridor du pont (`inBridgeCorridor`).
+- `THREE.InstancedMesh` — OBLIGATOIRE dès qu'un même petit objet se répète en
+  nombre (herbe, fleurs, champignons) : un objet individuel par instance
+  coûte 1-2 draw calls + une ombre, source connue de chute de FPS.
+- `makeSignSprite(text)` — panneau texte peint sur canvas, pour tout panneau
+  directionnel/label 3D.
+- `addObstacle(x, z, r)` — collision cercle-cercle simple avec le héros ;
+  tout objet solide nouvellement ajouté doit y être enregistré.
 
-## Pipeline de détourage (dans le code)
+## Palette bonbon Eluminia (référence)
 
-- `src/game/utils/keying.ts` :
-  - `addKeyedTexture(scene, srcKey, outKey, tol)` — image entière ;
-  - `addKeyedRegionTexture(scene, srcKey, outKey, x, y, w, h, tol)` — découpe ;
-  - flood-fill depuis les bords : les blancs/noirs INTERNES sont préservés.
-- `src/game/utils/textures.ts` : `addRegionTexture` (sans détourage, pour ADD),
-  textures procédurales autorisées UNIQUEMENT pour lumière/ombre (glow, ombre
-  douce, poussières) — jamais pour un objet de jeu visible.
+Vert feuillage `0x7fd07a`/`0x5fb562`/`0x9adf8f`, menthe `0x8fe0d0`/`0x6fc7b8`,
+rose `0xf3a6c9`/`0xe084b0`, sol `0x8fd66a`, bois `0x8a5a3a`/`0x9a6b46`, pierre
+`0x9a978c`/`0x8a8478`, contour `0x3d2f52` (jamais noir pur), lumière dorée
+`0xffdca0`/`0xffe9c4`.
 
-## Contrôle qualité OBLIGATOIRE avant toute nouvelle découpe
+## Génération d'images (dormant, non branché)
 
-Ne JAMAIS intégrer une découpe sans validation visuelle préalable :
-
-1. `powershell scripts/art-qa/rulers.ps1` — génère des versions graduées des
-   planches sources (grille 10 px, repères 50 px) pour lire les coordonnées ;
-2. `powershell scripts/art-qa/crops-qa.ps1` — applique EXACTEMENT l'algorithme
-   crop+flood-key du jeu et produit une planche de contrôle sur damier ;
-3. lire la planche de contrôle (outil Read), corriger les coordonnées, itérer ;
-4. seulement ensuite, porter les coordonnées validées dans le code.
-
-Adapter la liste `$crops` de `crops-qa.ps1` à chaque nouvelle planche.
-
-## Échelles
-
-- Jamais d'étirement (ratio toujours conservé).
-- Icônes : jamais au-delà de leur résolution native.
-- Décor : agrandissement max ×1,7 (déjà atteint sur le fond du village).
-- Illustrations peintes : filtrage linéaire. Pixel art véritable :
-  nearest-neighbor + échelle entière. Ne jamais mélanger les deux régimes.
-
-## Génération d'images
-
-Générateur connecté : serveur MCP local **eluminia-images** (`.mcp.json` →
-`scripts/mcp-image-server.mjs`), moteur OpenAI gpt-image-1.
-
-- Outil MCP : `generate_image` (prompt, filename, size, transparent,
-  references, use_style_base). Équivalent CLI :
-  `node scripts/generate-image.mjs --prompt "..." --filename x.png [--transparent] [--ref chemin] [--no-style-ref]`
-- **Base de style automatique** : `public/art/image.png` (bible « Les Gardiens
-  du Savoir ») est jointe par défaut comme image de référence — toute
-  génération « prend comme base public/art ». Ajouter d'autres références de
-  `public/art/` selon le sujet (ex. le décor du village pour un élément de décor).
-- Sortie : `public/art/generated/<filename>` (jamais ailleurs).
-- Toujours demander `transparent: true` pour personnages et objets de jeu.
-- Ne PAS décrire le style dans le prompt (il vient des références) ; décrire le
-  CONTENU. Interdits : texte, cadre, filigrane (déjà rappelés par le serveur).
-- Prérequis : variable d'environnement `OPENAI_API_KEY` (clé créée par
-  Camille). SANS clé, l'outil échoue proprement → retomber sur le mode
-  « prompts » : écrire les demandes dans `art/generated/image-prompts.md`,
-  marquer `"source": "missing"` dans le manifest, signaler comme bloquant.
-- Après CHAQUE génération : vérifier l'image (Read), passer les découpes au
-  banc `scripts/art-qa/` si besoin, mettre à jour `manifest.json`
-  (`"source": "generated"`).
+Un générateur EST connecté (serveur MCP local **eluminia-images**,
+`.mcp.json` → `scripts/mcp-image-server.mjs`, moteur OpenAI gpt-image-1 via
+`generate_image` ou `node scripts/generate-image.mjs --prompt "..."
+--filename x.png [--transparent]`), mais **le jeu ne l'utilise actuellement
+pas**. Ne le mobilise que sur besoin explicite de Camille (ex. une texture
+qu'aucune primitive ne peut approcher). Sortie : `public/spike3d-generated/`
+(à créer si besoin — n'existe pas encore). Après toute génération : vérifier
+l'image (Read) avant intégration, ne jamais prétendre qu'un asset a été
+généré si l'outil n'a pas effectivement tourné.

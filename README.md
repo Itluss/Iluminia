@@ -10,6 +10,8 @@ Le monde du jeu s'adapte et génère les missions de l'enfant.
 
 ## État
 
-Projet créé le 2026-07-28. Phase : cadrage / POC.
+Projet créé le 2026-07-28. Phase : spike 3D procédural (Three.js, sans build
+ni asset externe) — voir `CLAUDE.md`. Jouer : `npm run dev` puis
+`public/spike3d-village.html`.
 
 Cible POC : CM1–CM2, mathématiques, une seule région, un village, quelques PNJ et missions.
