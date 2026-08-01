@@ -1,0 +1,666 @@
+{
+  "date": "2026-07-30T19:00:48.013Z",
+  "characterId": "hero",
+  "parts": [
+    {
+      "file": "generations/gen-2026-07-30T18-31-38-995d8e.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "1150x2207"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "1540221 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "3007 Ko"
+        }
+      ],
+      "w": 1150,
+      "h": 2207,
+      "bytes": 3078903
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-53-52-9f74d7.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "875x828"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "505544 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "808 Ko"
+        }
+      ],
+      "w": 875,
+      "h": 828,
+      "bytes": 827343
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-54-14-57bc77.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "936x875"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "558113 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "827 Ko"
+        }
+      ],
+      "w": 936,
+      "h": 875,
+      "bytes": 846879
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-54-35-9e6282.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "702x771"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "295969 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "471 Ko"
+        }
+      ],
+      "w": 702,
+      "h": 771,
+      "bytes": 481806
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-54-56-9756e0.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "676x784"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "278984 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "481 Ko"
+        }
+      ],
+      "w": 676,
+      "h": 784,
+      "bytes": 492162
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-55-18-6a3a7d.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "483x862"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "236468 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "412 Ko"
+        }
+      ],
+      "w": 483,
+      "h": 862,
+      "bytes": 421719
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-55-37-80d020.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "413x758"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "197601 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "396 Ko"
+        }
+      ],
+      "w": 413,
+      "h": 758,
+      "bytes": 405969
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-56-09-bf58aa.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "668x594"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "312063 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "576 Ko"
+        }
+      ],
+      "w": 668,
+      "h": 594,
+      "bytes": 589643
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-56-28-962b59.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "725x839"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "447601 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "893 Ko"
+        }
+      ],
+      "w": 725,
+      "h": 839,
+      "bytes": 914189
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-56-49-560e91.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "676x811"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "274807 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "557 Ko"
+        }
+      ],
+      "w": 676,
+      "h": 811,
+      "bytes": 570807
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-57-08-191d2b.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "621x714"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "224080 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "425 Ko"
+        }
+      ],
+      "w": 621,
+      "h": 714,
+      "bytes": 435267
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-57-28-fabfef.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "822x772"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "247595 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "511 Ko"
+        }
+      ],
+      "w": 822,
+      "h": 772,
+      "bytes": 523266
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-57-49-82088d.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "814x780"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "313055 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "695 Ko"
+        }
+      ],
+      "w": 814,
+      "h": 780,
+      "bytes": 711379
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-58-11-950fd6.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "757x872"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "433145 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "620 Ko"
+        }
+      ],
+      "w": 757,
+      "h": 872,
+      "bytes": 634566
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-58-30-173f95.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "879x860"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "497666 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "675 Ko"
+        }
+      ],
+      "w": 879,
+      "h": 860,
+      "bytes": 691080
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-58-50-9c560f.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "865x426"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "322759 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "517 Ko"
+        }
+      ],
+      "w": 865,
+      "h": 426,
+      "bytes": 529798
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-59-11-2c67f3.keyed.png",
+      "status": "WARNING",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": false,
+          "detail": "796 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "841x1024"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "641758 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "1245 Ko"
+        }
+      ],
+      "w": 841,
+      "h": 1024,
+      "bytes": 1274818
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-59-31-0c873b.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "392x178"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "39218 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "84 Ko"
+        }
+      ],
+      "w": 392,
+      "h": 178,
+      "bytes": 86238
+    },
+    {
+      "file": "generations/gen-2026-07-30T18-59-49-e88738.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "380x300"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "78899 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "141 Ko"
+        }
+      ],
+      "w": 380,
+      "h": 300,
+      "bytes": 143965
+    },
+    {
+      "file": "generations/gen-2026-07-30T19-00-07-860f6d.keyed.png",
+      "status": "PASS",
+      "checks": [
+        {
+          "name": "fond transparent (coins)",
+          "ok": true
+        },
+        {
+          "name": "pièce non coupée (bords libres)",
+          "ok": true,
+          "detail": "0 px au bord"
+        },
+        {
+          "name": "résolution suffisante",
+          "ok": true,
+          "detail": "347x133"
+        },
+        {
+          "name": "contenu présent",
+          "ok": true,
+          "detail": "21428 px opaques"
+        },
+        {
+          "name": "poids acceptable",
+          "ok": true,
+          "detail": "49 Ko"
+        }
+      ],
+      "w": 347,
+      "h": 133,
+      "bytes": 50217
+    }
+  ]
+}

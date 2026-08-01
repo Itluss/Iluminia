@@ -1,0 +1,33 @@
+{
+  "generationId": "gen-2026-07-30T19-01-48-f33faa",
+  "date": "2026-07-30T19:02:10.657Z",
+  "partId": "eyes_closed",
+  "engine": "banana/gemini-3-pro-image",
+  "prompt": "Create a clean isolated 2D game-character body part from the supplied canonical character reference sheet. Preserve exactly: character identity, proportions, costume colors (petrol blue and gold), lighting direction (soft warm top-left), painterly-but-clean Eluminia style, warm rounded shapes, consistent line weight, material appearance. The asset is designed for skeletal 2D animation. Requirements: centered in the canvas, complete hidden geometry (rebuild covered areas entirely), clean edges, no cropped pixels, neutral pose, no perspective distortion, no unrelated body parts, no text, no labels, no frame, no extra accessories, consistent scale with the canonical character, generous overlap around joints for rotation, readable at small game size. Target part: both eyes closed (blink). ONLY a small horizontal strip with the two CLOSED eyes: two gentle downward-curved eyelid lines with lashes and the two eyebrows above, on a small patch of skin. STRICTLY NOTHING ELSE: no head, no hair, no face outline, no shoulders, no character — just the two closed eyelids and eyebrows, like a sticker. Plain flat uniform pure magenta (#ff00ff) background, no shadow, no glow, nothing else in the image.",
+  "promptHash": "f33faab6253e",
+  "referenceFiles": [
+    "public\\art\\characters\\hero\\references\\planche-hero.png",
+    "public\\art\\characters\\hero\\approved\\master_front.png"
+  ],
+  "referenceHash": "d82e25297602",
+  "outputFile": "generations/gen-2026-07-30T19-01-48-f33faa.png",
+  "keyedFile": "generations/gen-2026-07-30T19-01-48-f33faa.keyed.png",
+  "processReport": {
+    "w": 629,
+    "h": 276,
+    "bbox": {
+      "x": 197,
+      "y": 374,
+      "w": 629,
+      "h": 276
+    },
+    "bgColor": [
+      253,
+      8,
+      246
+    ],
+    "opaqueRatio": 0.1517467498779297
+  },
+  "estimatedCostUsd": 0.134,
+  "status": "needs_review"
+}

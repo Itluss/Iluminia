@@ -1,0 +1,57 @@
+{
+  "$schema": "../../tools/map-pipeline/schemas/map-generation-spec.schema.json",
+  "specVersion": "0.1.0",
+  "measuredFrom": "art/maps/masters/village-fractions.png (2544x3792, identique à public/art/generated/village-world.png)",
+  "measuredOn": "2026-07-31",
+
+  "projection": "top-down-three-quarter",
+  "cameraDirection": "north-to-south",
+  "cameraHeightNote": "vue légèrement plongeante, quasi top-down (rapetissement 0.84->1.0 sur toute la hauteur praticable, cf. src/game/utils/depth.ts perspScale) — PAS une isométrie 2:1 classique, ne pas demander de grille isométrique stricte",
+
+  "lightDirection": "overhead-warm",
+  "lightNote": "lumière chaude d'heure dorée, globalement diffuse/zénithale ; pas de direction unique forte (ombres de contact courtes, quasi verticales) — HYPOTHÈSE, à confirmer avant génération réelle par une revue dédiée",
+  "colorTemperature": "warm-golden",
+  "saturation": "medium-high",
+  "shadowSoftness": "soft, contact shadows only, no long cast shadows",
+
+  "roadWidthPx": 175,
+  "roadWidthNote": "estimation visuelle (planche graduée), plage observée ~150-200px — à recalibrer avant génération réelle (voir art/maps/qa/)",
+  "riverWidthPx": 135,
+  "riverWidthNote": "estimation visuelle, plage observée ~120-150px — à recalibrer avant génération réelle",
+
+  "houseFootprintPx": { "min": [390, 570], "typical": [420, 570], "max": [750, 500] },
+  "houseFootprintNote": "mesuré depuis les colliders réels de VillageScene.ts (buildColliders) — fiable, pas une estimation",
+  "fountainFootprintPx": [280, 260],
+
+  "vegetationDensity": "high, forest closes the east/west borders and frames the north/south road exits",
+  "palettePrimary": ["#6f8f3a", "#3f6b2e", "#c9a24a", "#7a4a2a", "#3a6fa0", "#e0c98a"],
+  "paletteNote": "extraite à l'œil sur l'aperçu réduit — remplacer par une extraction programmatique (histogramme) avant un vrai pipeline de production",
+
+  "characterApparentHeightPx": 145,
+  "characterApparentHeightNote": "HERO_HEIGHT (src/game/entities/Player.ts), échelle 1:1 avec le pixel de la map (aucun setScale sur l'image de fond)",
+
+  "chunkWidthPx": 2544,
+  "chunkHeightPx": 3792,
+  "chunkSizeNote": "chunk 0_0 = dimensions natives de la map actuelle, PAS une valeur ronde choisie a priori — les futurs chunks n'ont pas à faire la même taille (voir world.json), mais l'extension nord/sud du test #1 réutilise la même largeur (2544) pour rester alignée sur le chemin central existant",
+
+  "overlapWidthPx": 550,
+  "overlapWidthNote": "~14.5% de la hauteur du chunk (2544 de large) ou ~22% si on rapporte à la dimension étendue — dans la fourchette 15-25% demandée",
+
+  "treeStyle": "rounded painterly clusters, warm autumn palette (yellow-green to orange-brown), dark green pine accents, no individual leaf detail at this scale",
+  "riverStyle": "meandering, soft painterly reflections, light foam at banks, no whitewater",
+  "cliffStyle": "not yet observed on the current map — no cliff present in chunk 0_0, style unknown until a chunk requiring one is generated",
+  "bridgeStyle": "not yet observed on the current map — no bridge present in chunk 0_0 (game narrative mentions a collapsed bridge, not yet painted)",
+  "fenceStyle": "wooden, waist-height, light brown, used around gardens/plots only",
+
+  "levelOfDetail": "medium — readable at native 1:1 display, no fine texture detail expected to survive gameplay zoom",
+
+  "noEmbeddedText": true,
+  "noEmbeddedUI": true,
+
+  "openBorders": {
+    "north": { "status": "visually open, road exits frame at top", "physicallyBlocked": true, "blockedBy": "VillageScene.ts buildColliders() world border wall (THICK=60)" },
+    "south": { "status": "visually open, road exits frame at bottom", "physicallyBlocked": true, "blockedBy": "same as north" },
+    "east": { "status": "visually closed (mill + forest)", "physicallyBlocked": true, "blockedBy": "painted decor, no exit painted" },
+    "west": { "status": "visually closed (river + forest)", "physicallyBlocked": true, "blockedBy": "painted decor, no exit painted" }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "generationId": "gen-2026-07-30T18-31-38-995d8e",
+  "date": "2026-07-30T18:32:03.165Z",
+  "partId": "master_front",
+  "engine": "banana/gemini-3-pro-image",
+  "prompt": "Redraw the main hero character from the reference sheet as ONE clean canonical FRONT view, full body, game-ready: same identity (brown hair in a few large readable locks, soft smiling face, petrol-blue and gold outfit with compass emblem on the cape, leather belt simplified, big readable boots, slightly bigger hands and forearms), slight natural asymmetry in the idle stance (weight on one leg, head very slightly tilted), simple large volumes, few big folds instead of many small ones, strong readable silhouette designed to stay clear at 116 px tall in game. Arms slightly away from the torso (A-pose relaxed) so limbs can be separated for rigging. Painterly-but-clean Eluminia style, warm rounded shapes. Plain flat uniform pure magenta (#ff00ff) background, no shadow, no text, nothing else.",
+  "promptHash": "995d8e7d3626",
+  "referenceFiles": [
+    "public\\art\\characters\\hero\\references\\planche-hero.png"
+  ],
+  "referenceHash": "7971edee7a08",
+  "outputFile": "generations/gen-2026-07-30T18-31-38-995d8e.png",
+  "keyedFile": null,
+  "processReport": null,
+  "estimatedCostUsd": 0.24,
+  "status": "needs_review"
+}

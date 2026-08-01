@@ -1,0 +1,33 @@
+{
+  "generationId": "gen-2026-07-30T18-59-49-e88738",
+  "date": "2026-07-30T19:00:07.978Z",
+  "partId": "mouth_open",
+  "engine": "banana/gemini-3-pro-image",
+  "prompt": "Create a clean isolated 2D game-character body part from the supplied canonical character reference sheet. Preserve exactly: character identity, proportions, costume colors (petrol blue and gold), lighting direction (soft warm top-left), painterly-but-clean Eluminia style, warm rounded shapes, consistent line weight, material appearance. The asset is designed for skeletal 2D animation. Requirements: centered in the canvas, complete hidden geometry (rebuild covered areas entirely), clean edges, no cropped pixels, neutral pose, no perspective distortion, no unrelated body parts, no text, no labels, no frame, no extra accessories, consistent scale with the canonical character, generous overlap around joints for rotation, readable at small game size. Target part: open mouth (talking). A small open rounded mouth for talking, single overlay element. Plain flat uniform pure magenta (#ff00ff) background, no shadow, no glow, nothing else in the image.",
+  "promptHash": "e88738a66627",
+  "referenceFiles": [
+    "public\\art\\characters\\hero\\references\\planche-hero.png",
+    "public\\art\\characters\\hero\\approved\\master_front.png"
+  ],
+  "referenceHash": "d82e25297602",
+  "outputFile": "generations/gen-2026-07-30T18-59-49-e88738.png",
+  "keyedFile": "generations/gen-2026-07-30T18-59-49-e88738.keyed.png",
+  "processReport": {
+    "w": 380,
+    "h": 300,
+    "bbox": {
+      "x": 322,
+      "y": 362,
+      "w": 380,
+      "h": 300
+    },
+    "bgColor": [
+      253,
+      31,
+      250
+    ],
+    "opaqueRatio": 0.07524394989013672
+  },
+  "estimatedCostUsd": 0.134,
+  "status": "needs_review"
+}

@@ -1,0 +1,159 @@
+{
+  "totalUsd": 3.054,
+  "calls": [
+    {
+      "date": "2026-07-30T18:32:03.165Z",
+      "generationId": "gen-2026-07-30T18-31-38-995d8e",
+      "partId": "master_front",
+      "size": "1024x1536",
+      "costUsd": 0.24
+    },
+    {
+      "date": "2026-07-30T18:54:14.707Z",
+      "generationId": "gen-2026-07-30T18-53-52-9f74d7",
+      "partId": "cape_main",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:54:35.406Z",
+      "generationId": "gen-2026-07-30T18-54-14-57bc77",
+      "partId": "hair_back",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:54:56.359Z",
+      "generationId": "gen-2026-07-30T18-54-35-9e6282",
+      "partId": "left_thigh",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:55:18.438Z",
+      "generationId": "gen-2026-07-30T18-54-56-9756e0",
+      "partId": "right_thigh",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:55:37.396Z",
+      "generationId": "gen-2026-07-30T18-55-18-6a3a7d",
+      "partId": "left_lower_leg_boot",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:56:09.898Z",
+      "generationId": "gen-2026-07-30T18-55-37-80d020",
+      "partId": "right_lower_leg_boot",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:56:28.620Z",
+      "generationId": "gen-2026-07-30T18-56-09-bf58aa",
+      "partId": "pelvis",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:56:49.178Z",
+      "generationId": "gen-2026-07-30T18-56-28-962b59",
+      "partId": "torso",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:57:08.039Z",
+      "generationId": "gen-2026-07-30T18-56-49-560e91",
+      "partId": "left_upper_arm",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:57:28.313Z",
+      "generationId": "gen-2026-07-30T18-57-08-191d2b",
+      "partId": "right_upper_arm",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:57:49.818Z",
+      "generationId": "gen-2026-07-30T18-57-28-fabfef",
+      "partId": "left_forearm_hand",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:58:11.099Z",
+      "generationId": "gen-2026-07-30T18-57-49-82088d",
+      "partId": "right_forearm_hand",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:58:30.922Z",
+      "generationId": "gen-2026-07-30T18-58-11-950fd6",
+      "partId": "head_base",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:58:50.577Z",
+      "generationId": "gen-2026-07-30T18-58-30-173f95",
+      "partId": "hair_front",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:59:11.000Z",
+      "generationId": "gen-2026-07-30T18-58-50-9c560f",
+      "partId": "eyes_open",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:59:31.244Z",
+      "generationId": "gen-2026-07-30T18-59-11-2c67f3",
+      "partId": "eyes_closed",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T18:59:49.163Z",
+      "generationId": "gen-2026-07-30T18-59-31-0c873b",
+      "partId": "mouth_smile",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T19:00:07.978Z",
+      "generationId": "gen-2026-07-30T18-59-49-e88738",
+      "partId": "mouth_open",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T19:00:27.538Z",
+      "generationId": "gen-2026-07-30T19-00-07-860f6d",
+      "partId": "mouth_neutral",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T19:02:10.657Z",
+      "generationId": "gen-2026-07-30T19-01-48-f33faa",
+      "partId": "eyes_closed",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    },
+    {
+      "date": "2026-07-30T19:02:36.290Z",
+      "generationId": "gen-2026-07-30T19-02-10-94b83a",
+      "partId": "mouth_neutral",
+      "size": "1024x1024",
+      "costUsd": 0.134
+    }
+  ]
+}

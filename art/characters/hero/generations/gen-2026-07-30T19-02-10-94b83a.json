@@ -1,0 +1,33 @@
+{
+  "generationId": "gen-2026-07-30T19-02-10-94b83a",
+  "date": "2026-07-30T19:02:36.290Z",
+  "partId": "mouth_neutral",
+  "engine": "banana/gemini-3-pro-image",
+  "prompt": "Create a clean isolated 2D game-character body part from the supplied canonical character reference sheet. Preserve exactly: character identity, proportions, costume colors (petrol blue and gold), lighting direction (soft warm top-left), painterly-but-clean Eluminia style, warm rounded shapes, consistent line weight, material appearance. The asset is designed for skeletal 2D animation. Requirements: centered in the canvas, complete hidden geometry (rebuild covered areas entirely), clean edges, no cropped pixels, neutral pose, no perspective distortion, no unrelated body parts, no text, no labels, no frame, no extra accessories, consistent scale with the canonical character, generous overlap around joints for rotation, readable at small game size. Target part: neutral mouth. ONLY a tiny relaxed neutral cartoon mouth: one simple soft dark-brown line, slightly curved, in the same simple cartoon style as the smiling mouth of the reference character. STRICTLY no realistic lips, no lipstick, no teeth, no face, no skin patch bigger than the mouth itself — just the small line mouth like a sticker. Plain flat uniform pure magenta (#ff00ff) background, no shadow, no glow, nothing else in the image.",
+  "promptHash": "94b83a0b93a6",
+  "referenceFiles": [
+    "public\\art\\characters\\hero\\references\\planche-hero.png",
+    "public\\art\\characters\\hero\\approved\\master_front.png"
+  ],
+  "referenceHash": "d82e25297602",
+  "outputFile": "generations/gen-2026-07-30T19-02-10-94b83a.png",
+  "keyedFile": "generations/gen-2026-07-30T19-02-10-94b83a.keyed.png",
+  "processReport": {
+    "w": 227,
+    "h": 58,
+    "bbox": {
+      "x": 399,
+      "y": 483,
+      "w": 227,
+      "h": 58
+    },
+    "bgColor": [
+      253,
+      6,
+      247
+    ],
+    "opaqueRatio": 0.0019636154174804688
+  },
+  "estimatedCostUsd": 0.134,
+  "status": "needs_review"
+}

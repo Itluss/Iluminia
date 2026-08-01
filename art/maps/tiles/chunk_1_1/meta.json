@@ -1,0 +1,40 @@
+{
+  "chunkId": "chunk_1_1",
+  "gx": 1,
+  "gy": 1,
+  "worldX": 2048,
+  "worldY": 2048,
+  "tileSize": 2048,
+  "coveredRect": {
+    "x": 2048,
+    "y": 2048,
+    "width": 496,
+    "height": 2048
+  },
+  "isPartial": true,
+  "pngOffsetInCell": {
+    "x": 0,
+    "y": 0
+  },
+  "sources": [
+    {
+      "organicChunkId": "0_0",
+      "contributedRectPx": {
+        "x": 2048,
+        "y": 2048,
+        "width": 496,
+        "height": 1744
+      }
+    },
+    {
+      "organicChunkId": "0_1",
+      "contributedRectPx": {
+        "x": 2048,
+        "y": 3792,
+        "width": 496,
+        "height": 304
+      }
+    }
+  ],
+  "generatedAt": "2026-07-31T21:49:57.933Z"
+}

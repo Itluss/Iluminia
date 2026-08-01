@@ -1,0 +1,2097 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Eluminia — Spike 3D « Un seul monde » (prairie + pont)</title>
+<style>
+  :root {
+    --el-cream: #F6E7C6; --el-tan: #EAD4A6; --el-brown: #684A2F; --el-brown-dark: #4a3320;
+    --el-green: #77B36A; --el-green-dark: #5CAD5A; --el-orange: #FF9A4A;
+    --el-purple: #8A77E6; --el-pink: #FFACC2; --el-blue: #6CC9EB; --el-white: #FFFFFF;
+  }
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+  #hud { position: fixed; top: 10px; left: 10px; background: rgba(46,34,24,0.86); color: #fff3d8;
+         border: 2px solid rgba(234,212,166,0.4);
+         padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; max-width: 360px; }
+  #fps { position: fixed; top: 10px; right: 10px; background: rgba(46,34,24,0.86); color: var(--el-green);
+         border: 2px solid rgba(234,212,166,0.4);
+         padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: bold; }
+  #interact-hint { position: fixed; left: 50%; bottom: 120px; transform: translateX(-50%) translateY(6px);
+         background: rgba(46,34,24,0.88); color: #fff3d8; padding: 6px 14px; border-radius: 20px;
+         font-size: 13px; font-weight: 600; opacity: 0; transition: opacity .2s, transform .2s; pointer-events: none; }
+  #interact-hint.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #dialogue-box { position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(20px);
+         width: min(560px, 86vw); background: linear-gradient(var(--el-cream), var(--el-tan));
+         border: 3px solid var(--el-brown);
+         border-radius: 16px; padding: 14px 20px; color: var(--el-brown-dark); opacity: 0; pointer-events: none;
+         transition: opacity .2s, transform .2s; box-shadow: 0 10px 24px rgba(0,0,0,0.3); cursor: pointer; }
+  #dialogue-box.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #dialogue-box .name { font-weight: 800; color: var(--el-purple); margin-bottom: 4px; font-size: 14px; }
+  #dialogue-box .text { font-size: 14px; line-height: 1.5; }
+  #dialogue-box .continue { text-align: right; font-size: 11px; opacity: .7; margin-top: 6px; font-style: italic; }
+  #target { position: fixed; top: 10px; left: 50%; transform: translateX(-50%) translateY(-14px);
+         background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown);
+         border-radius: 14px;
+         padding: 10px 22px; color: var(--el-brown-dark); font-size: 16px; font-weight: 700; text-align: center;
+         box-shadow: 0 8px 18px rgba(0,0,0,0.25); opacity: 0; transition: opacity .3s, transform .3s; }
+  #target.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #target b { color: var(--el-green-dark); font-size: 20px; }
+  #streak { position: fixed; top: 66px; left: 50%; transform: translateX(-50%);
+         background: rgba(46,34,24,0.8); padding: 3px 12px; border-radius: 10px;
+         color: #fff3d8; font-size: 12px; opacity: 0; transition: opacity .3s; }
+  #streak.show { opacity: 0.9; }
+  #end { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(20,26,20,0.45); }
+  #end .card { background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown);
+         border-radius: 18px;
+         padding: 24px 32px; color: var(--el-brown-dark); text-align: center; font-size: 18px; box-shadow: 0 14px 30px rgba(0,0,0,0.35); }
+  #end .card small { display: block; margin-top: 8px; opacity: 0.75; font-size: 12px; }
+  #portal-fade { position: fixed; inset: 0; background: #eaf6ff; opacity: 0; pointer-events: none;
+         transition: opacity 0.6s ease; z-index: 50; }
+  #portal-fade.show { opacity: 1; }
+  /* ciel en fond DOM (derrière le canvas transparent) : dégradé recalculé
+     en JS selon spaceT. Un fond CSS plein écran, indépendant de la position
+     3D de la caméra, ne peut jamais laisser de trou ni se retrouver "avalé"
+     par une sphère de ciel trop proche (cause des bugs précédents). */
+  #sky-bg { position: fixed; inset: 0; z-index: -1; background: linear-gradient(to top, #ffe0ac 0%, #8fd0ff 100%); }
+
+  /* ---- quête (haut-gauche, sous le bandeau d'aide) ---- */
+  #quest-box { position: fixed; left: 10px; width: 250px;
+         background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown);
+         border-radius: 14px;
+         padding: 10px 14px; color: var(--el-brown-dark); box-shadow: 0 8px 18px rgba(0,0,0,0.22); transition: box-shadow .3s; }
+  #quest-box .q-title { font-weight: 800; color: var(--el-green-dark); font-size: 13px; margin-bottom: 3px; }
+  #quest-box .q-objective { font-size: 13px; line-height: 1.4; }
+  #quest-box .q-progress { font-size: 12px; color: var(--el-orange); font-weight: 700; margin-top: 4px; }
+  #quest-box.pulse { animation: quest-pulse 0.6s ease; }
+  @keyframes quest-pulse { 0%, 100% { box-shadow: 0 8px 18px rgba(0,0,0,0.22); } 50% { box-shadow: 0 0 0 4px rgba(119,179,106,0.55), 0 8px 18px rgba(0,0,0,0.22); } }
+
+  /* ---- niveau + XP (bas-gauche, pilule compacte — position de la planche) ---- */
+  #xp-panel { position: fixed; left: 14px; bottom: 14px; display: flex; align-items: center; gap: 10px;
+         background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown); color: var(--el-brown-dark);
+         border-radius: 30px; padding: 6px 16px 6px 8px; box-shadow: 0 8px 16px rgba(0,0,0,0.22); }
+  #xp-panel .level { display: inline-flex; align-items: center; font-weight: 800; color: var(--el-white);
+         background: var(--el-purple); border-radius: 12px; padding: 4px 10px; font-size: 12px; white-space: nowrap; }
+  #xp-track { width: 150px; background: rgba(104,74,47,0.25); border-radius: 8px; height: 14px; overflow: hidden; position: relative; }
+  #xp-fill { background: linear-gradient(var(--el-green), var(--el-green-dark)); height: 100%; width: 0%; transition: width .25s ease; }
+  #xp-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+         font-size: 10px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+
+  /* ---- ressources (haut-droite, pile de pilules sous le FPS — position de la planche) ---- */
+  #resources-panel { position: fixed; top: 56px; right: 14px; display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+  #resources-panel .res { display: flex; align-items: center; justify-content: flex-end; gap: 5px; min-width: 58px;
+         font-size: 13px; font-weight: 700; color: var(--el-brown-dark);
+         background: linear-gradient(var(--el-cream), var(--el-tan)); border: 2px solid var(--el-brown);
+         border-radius: 12px; padding: 4px 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.18); }
+
+  /* ---- barre d'action (bas-centre, slots numérotés — position de la planche) ---- */
+  /* boutons volontairement compacts : un slot + le cadre de la barre ne doit
+     pas dépasser 6% de la hauteur d'écran (règle visual-quality.md, calibrage
+     GW2) -> 38px de bouton + 6px de padding + 2px de bordure = 54px ≈ 6% de 900px. */
+  #action-bar { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+         display: flex; gap: 6px; background: linear-gradient(var(--el-tan), var(--el-cream)); border: 2px solid var(--el-brown);
+         border-radius: 12px; padding: 6px; box-shadow: 0 8px 18px rgba(0,0,0,0.25); transition: opacity .2s, transform .2s; }
+  #action-bar.hide { opacity: 0; transform: translateX(-50%) translateY(16px); pointer-events: none; }
+  #action-bar button { position: relative; width: 38px; height: 38px; border-radius: 8px; border: 1.5px solid var(--el-brown);
+         background: var(--el-cream); cursor: pointer;
+         display: flex; align-items: center; justify-content: center; }
+  #action-bar button:hover { background: var(--el-white); border-color: var(--el-green-dark);
+         box-shadow: 0 0 0 3px rgba(92,173,90,0.5); }
+  #action-bar button .glyph { font-size: 18px; }
+  #action-bar button .num { position: absolute; top: 1px; left: 2px; font-size: 8px; font-weight: 800; color: var(--el-brown-dark);
+         background: rgba(255,255,255,0.75); border-radius: 4px; padding: 0 3px; line-height: 1.3; }
+
+
+  #pause-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(20,26,20,0.55); z-index: 40; cursor: pointer; }
+  #pause-overlay .card { background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown);
+         border-radius: 18px;
+         padding: 20px 30px; color: var(--el-brown-dark); text-align: center; font-size: 16px; box-shadow: 0 14px 30px rgba(0,0,0,0.3); }
+  #pause-overlay.show { display: flex; }
+</style>
+</head>
+<body>
+<div id="sky-bg"></div>
+<div id="hud">Chargement…</div>
+<div id="quest-box">
+  <div class="q-title">Quête</div>
+  <div class="q-objective"></div>
+  <div class="q-progress"></div>
+</div>
+<div id="fps">— FPS</div>
+<div id="xp-panel">
+  <div class="level" id="level-badge">Niv. 1</div>
+  <div id="xp-track"><div id="xp-fill"></div><div id="xp-label">0 / 40</div></div>
+</div>
+<div id="resources-panel">
+  <div class="res">
+    <svg width="15" height="15" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6.5" fill="#ffd700" stroke="#a8730f" stroke-width="1.5"/></svg>
+    <span id="coin-count">0</span>
+  </div>
+  <div class="res">
+    <svg width="15" height="15" viewBox="0 0 16 16"><path d="M8 1.2 L9.8 5.8 L14.8 6 L10.9 9.1 L12.2 14 L8 11.2 L3.8 14 L5.1 9.1 L1.2 6 L6.2 5.8 Z" fill="#8A77E6" stroke="#5c4aa8" stroke-width="1"/></svg>
+    <span id="star-count">0</span>
+  </div>
+</div>
+<div id="interact-hint">Appuie sur E pour parler</div>
+<div id="dialogue-box">
+  <div class="name"></div>
+  <div class="text"></div>
+  <div class="continue">clique ou Espace pour continuer</div>
+</div>
+<div id="target">Saute sur : <b>—</b></div>
+<div id="streak"></div>
+<div id="end"><div class="card">🌉 Bravo, pont traversé !<small>Recharge la page pour rejouer</small></div></div>
+<div id="portal-fade" class="show"></div>
+<div id="pause-overlay"><div class="card">⏸ Jeu en pause<br><small>Clique pour reprendre</small></div></div>
+<div id="action-bar">
+  <button id="btn-quest" type="button" title="Objectif"><span class="num">1</span><span class="glyph">🎯</span></button>
+  <button id="btn-camera" type="button" title="Caméra"><span class="num">2</span><span class="glyph">📷</span></button>
+  <button id="btn-pause" type="button" title="Pause"><span class="num">3</span><span class="glyph">⏸</span></button>
+</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+// ============================================================
+// SPIKE 3D « Un seul monde » — fusion de spike3d-warm.html
+// (prairie + PNJ Elda) et spike3d-bridge.html (défi des
+// fractions) dans UNE scène continue : la prairie mène à l'est
+// vers le pont, un seul héros, une seule caméra qui suit.
+// ============================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.addEventListener('error', e => {
+  document.getElementById('hud').innerHTML = `<b>Erreur :</b> ${e.message}`;
+});
+
+const hud = document.getElementById('hud');
+const fpsEl = document.getElementById('fps');
+
+// -------- progression, ressources, quête (HUD) --------
+const questObjectiveEl = document.querySelector('#quest-box .q-objective');
+const questProgressEl = document.querySelector('#quest-box .q-progress');
+const questBoxEl = document.getElementById('quest-box');
+const levelBadgeEl = document.getElementById('level-badge');
+const xpFillEl = document.getElementById('xp-fill');
+const xpLabelEl = document.getElementById('xp-label');
+const coinCountEl = document.getElementById('coin-count');
+const starCountEl = document.getElementById('star-count');
+const actionBarEl = document.getElementById('action-bar');
+const pauseOverlayEl = document.getElementById('pause-overlay');
+
+const progress = { level: 1, xp: 0, xpNext: 40, coins: 0, stars: 0 };
+let stage = 'meet-elda'; // meet-elda -> lesson -> bridge -> done
+let paused = false;
+
+function updateProgressPanel() {
+  levelBadgeEl.textContent = `Niv. ${progress.level}`;
+  xpFillEl.style.width = `${Math.min(100, (progress.xp / progress.xpNext) * 100)}%`;
+  xpLabelEl.textContent = `${progress.xp} / ${progress.xpNext}`;
+  coinCountEl.textContent = progress.coins;
+  starCountEl.textContent = progress.stars;
+}
+function addReward(xpGain, coinGain) {
+  progress.xp += xpGain; progress.coins += coinGain;
+  while (progress.xp >= progress.xpNext) {
+    progress.xp -= progress.xpNext;
+    progress.level += 1;
+    progress.xpNext = Math.round(progress.xpNext * 1.25);
+  }
+  updateProgressPanel();
+}
+function updateQuestBox() {
+  let text, prog = '';
+  if (stage === 'meet-elda') text = 'Parle à Elda, près de l’Arbre Doré (E)';
+  else if (stage === 'lesson') text = 'Approche-toi de la galette pour la leçon des fractions';
+  else if (stage === 'bridge') { text = 'Traverse le pont : saute sur la bonne fraction'; prog = `${solvedCount}/${planks.length}`; }
+  else { text = 'Pont traversé — bravo !'; prog = `${solvedCount}/${planks.length}`; }
+  questObjectiveEl.textContent = text;
+  questProgressEl.textContent = prog;
+}
+updateProgressPanel();
+
+function positionQuestBox() {
+  questBoxEl.style.top = `${hud.getBoundingClientRect().bottom + 8}px`;
+}
+positionQuestBox();
+addEventListener('resize', positionQuestBox);
+
+document.getElementById('btn-quest').addEventListener('click', () => {
+  questBoxEl.classList.remove('pulse');
+  void questBoxEl.offsetWidth; // relance l'animation même si déjà jouée
+  questBoxEl.classList.add('pulse');
+});
+document.getElementById('btn-camera').addEventListener('click', () => { targetZoom = GAMEPLAY_ZOOM; });
+document.getElementById('btn-pause').addEventListener('click', () => setPaused(true));
+pauseOverlayEl.addEventListener('click', () => setPaused(false));
+function setPaused(v) {
+  paused = v;
+  pauseOverlayEl.classList.toggle('show', v);
+  if (!v) clock.getDelta(); // absorbe le temps écoulé pendant la pause
+}
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0); // le fond vient de #sky-bg (DOM), le canvas reste transparent
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const skyBgEl = document.getElementById('sky-bg');
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xffe3b0, 70, 170);
+
+const frustum = 13;
+let aspect = innerWidth / innerHeight;
+const camera = new THREE.OrthographicCamera(-frustum * aspect / 2, frustum * aspect / 2, frustum / 2, -frustum / 2, 0.1, 1200);
+camera.position.set(26, 24, 26);
+camera.lookAt(0, 2, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enableZoom = false; // zoom géré à la main plus bas (rythme garanti, indépendant du device)
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.target.set(0, 2, 0);
+controls.minZoom = 0.018; controls.maxZoom = 2.2;
+
+// -------- zoom lissé « à la main » --------
+// OrbitControls applique le delta de la molette/trackpad directement à camera.zoom :
+// un seul geste physique peut envoyer un deltaY énorme (surtout au trackpad) et faire
+// sauter le zoom instantanément, quelle que soit la formule de rythme appliquée ensuite
+// (une valeur qui saute reste une valeur qui saute). Ici on sépare la CIBLE (mise à jour
+// immédiatement par l'utilisateur) du zoom RÉELLEMENT AFFICHÉ, qui ne peut avancer que
+// d'une vitesse bornée dans le temps -> transition garantie fluide, quel que soit le device.
+let targetZoom = camera.zoom;
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.0012);
+  targetZoom = THREE.MathUtils.clamp(targetZoom * factor, controls.minZoom, controls.maxZoom);
+}, { passive: false });
+controls.enablePan = false;
+const GAMEPLAY_ZOOM = 0.6;
+
+// -------- toon shading + contours peints --------
+function makeToonGradient(colors) {
+  const c = document.createElement('canvas');
+  c.width = colors.length; c.height = 1;
+  const ctx = c.getContext('2d');
+  colors.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(i, 0, 1, 1); });
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+const warmGradient = makeToonGradient(['#5b4468', '#c9825f', '#ffd39b', '#fff6de']);
+const OUTLINE = 0x3d2f52;
+
+// -------- courbure « petite planète » (déforme tout le décor au dézoom) --------
+// Injectée dans chaque matériau : décale le sommet vers le bas selon le carré de sa
+// distance (monde) au centre de la planète, comme la calotte visible d'une sphère.
+// Un seul uniform partagé piloté depuis la boucle -> tout le décor courbe ensemble.
+const PLANET_CENTER = { x: 6, z: 0 };
+// rayon de la sphère implicite : énorme (quasi plat) en jeu normal, se resserre
+// au dézoom. Équation de sphère bornée (pas une parabole) : ne peut jamais se
+// replier sur elle-même, contrairement à un simple y -= k*d².
+const planetRadiusUniform = { value: 100000 };
+function applyCurvature(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uPlanetRadius = planetRadiusUniform;
+    shader.vertexShader = `uniform float uPlanetRadius;\n${shader.vertexShader}`
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+        {
+          vec4 curveWorldPos = modelMatrix * vec4(transformed, 1.0);
+          float curveDx = curveWorldPos.x - ${PLANET_CENTER.x.toFixed(1)};
+          float curveDz = curveWorldPos.z - ${PLANET_CENTER.z.toFixed(1)};
+          float curveD2 = curveDx * curveDx + curveDz * curveDz;
+          float curveR2 = uPlanetRadius * uPlanetRadius;
+          transformed.y -= uPlanetRadius - sqrt(max(curveR2 - curveD2, 0.0001));
+        }`,
+      )
+      // sans ce bloc, la NORMALE garde la direction du disque plat d'origine
+      // (calculée avant la courbure ci-dessus, jamais réajustée) -> une
+      // surface visuellement bombée mais éclairée comme si elle était plate,
+      // un aplat lumineux qui saute aux yeux à côté d'une vraie sphère
+      // correctement ombrée (planetShell) -> effet "plateau posé sur une
+      // boule". Repart de la position BRUTE `position` (pas `transformed`,
+      // pas encore courbée à ce stade du shader) pour recalculer la normale
+      // radiale exacte de la sphère implicite (gradient de x²+z²+(y+Rp)²=Rp²).
+      .replace(
+        '#include <defaultnormal_vertex>',
+        `#include <defaultnormal_vertex>
+        {
+          vec4 nWorldPos = modelMatrix * vec4(position, 1.0);
+          float nDx = nWorldPos.x - ${PLANET_CENTER.x.toFixed(1)};
+          float nDz = nWorldPos.z - ${PLANET_CENTER.z.toFixed(1)};
+          float nD2 = nDx * nDx + nDz * nDz;
+          float nR2 = uPlanetRadius * uPlanetRadius;
+          float nCurvedY = nWorldPos.y - (uPlanetRadius - sqrt(max(nR2 - nD2, 0.0001)));
+          vec3 nSphereCenter = vec3(${PLANET_CENTER.x.toFixed(1)}, nWorldPos.y - uPlanetRadius, ${PLANET_CENTER.z.toFixed(1)});
+          vec3 nWorldNormal = normalize(vec3(nWorldPos.x, nCurvedY, nWorldPos.z) - nSphereCenter);
+          transformedNormal = normalize(mat3(viewMatrix) * nWorldNormal);
+        }`,
+      );
+  };
+  material.needsUpdate = true;
+  return material;
+}
+function addOutline(mesh, scale = 1.06) {
+  const outline = new THREE.Mesh(mesh.geometry, applyCurvature(new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.BackSide })));
+  outline.scale.setScalar(scale);
+  mesh.add(outline);
+  return outline;
+}
+function addGlowOutline(mesh, scale = 1.12, color = 0xfff3c4) {
+  const glow = new THREE.Mesh(mesh.geometry, applyCurvature(new THREE.MeshBasicMaterial({
+    color, side: THREE.BackSide, transparent: true, opacity: 0.9, depthWrite: false, toneMapped: false,
+  })));
+  glow.scale.setScalar(scale);
+  glow.visible = false;
+  mesh.add(glow);
+  return glow;
+}
+function toon(geo, color, opts = {}) {
+  const mat = applyCurvature(new THREE.MeshToonMaterial({ color, gradientMap: warmGradient, flatShading: opts.flat ?? true }));
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  if (opts.outline !== false) addOutline(mesh, opts.outlineScale ?? 1.06);
+  return mesh;
+}
+// même rendu toon + contour peint, mais SANS la déformation de courbure — pour
+// les icônes de planète (déjà sphériques : la courbure de calotte les abîmerait).
+function toonPlain(geo, color, opts = {}) {
+  const mat = new THREE.MeshToonMaterial({ color, gradientMap: warmGradient, flatShading: opts.flat ?? false, fog: opts.fog ?? true });
+  const mesh = new THREE.Mesh(geo, mat);
+  let outline = null;
+  if (opts.outline !== false) {
+    outline = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.BackSide, fog: opts.fog ?? true }));
+    outline.scale.setScalar(opts.outlineScale ?? 1.05);
+    mesh.add(outline);
+  }
+  return { mesh, outline };
+}
+function emissive(geo, color, intensity = 1.4) {
+  const mat = applyCurvature(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false }));
+  return new THREE.Mesh(geo, mat);
+}
+function makeGlowSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const glowTex = makeGlowSprite();
+
+// -------- zone du pont (exclue de la dispersion de décor prairie) --------
+const BRIDGE_MIN_X = 9;
+function inBridgeCorridor(x, z) { return x > BRIDGE_MIN_X && x < 31 && Math.abs(z) < 9.5; }
+
+// -------- lumière dorée d'après-midi --------
+scene.add(new THREE.AmbientLight(0xffe9c4, 0.55));
+const sun = new THREE.DirectionalLight(0xffdca0, 2.0);
+sun.position.set(18, 30, 14); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -50; sun.shadow.camera.right = 50;
+sun.shadow.camera.top = 50; sun.shadow.camera.bottom = -50;
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0xff9e6b, 0.5);
+rim.position.set(-14, 10, -18);
+scene.add(rim);
+
+// -------- ciel --------
+// Le fond (bleu proche -> halo d'atmosphère -> noir étoilé) est peint en CSS
+// sur #sky-bg, DERRIÈRE le canvas (rendu avec un fond transparent) : un calque
+// plein écran ne dépend jamais de la position 3D de la caméra, contrairement
+// à une sphère de ciel géante (essayé d'abord : sa couleur locale varie avec
+// l'angle de vue au fur et à mesure que la caméra recule et prend de la
+// hauteur pendant le dézoom, ce qui provoquait des aplats de couleur unique
+// selon l'angle, et un rayon trop petit laissait même un "trou" noir visible).
+// Seules les étoiles (points scintillants au premier plan) restent en 3D.
+const SKY_DAY = { bottom: new THREE.Color(0xffe0ac), top: new THREE.Color(0x8fd0ff) };
+const SKY_ATMO = { bottom: new THREE.Color(0xbfeaff), top: new THREE.Color(0x1c4fbf) };
+const SKY_SPACE = new THREE.Color(0x040611);
+
+const starCount = 900;
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const r = 80 + Math.random() * 220;
+  const a = Math.random() * Math.PI * 2, b = Math.acos(2 * Math.random() - 1);
+  starPos[i * 3] = Math.sin(b) * Math.cos(a) * r;
+  starPos[i * 3 + 1] = Math.abs(Math.cos(b) * r) * 0.6 + 15;
+  starPos[i * 3 + 2] = Math.sin(b) * Math.sin(a) * r;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starsMat = new THREE.PointsMaterial({
+  size: 3.4, map: glowTex, color: 0xfff3d8, transparent: true, opacity: 0,
+  depthWrite: false, fog: false, sizeAttenuation: false, blending: THREE.AdditiveBlending,
+});
+const stars = new THREE.Points(starGeo, starsMat);
+scene.add(stars);
+
+// -------- planète voisine (planète 2, reliée par le portail — visible seulement de loin) --------
+function makeNeighborPlanet(color, ringColor) {
+  const g = new THREE.Group();
+  const { mesh: globe } = toonPlain(new THREE.SphereGeometry(9, 20, 16), color, { outlineScale: 1.06, fog: false });
+  g.add(globe);
+  const atmosphere = new THREE.Mesh(new THREE.SphereGeometry(10, 20, 16), new THREE.MeshBasicMaterial({ color: ringColor, transparent: true, opacity: 0.22, side: THREE.BackSide, fog: false }));
+  g.add(atmosphere);
+  return g;
+}
+const neighborPlanet = makeNeighborPlanet(0x6b4fa8, 0xc9a2ff);
+neighborPlanet.position.set(-80, 40, -92);
+scene.add(neighborPlanet);
+const neighborLabel = makeSignSprite('Planète voisine');
+neighborLabel.scale.set(9, 3.4, 1);
+neighborLabel.position.set(0, 16, 0);
+neighborLabel.material.fog = false;
+neighborLabel.material.transparent = true;
+neighborLabel.material.opacity = 0;
+neighborPlanet.add(neighborLabel);
+
+// -------- sol (prairie) --------
+// Anneaux concentriques (pas un simple éventail) : la courbure « petite planète »
+// a besoin de résolution radiale pour se voir lisse et non facettée au dézoom.
+function makeDiscGeometry(radius, rings, segments) {
+  const positions = [];
+  const indices = [];
+  for (let r = 0; r <= rings; r++) {
+    // anneaux plus serrés vers le bord (exposant < 1) : c'est là que la
+    // courbure devient extrême au dézoom profond (rayon de courbure ~ rayon
+    // du disque) -> un espacement linéaire y facette visiblement (rendu en
+    // gros polygones plats sur une pente proche de la verticale).
+    const rad = radius * Math.pow(r / rings, 0.45);
+    for (let s = 0; s <= segments; s++) {
+      const a = (s / segments) * Math.PI * 2;
+      positions.push(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+    }
+  }
+  const stride = segments + 1;
+  for (let r = 0; r < rings; r++) {
+    for (let s = 0; s < segments; s++) {
+      const a0 = r * stride + s, a1 = a0 + 1;
+      const b0 = (r + 1) * stride + s, b1 = b0 + 1;
+      indices.push(a0, a1, b0, a1, b1, b0);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+// même couleur que le sol et la coque (pas la teinte plus sombre d'origine) :
+// à angle rasant/courbure extrême, un liseré même fin s'étire visuellement
+// en un large anneau sombre -> lu comme une jointure dure plutôt qu'un détail.
+const groundEdge = toon(makeDiscGeometry(96, 28, 48), 0x8fd66a, { outline: false, flat: false });
+groundEdge.position.set(6, -0.05, 0); groundEdge.receiveShadow = true;
+scene.add(groundEdge);
+const ground = toon(makeDiscGeometry(92, 28, 48), 0x8fd66a, { outline: false, flat: false });
+ground.position.set(6, 0, 0); ground.receiveShadow = true;
+scene.add(ground);
+
+// -------- coque de la planète --------
+// referme le sol en boule complète, à TOUT moment et sous N'IMPORTE QUEL
+// angle (zoom OU rotation caméra manuelle) -- pas de bascule caméra forcée,
+// pas d'objet séparé qui "apparaît" à un instant donné : cette sphère est
+// mathématiquement LA MÊME surface que la courbure du sol (même équation,
+// même centre, même rayon Rp mis à jour chaque frame -> `y = -Rp + sqrt(Rp²-d²)`
+// EST l'équation d'une sphère de rayon Rp centrée en (cx,-Rp,cz), exactement
+// ce que fait déjà `applyCurvature()`), donc toujours parfaitement continue
+// avec lui, du gameplay normal (rayon énorme, quasi plat) jusqu'à l'espace
+// (rayon resserré). Géométrie unité + `scale`/`position` recalculés chaque
+// frame -> pas de génération de géométrie à un rayon énorme (précision flottante).
+// pas de contour peint ici : un contour "coque gonflée" (technique inverted
+// hull) devient disproportionnellement épais vu à angle rasant (exactement
+// ce qui arrive près de l'horizon de la calotte) -> bande sombre inattendue.
+// même couleur que le sol (pas la teinte plus sombre de son liseré
+// `groundEdge`) -> sinon on voit littéralement un plateau clair posé sur une
+// boule plus sombre au lieu d'UNE seule surface continue.
+const { mesh: planetShell } = toonPlain(new THREE.SphereGeometry(1, 40, 30), 0x8fd66a, { outline: false, fog: false });
+scene.add(planetShell);
+
+// -------- nuages (petits amas doux flottant au-dessus du village) --------
+function makeCloudTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const ctx = c.getContext('2d');
+  const blobs = [[64, 70, 46], [40, 66, 32], [90, 66, 32], [58, 48, 30], [80, 52, 26]];
+  for (const [bx, by, br] of blobs) {
+    const grad = ctx.createRadialGradient(bx, by, 0, bx, by, br);
+    grad.addColorStop(0, 'rgba(255,255,255,0.95)');
+    grad.addColorStop(0.7, 'rgba(255,255,255,0.55)');
+    grad.addColorStop(1, 'rgba(255,255,255,0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.arc(bx, by, br, 0, Math.PI * 2); ctx.fill();
+  }
+  return new THREE.CanvasTexture(c);
+}
+const cloudTex = makeCloudTexture();
+const cloudMat = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.85, depthWrite: false, fog: true });
+for (let i = 0; i < 7; i++) {
+  const cloud = new THREE.Sprite(cloudMat.clone());
+  const a = Math.random() * Math.PI * 2, r = 14 + Math.random() * 55;
+  cloud.position.set(6 + Math.cos(a) * r, 21 + Math.random() * 6, Math.sin(a) * r);
+  const s = 12 + Math.random() * 9;
+  cloud.scale.set(s, s * 0.55, 1);
+  scene.add(cloud);
+}
+
+// -------- touffes d'herbe et fleurs --------
+// Instanciées (InstancedMesh) : ~230 tirages individuels avant optimisation
+// coûtaient chacun 1-2 appels de rendu (+ ombre) -> gros facteur du FPS
+// en dessous de 60 une fois la prairie et le pont réunis dans la même scène.
+function scatter(count, radiusMin, radiusMax, fn) {
+  let placed = 0, attempts = 0;
+  while (placed < count && attempts < count * 4) {
+    attempts++;
+    const a = Math.random() * Math.PI * 2;
+    const r = radiusMin + Math.random() * (radiusMax - radiusMin);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (inBridgeCorridor(x, z)) continue;
+    fn(x, z, placed); placed++;
+  }
+}
+const dummy = new THREE.Object3D();
+
+// -------- obstacles (collision simple cercle-cercle avec le héros) --------
+const obstacles = [];
+function addObstacle(x, z, r) { obstacles.push({ x, z, r }); }
+
+const tuftGeo = new THREE.ConeGeometry(0.14, 0.4, 5);
+const tuftMesh = new THREE.InstancedMesh(tuftGeo, new THREE.MeshToonMaterial({ color: 0x6fc153, gradientMap: warmGradient }), 70);
+tuftMesh.castShadow = false; tuftMesh.receiveShadow = false;
+let tuftI = 0;
+scatter(70, 4, 82, (x, z) => {
+  dummy.position.set(x, 0.2, z); dummy.rotation.set(0, Math.random() * Math.PI, 0); dummy.updateMatrix();
+  tuftMesh.setMatrixAt(tuftI++, dummy.matrix);
+});
+tuftMesh.count = tuftI;
+tuftMesh.instanceMatrix.needsUpdate = true;
+scene.add(tuftMesh);
+
+const flowerColors = [0xff9ec7, 0xffd166, 0xffffff, 0xb79bea];
+const flowerGeo = new THREE.SphereGeometry(0.11, 6, 5);
+const flowerMeshes = flowerColors.map(color => {
+  const m = new THREE.InstancedMesh(flowerGeo, new THREE.MeshToonMaterial({ color, gradientMap: warmGradient }), 14);
+  m.castShadow = false; m.receiveShadow = false;
+  m.count = 0;
+  scene.add(m);
+  return m;
+});
+scatter(46, 5, 80, (x, z, i) => {
+  const m = flowerMeshes[i % flowerMeshes.length];
+  dummy.position.set(x, 0.32, z); dummy.rotation.set(0, 0, 0); dummy.updateMatrix();
+  m.setMatrixAt(m.count, dummy.matrix);
+  m.count++;
+});
+flowerMeshes.forEach(m => { m.instanceMatrix.needsUpdate = true; });
+
+// -------- arbres bonbon --------
+const treePalettes = [
+  { foliage: [0x7fd07a, 0x5fb562, 0x9adf8f] },
+  { foliage: [0x8fe0d0, 0x6fc7b8, 0xa8ecdf] },
+  { foliage: [0xf3a6c9, 0xe084b0, 0xffc2dd] },
+];
+function makeCandyTree(palette) {
+  const g = new THREE.Group();
+  const trunk = toon(new THREE.CylinderGeometry(0.16, 0.22, 1.3, 7), 0x8a5a3a, { outlineScale: 1.08 });
+  trunk.position.y = 0.65; g.add(trunk);
+  const spots = [[0, 1.55, 0.62], [0.42, 1.95, 0.5], [-0.4, 1.9, 0.46], [0, 2.35, 0.4]];
+  spots.forEach(([x, y, r], i) => {
+    const ball = toon(new THREE.IcosahedronGeometry(r, 0), palette.foliage[i % palette.foliage.length], { outlineScale: 1.07 });
+    ball.position.set(x, y, 0); g.add(ball);
+  });
+  return g;
+}
+scatter(11, 14, 78, (x, z) => {
+  const t = makeCandyTree(treePalettes[Math.floor(Math.random() * treePalettes.length)]);
+  t.position.set(x, 0, z);
+  const s = 0.85 + Math.random() * 0.5;
+  t.scale.setScalar(s);
+  t.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(t);
+  addObstacle(x, z, 0.35 * s);
+});
+
+// -------- sapins --------
+function makePineTree() {
+  const g = new THREE.Group();
+  const trunk = toon(new THREE.CylinderGeometry(0.14, 0.2, 0.6, 7), 0x8a5a3a, { outlineScale: 1.08 });
+  trunk.position.y = 0.3; g.add(trunk);
+  const tiers = [[0.9, 0.9, 0.7], [0.75, 1.5, 0.6], [0.55, 2.05, 0.55], [0.32, 2.5, 0.5]];
+  tiers.forEach(([r, y, h]) => {
+    const cone = toon(new THREE.ConeGeometry(r, h, 8), 0x3f8a52, { outlineScale: 1.06 });
+    cone.position.y = y; g.add(cone);
+  });
+  return g;
+}
+scatter(9, 16, 80, (x, z) => {
+  const p = makePineTree();
+  p.position.set(x, 0, z);
+  const s = 0.8 + Math.random() * 0.45;
+  p.scale.setScalar(s);
+  p.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(p);
+  addObstacle(x, z, 0.28 * s);
+});
+
+// -------- souches nues --------
+scatter(5, 4, 70, (x, z) => {
+  const stump = toon(new THREE.CylinderGeometry(0.24, 0.28, 0.35, 10), 0x8a5a3a, { outlineScale: 1.06 });
+  stump.position.set(x, 0.17, z);
+  stump.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(stump);
+  addObstacle(x, z, 0.22);
+});
+
+// -------- maisons rondes --------
+function makeRoundHouse(bodyColor, roofColor) {
+  const g = new THREE.Group();
+  const body = toon(new THREE.CylinderGeometry(1.5, 1.6, 1.7, 14), bodyColor, { outlineScale: 1.04 });
+  body.position.y = 0.85; g.add(body);
+  const roof = toon(new THREE.SphereGeometry(1.75, 16, 10, 0, Math.PI * 2, 0, Math.PI / 2), roofColor, { outlineScale: 1.05 });
+  roof.position.y = 1.7; g.add(roof);
+  const door = toon(new THREE.CapsuleGeometry(0.32, 0.35, 3, 8), 0x5b3d2b, { outlineScale: 1.08 });
+  door.rotation.x = Math.PI / 2; door.position.set(0, 0.45, 1.42);
+  g.add(door);
+  for (const side of [-1, 1]) {
+    const window_ = emissive(new THREE.CircleGeometry(0.22, 12), 0xfff2c4, 1.1);
+    window_.position.set(side * 0.85, 1.0, 1.4);
+    window_.lookAt(window_.position.x * 3, 1.0, 4);
+    g.add(window_);
+  }
+  return g;
+}
+const houseSpecs = [
+  { pos: [-9, 0, -4], body: 0xff9e7a, roof: 0xe8735a },
+  { pos: [4, 0, -8], body: 0x6fd8c9, roof: 0x3fada0 },
+  { pos: [3, 0, 8], body: 0xc9a8f0, roof: 0x9a6fd6 },
+];
+function makeFlowerPot(color) {
+  const g = new THREE.Group();
+  const pot = toon(new THREE.CylinderGeometry(0.13, 0.1, 0.2, 10), color, { outlineScale: 1.08 });
+  pot.position.y = 0.1; g.add(pot);
+  const bloomColors = [0xff9ec7, 0xffd166, 0xffffff];
+  for (let i = 0; i < 3; i++) {
+    const bloom = toon(new THREE.SphereGeometry(0.06, 6, 5), bloomColors[i], { outline: false });
+    const a = (i / 3) * Math.PI * 2;
+    bloom.position.set(Math.cos(a) * 0.06, 0.26 + Math.random() * 0.05, Math.sin(a) * 0.06);
+    g.add(bloom);
+  }
+  return g;
+}
+const potColors = [0xe86a4a, 0x4f9ed6, 0xb98a55];
+for (const h of houseSpecs) {
+  const house = makeRoundHouse(h.body, h.roof);
+  house.position.set(...h.pos);
+  house.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(house);
+  addObstacle(h.pos[0], h.pos[2], 1.55);
+}
+houseSpecs.forEach((h, i) => {
+  const pot = makeFlowerPot(potColors[i % potColors.length]);
+  pot.position.set(h.pos[0] + 1.9, 0, h.pos[2] + 0.6);
+  scene.add(pot);
+});
+
+// -------- clôture (cour de la maison 1) --------
+function makeFenceRun(x1, z1, x2, z2, postSpacing = 0.9) {
+  const g = new THREE.Group();
+  const dx = x2 - x1, dz = z2 - z1;
+  const len = Math.hypot(dx, dz);
+  const count = Math.max(2, Math.round(len / postSpacing));
+  const posts = [];
+  for (let i = 0; i <= count; i++) {
+    const t = i / count;
+    const px = x1 + dx * t, pz = z1 + dz * t;
+    const post = toon(new THREE.CylinderGeometry(0.05, 0.06, 0.6, 6), 0x8a5a3a, { outlineScale: 1.1 });
+    post.position.set(px, 0.3, pz);
+    g.add(post);
+    posts.push([px, pz]);
+  }
+  const yaw = Math.atan2(dx, dz);
+  for (let i = 0; i < posts.length - 1; i++) {
+    const [ax, az] = posts[i], [bx, bz] = posts[i + 1];
+    const mx = (ax + bx) / 2, mz = (az + bz) / 2;
+    const segLen = Math.hypot(bx - ax, bz - az);
+    for (const yOff of [0.42, 0.22]) {
+      const rail = toon(new THREE.BoxGeometry(0.05, 0.05, segLen), 0x9a6b46, { outlineScale: 1.05 });
+      rail.position.set(mx, yOff, mz);
+      rail.rotation.y = yaw;
+      g.add(rail);
+    }
+  }
+  return { group: g, posts };
+}
+const fenceA = makeFenceRun(-11, -6, -11, -2.5);
+scene.add(fenceA.group);
+fenceA.posts.forEach(([x, z]) => addObstacle(x, z, 0.15));
+const fenceB = makeFenceRun(-11, -6, -7.5, -6);
+scene.add(fenceB.group);
+fenceB.posts.forEach(([x, z]) => addObstacle(x, z, 0.15));
+
+// -------- rochers --------
+const rockPalette = [0x9a978c, 0x8a8478, 0xb0ab9c, 0x7d7a6f];
+scatter(9, 3, 85, (x, z) => {
+  const r = 0.4 + Math.random() * 0.35;
+  const rock = toon(new THREE.IcosahedronGeometry(r, 0), rockPalette[Math.floor(Math.random() * rockPalette.length)], { outlineScale: 1.08 });
+  rock.position.set(x, 0.15 + Math.random() * 0.1, z);
+  rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+  rock.scale.set(1, 0.75 + Math.random() * 0.3, 1);
+  scene.add(rock);
+  addObstacle(x, z, r * 0.85);
+});
+
+// -------- buissons --------
+const bushPalette = [0x6fb562, 0x7fd07a, 0x5fa858];
+function makeBush() {
+  const g = new THREE.Group();
+  const blobs = 2 + Math.floor(Math.random() * 2);
+  for (let i = 0; i < blobs; i++) {
+    const color = bushPalette[Math.floor(Math.random() * bushPalette.length)];
+    const blob = toon(new THREE.IcosahedronGeometry(0.28 + Math.random() * 0.12, 0), color, { outlineScale: 1.08 });
+    blob.position.set((Math.random() - 0.5) * 0.3, 0.28 + Math.random() * 0.08, (Math.random() - 0.5) * 0.3);
+    g.add(blob);
+  }
+  return g;
+}
+scatter(12, 3, 82, (x, z) => {
+  const bush = makeBush();
+  bush.position.set(x, 0, z);
+  const s = 0.8 + Math.random() * 0.4;
+  bush.scale.setScalar(s);
+  scene.add(bush);
+  addObstacle(x, z, 0.4 * s);
+});
+
+// -------- champignons --------
+const mushroomCapGeo = new THREE.ConeGeometry(0.16, 0.14, 8);
+const mushroomCapMesh = new THREE.InstancedMesh(mushroomCapGeo, new THREE.MeshToonMaterial({ color: 0xe25b4a, gradientMap: warmGradient }), 18);
+const mushroomStemGeo = new THREE.CylinderGeometry(0.05, 0.06, 0.16, 6);
+const mushroomStemMesh = new THREE.InstancedMesh(mushroomStemGeo, new THREE.MeshToonMaterial({ color: 0xfff2e0, gradientMap: warmGradient }), 18);
+mushroomCapMesh.castShadow = false; mushroomStemMesh.castShadow = false;
+let mushI = 0;
+scatter(18, 3, 75, (x, z) => {
+  dummy.position.set(x, 0.08, z); dummy.rotation.set(0, Math.random() * Math.PI, 0); dummy.updateMatrix();
+  mushroomStemMesh.setMatrixAt(mushI, dummy.matrix);
+  dummy.position.set(x, 0.2, z); dummy.updateMatrix();
+  mushroomCapMesh.setMatrixAt(mushI, dummy.matrix);
+  mushI++;
+});
+mushroomCapMesh.count = mushI; mushroomStemMesh.count = mushI;
+mushroomCapMesh.instanceMatrix.needsUpdate = true; mushroomStemMesh.instanceMatrix.needsUpdate = true;
+scene.add(mushroomCapMesh, mushroomStemMesh);
+
+// -------- puits du village --------
+function makeWell() {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(0.62, 0.68, 0.55, 14), 0x9a978c, { outlineScale: 1.05 });
+  base.position.y = 0.275; g.add(base);
+  const rim = toon(new THREE.TorusGeometry(0.62, 0.08, 8, 16), 0x7d7a6f, { outlineScale: 1.08 });
+  rim.rotation.x = Math.PI / 2; rim.position.y = 0.56; g.add(rim);
+  const wellWater = toon(new THREE.CircleGeometry(0.5, 16), 0x4fb8d6, { outline: false, flat: false });
+  wellWater.rotation.x = -Math.PI / 2; wellWater.position.y = 0.35; g.add(wellWater);
+  for (const side of [-1, 1]) {
+    const post = toon(new THREE.CylinderGeometry(0.06, 0.07, 1.1, 6), 0x8a5a3a, { outlineScale: 1.08 });
+    post.position.set(side * 0.55, 1.1, 0); g.add(post);
+  }
+  const roofBeam = toon(new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), 0x8a5a3a, { outlineScale: 1.1 });
+  roofBeam.rotation.z = Math.PI / 2; roofBeam.position.y = 1.62; g.add(roofBeam);
+  const roof = toon(new THREE.ConeGeometry(0.85, 0.55, 10), 0xe8735a, { outlineScale: 1.06 });
+  roof.position.y = 2.0; g.add(roof);
+  const bucket = toon(new THREE.CylinderGeometry(0.14, 0.11, 0.22, 10), 0x8a5a3a, { outlineScale: 1.1 });
+  bucket.position.y = 1.1; g.add(bucket);
+  return g;
+}
+const well = makeWell();
+well.position.set(-3, 0, -2);
+scene.add(well);
+addObstacle(-3, -2, 0.7);
+
+// -------- place du village (étal, guirlandes, bancs, panneau) --------
+const plaza = toon(new THREE.CylinderGeometry(3.4, 3.4, 0.05, 24), 0xcbb08a, { outline: false, flat: false });
+plaza.position.set(-3, 0.02, -2);
+scene.add(plaza);
+
+function makeStall() {
+  const g = new THREE.Group();
+  const table = toon(new THREE.BoxGeometry(1.4, 0.5, 0.7), 0x8a5a3a, { outlineScale: 1.06 });
+  table.position.y = 0.25; g.add(table);
+  for (const sx of [-0.55, 0.55]) for (const sz of [-0.3, 0.3]) {
+    const leg = toon(new THREE.CylinderGeometry(0.05, 0.05, 1.4, 6), 0x6b4327, { outline: false });
+    leg.position.set(sx, 0.9, sz); g.add(leg);
+  }
+  for (let i = 0; i < 3; i++) {
+    const stripe = toon(new THREE.BoxGeometry(1.7 / 3, 0.09, 1.0), i % 2 === 0 ? 0xe8735a : 0xfff6de, { outline: false });
+    stripe.position.set(-1.7 / 2 + (i + 0.5) * (1.7 / 3), 1.55, 0); stripe.rotation.x = -0.12;
+    g.add(stripe);
+  }
+  for (let i = 0; i < 3; i++) {
+    const crate = toon(new THREE.BoxGeometry(0.22, 0.22, 0.22), 0xb98a55, { outlineScale: 1.1 });
+    crate.position.set(-0.4 + i * 0.4, 0.62, 0); g.add(crate);
+  }
+  return g;
+}
+const stall = makeStall();
+stall.position.set(-3, 0, -3.6); stall.rotation.y = 0.15;
+scene.add(stall);
+addObstacle(-3, -3.6, 0.9);
+
+function makeBench() {
+  const g = new THREE.Group();
+  const seat = toon(new THREE.BoxGeometry(0.9, 0.08, 0.32), 0x8a5a3a, { outlineScale: 1.06 });
+  seat.position.y = 0.35; g.add(seat);
+  const back = toon(new THREE.BoxGeometry(0.9, 0.35, 0.06), 0x8a5a3a, { outlineScale: 1.06 });
+  back.position.set(0, 0.55, -0.14); g.add(back);
+  for (const side of [-1, 1]) {
+    const leg = toon(new THREE.BoxGeometry(0.07, 0.35, 0.28), 0x6b4327, { outline: false });
+    leg.position.set(side * 0.38, 0.17, 0); g.add(leg);
+  }
+  return g;
+}
+function makeCrate() { return toon(new THREE.BoxGeometry(0.32, 0.32, 0.32), 0xb98a55, { outlineScale: 1.08 }); }
+const bench1 = makeBench(); bench1.position.set(-1.2, 0, -1.4); bench1.rotation.y = 0.9; scene.add(bench1);
+addObstacle(-1.2, -1.4, 0.35);
+const bench2 = makeBench(); bench2.position.set(-4.9, 0, -2.6); bench2.rotation.y = -2.1; scene.add(bench2);
+addObstacle(-4.9, -2.6, 0.35);
+const crate1 = makeCrate(); crate1.position.set(-4.6, 0.16, -0.6); scene.add(crate1);
+const crate2 = makeCrate(); crate2.position.set(-4.3, 0.16, -0.3); crate2.rotation.y = 0.4; scene.add(crate2);
+
+// poteaux de guirlande : trop fins pour bloquer le passage, décor uniquement
+const gardenPosts = [[-5.6, -2], [-3, -4.4], [-0.4, -2], [-3, 0.2]];
+gardenPosts.forEach(([x, z]) => {
+  const post = toon(new THREE.CylinderGeometry(0.05, 0.06, 1.7, 6), 0x8a5a3a, { outlineScale: 1.1 });
+  post.position.set(x, 0.85, z); scene.add(post);
+});
+const lanternColors = [0xffd166, 0xf3a6c9, 0xb79bea, 0xe8735a];
+let lanternIdx = 0;
+for (let s = 0; s < gardenPosts.length; s++) {
+  const a = gardenPosts[s], b = gardenPosts[(s + 1) % gardenPosts.length];
+  for (let i = 0; i < 3; i++) {
+    const t = (i + 0.5) / 3;
+    const x = THREE.MathUtils.lerp(a[0], b[0], t), z = THREE.MathUtils.lerp(a[1], b[1], t);
+    const sag = Math.sin(t * Math.PI) * 0.25;
+    const lantern = emissive(new THREE.SphereGeometry(0.1, 8, 6), lanternColors[lanternIdx % lanternColors.length], 1.4);
+    lantern.position.set(x, 1.65 - sag, z);
+    scene.add(lantern);
+    lanternIdx++;
+  }
+}
+
+function makeBulletinBoard() {
+  const g = new THREE.Group();
+  const post = toon(new THREE.CylinderGeometry(0.07, 0.08, 1.3, 6), 0x7a5334, { outlineScale: 1.08 });
+  post.position.y = 0.65; g.add(post);
+  const board = toon(new THREE.BoxGeometry(0.9, 0.65, 0.08), 0x9a6b46, { outlineScale: 1.05 });
+  board.position.y = 1.35; g.add(board);
+  return g;
+}
+const bulletinBoard = makeBulletinBoard();
+bulletinBoard.position.set(-1.0, 0, -4.0); bulletinBoard.rotation.y = -0.6;
+scene.add(bulletinBoard);
+
+const marketPot = makeFlowerPot(0xb98a55);
+marketPot.position.set(-4.0, 0, -4.3);
+scene.add(marketPot);
+
+// -------- totem des esprits (ambiance) --------
+function makeTotem() {
+  const g = new THREE.Group();
+  const stone = toon(new THREE.ConeGeometry(0.5, 1.6, 6), 0x9a978c, { outlineScale: 1.06 });
+  stone.position.y = 0.8; g.add(stone);
+  const runeCanvas = document.createElement('canvas'); runeCanvas.width = runeCanvas.height = 64;
+  const rctx = runeCanvas.getContext('2d');
+  rctx.strokeStyle = '#ffd27a'; rctx.lineWidth = 5; rctx.lineCap = 'round';
+  rctx.beginPath(); rctx.arc(32, 32, 18, 0.3, 5.5); rctx.stroke();
+  const rune = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(runeCanvas), transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
+  rune.scale.set(0.5, 0.5, 1); rune.position.set(0, 1.05, 0.42);
+  g.add(rune);
+  const totemGlow = new THREE.PointLight(0xffd27a, 0.9, 5, 2);
+  totemGlow.position.y = 1.0; g.add(totemGlow);
+  g.userData.glow = totemGlow;
+  return g;
+}
+const totem = makeTotem();
+totem.position.set(-5.5, 0, 4.5);
+scene.add(totem);
+addObstacle(-5.5, 4.5, 0.5);
+const totemSparkles = [];
+for (let i = 0; i < 10; i++) {
+  const sp = emissive(new THREE.SphereGeometry(0.045, 6, 5), 0xffe696, 1.6);
+  const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 0.5;
+  sp.userData.phase = Math.random() * Math.PI * 2; sp.userData.angle = a; sp.userData.radius = r;
+  scene.add(sp); totemSparkles.push(sp);
+}
+
+// -------- souche-lanterne (le long du chemin vers le pont) --------
+function makeLanternStump() {
+  const g = new THREE.Group();
+  const stump = toon(new THREE.CylinderGeometry(0.22, 0.26, 0.5, 10), 0x8a5a3a, { outlineScale: 1.06 });
+  stump.position.y = 0.25; g.add(stump);
+  const armPost = toon(new THREE.CylinderGeometry(0.04, 0.05, 0.9, 6), 0x6b4327, { outlineScale: 1.1 });
+  armPost.position.y = 0.7; g.add(armPost);
+  const armBar = toon(new THREE.CylinderGeometry(0.03, 0.03, 0.5, 6), 0x6b4327, { outlineScale: 1.1 });
+  armBar.rotation.z = Math.PI / 2; armBar.position.set(0.22, 1.15, 0); g.add(armBar);
+  const lant = emissive(new THREE.SphereGeometry(0.1, 8, 6), 0xffd27a, 1.5);
+  lant.position.set(0.42, 1.02, 0); g.add(lant);
+  const lantLight = new THREE.PointLight(0xffcf6e, 0.7, 3.5, 2); lantLight.position.copy(lant.position); g.add(lantLight);
+  const smallMush = toon(new THREE.ConeGeometry(0.1, 0.09, 7), 0xe25b4a, { outline: false });
+  smallMush.position.set(-0.2, 0.53, 0.15); g.add(smallMush);
+  return g;
+}
+const lanternStump = makeLanternStump();
+lanternStump.position.set(7.5, 0, -1.2);
+scene.add(lanternStump);
+addObstacle(7.5, -1.2, 0.3);
+
+// -------- chariot du marchand --------
+function makeCart() {
+  const g = new THREE.Group();
+  const bed = toon(new THREE.BoxGeometry(0.9, 0.32, 0.55), 0x9a6b46, { outlineScale: 1.06 });
+  bed.position.y = 0.42; g.add(bed);
+  for (const side of [-1, 1]) {
+    const wheel = toon(new THREE.TorusGeometry(0.26, 0.055, 8, 14), 0x5b3d23, { outlineScale: 1.08 });
+    wheel.rotation.x = Math.PI / 2;
+    wheel.position.set(side * 0.42, 0.28, 0);
+    g.add(wheel);
+  }
+  const handle = toon(new THREE.CylinderGeometry(0.03, 0.03, 0.85, 6), 0x8a5a3a, { outlineScale: 1.1 });
+  handle.rotation.z = Math.PI / 2.3; handle.position.set(0, 0.3, 0.6); g.add(handle);
+  const produceColors = [0xe8735a, 0xffd166, 0x9a6fd6];
+  for (let i = 0; i < 3; i++) {
+    const fruit = toon(new THREE.SphereGeometry(0.11, 8, 6), produceColors[i], { outlineScale: 1.08 });
+    fruit.position.set(-0.2 + i * 0.2, 0.62, 0); g.add(fruit);
+  }
+  return g;
+}
+const cart = makeCart();
+cart.position.set(5.0, 0, -2.5); cart.rotation.y = 0.5;
+scene.add(cart);
+addObstacle(5.0, -2.5, 0.55);
+
+// -------- plateau rocheux (relief décoratif, non navigable) --------
+function makeRockyOutcrop() {
+  const g = new THREE.Group();
+  const basePositions = [[0, 0, 0, 1.6], [0.9, 0.1, 0.5, 1.1], [-0.8, 0.05, 0.6, 1.0], [0.3, 0.15, -0.9, 1.2]];
+  basePositions.forEach(([x, y, z, s]) => {
+    const rock = toon(new THREE.IcosahedronGeometry(1.4 * s, 1), rockPalette[Math.floor(Math.random() * rockPalette.length)], { outlineScale: 1.05 });
+    rock.position.set(x, y + 0.7 * s, z);
+    rock.scale.set(1, 1.3, 1);
+    g.add(rock);
+  });
+  const top = toon(new THREE.CylinderGeometry(1.5, 1.7, 0.35, 16), 0x8fd66a, { outlineScale: 1.04, flat: false });
+  top.position.y = 2.5; g.add(top);
+  const stepGeo = new THREE.BoxGeometry(0.9, 0.22, 0.5);
+  for (let i = 0; i < 8; i++) {
+    const step = toon(stepGeo, 0xb98a55, { outlineScale: 1.06 });
+    step.position.set(1.8, 0.15 + i * 0.28, -1.6 + i * 0.42);
+    g.add(step);
+  }
+  return g;
+}
+const outcrop = makeRockyOutcrop();
+outcrop.position.set(-16, 0, -14);
+scene.add(outcrop);
+addObstacle(-16, -14, 2.6);
+const outcropTreeA = makeCandyTree(treePalettes[0]);
+outcropTreeA.position.set(-16.6, 2.68, -13.6); outcropTreeA.scale.setScalar(0.8);
+scene.add(outcropTreeA);
+const outcropTreeB = makeCandyTree(treePalettes[1]);
+outcropTreeB.position.set(-15.5, 2.68, -14.5); outcropTreeB.scale.setScalar(0.65);
+scene.add(outcropTreeB);
+
+// -------- arbre doré central --------
+const goldenTree = new THREE.Group();
+const gTrunk = toon(new THREE.CylinderGeometry(0.4, 0.55, 2.4, 8), 0x8a5a3a, { outlineScale: 1.05 });
+gTrunk.position.y = 1.2; goldenTree.add(gTrunk);
+const gFoliage = toon(new THREE.IcosahedronGeometry(2.1, 0), 0x6fb562, { outlineScale: 1.05 });
+gFoliage.position.y = 3.4; goldenTree.add(gFoliage);
+const fruits = [];
+const fruitSpots = Array.from({ length: 9 }, (_, i) => {
+  const a = (i / 9) * Math.PI * 2;
+  return [Math.cos(a) * 1.9, 3.1 + Math.sin(i * 1.7) * 0.6, Math.sin(a) * 1.9];
+});
+for (const [x, y, z] of fruitSpots) {
+  const fruit = emissive(new THREE.SphereGeometry(0.24, 10, 8), 0xffcf4a, 1.6);
+  fruit.position.set(x, y, z); goldenTree.add(fruit); fruits.push(fruit);
+}
+const treeGlow = new THREE.PointLight(0xffd27a, 1.4, 9, 2);
+treeGlow.position.set(0, 3.4, 0); goldenTree.add(treeGlow);
+goldenTree.position.set(-2, 0, 3);
+scene.add(goldenTree);
+addObstacle(-2, 3, 0.6);
+
+// -------- lucioles --------
+const fireflyCount = 26;
+const fireflyGeo = new THREE.BufferGeometry();
+const fireflyPos = new Float32Array(fireflyCount * 3);
+const fireflyPhase = new Float32Array(fireflyCount);
+for (let i = 0; i < fireflyCount; i++) {
+  const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 4;
+  fireflyPos[i * 3] = -2 + Math.cos(a) * r;
+  fireflyPos[i * 3 + 1] = 1.5 + Math.random() * 3;
+  fireflyPos[i * 3 + 2] = 3 + Math.sin(a) * r;
+  fireflyPhase[i] = Math.random() * Math.PI * 2;
+}
+fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
+const fireflies = new THREE.Points(fireflyGeo, new THREE.PointsMaterial({
+  size: 0.35, map: glowTex, color: 0xffe696, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+scene.add(fireflies);
+
+// -------- papillons --------
+const butterflyCount = 14;
+const butterflyGeo = new THREE.BufferGeometry();
+const butterflyPos = new Float32Array(butterflyCount * 3);
+const butterflyPhase = new Float32Array(butterflyCount);
+const butterflyBaseX = new Float32Array(butterflyCount);
+const butterflyBaseZ = new Float32Array(butterflyCount);
+for (let i = 0; i < butterflyCount; i++) {
+  const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 70;
+  const x = Math.cos(a) * r, z = Math.sin(a) * r;
+  if (inBridgeCorridor(x, z)) { i--; continue; }
+  butterflyBaseX[i] = x; butterflyBaseZ[i] = z;
+  butterflyPos[i * 3] = x; butterflyPos[i * 3 + 1] = 0.7 + Math.random() * 0.8; butterflyPos[i * 3 + 2] = z;
+  butterflyPhase[i] = Math.random() * Math.PI * 2;
+}
+butterflyGeo.setAttribute('position', new THREE.BufferAttribute(butterflyPos, 3));
+const butterflyColors = [0xffffff, 0xffd166, 0xf3a6c9];
+const butterflies = new THREE.Points(butterflyGeo, new THREE.PointsMaterial({
+  size: 0.22, map: glowTex, color: butterflyColors[Math.floor(Math.random() * butterflyColors.length)],
+  transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+scene.add(butterflies);
+
+// -------- portail stellaire (voyage vers une autre planète) --------
+function makeRippleTexture() {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const tex = new THREE.CanvasTexture(canvas);
+  return { canvas, ctx: canvas.getContext('2d'), tex };
+}
+function drawRipple(ripple, time) {
+  const { canvas, ctx } = ripple;
+  const size = canvas.width, cx = size / 2, cy = size / 2, maxR = size / 2;
+  ctx.clearRect(0, 0, size, size);
+  const base = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+  base.addColorStop(0, '#e8fbff');
+  base.addColorStop(0.55, '#8fe0ff');
+  base.addColorStop(1, '#3fa8e8');
+  ctx.fillStyle = base;
+  ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 5; i++) {
+    const r = ((time * 26 + i * (maxR * 1.3) / 5) % (maxR * 1.3));
+    ctx.globalAlpha = Math.max(0, 1 - r / maxR) * 0.8;
+    ctx.lineWidth = 2.5 + Math.sin(time * 3 + i) * 1.2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ripple.tex.needsUpdate = true;
+}
+function makePortal(ringColor, horizonColor) {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(2.0, 2.2, 0.15, 20), 0x6b5a78, { outlineScale: 1.04, flat: false });
+  base.position.y = 0.075; g.add(base);
+  const ring = toon(new THREE.TorusGeometry(1.5, 0.22, 12, 28), ringColor, { outlineScale: 1.04 });
+  ring.position.y = 1.6; g.add(ring);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const chevron = toon(new THREE.BoxGeometry(0.26, 0.32, 0.16), 0xc9a24a, { outlineScale: 1.08 });
+    chevron.position.set(Math.cos(a) * 1.62, 1.6 + Math.sin(a) * 1.62, 0.16);
+    chevron.rotation.z = a;
+    g.add(chevron);
+  }
+  const ripple = makeRippleTexture();
+  const horizonMat = new THREE.MeshBasicMaterial({ map: ripple.tex, side: THREE.DoubleSide, toneMapped: false });
+  const horizon = new THREE.Mesh(new THREE.CircleGeometry(1.32, 28), horizonMat);
+  horizon.position.set(0, 1.6, 0);
+  g.add(horizon);
+  const portalLight = new THREE.PointLight(horizonColor, 1.3, 7, 2);
+  portalLight.position.set(0, 1.6, 0.2); g.add(portalLight);
+  const sparkles = [];
+  for (let i = 0; i < 10; i++) {
+    const sp = emissive(new THREE.SphereGeometry(0.05, 6, 5), horizonColor, 1.8);
+    const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.1;
+    sp.userData.angle = a; sp.userData.radius = r; sp.userData.phase = Math.random() * Math.PI * 2;
+    g.add(sp); sparkles.push(sp);
+  }
+  return { group: g, horizon, ripple, sparkles };
+}
+const portalLabel = makeSignSprite('Portail →');
+portalLabel.scale.set(1.4, 0.56, 1);
+portalLabel.position.set(0, 3.1, 0);
+const portal = makePortal(0x8a7aa8, 0x6fd8ff);
+portal.group.add(portalLabel);
+portal.group.position.set(-2, 0, 12);
+scene.add(portal.group);
+
+const params = new URLSearchParams(location.search);
+const arrivingByPortal = params.get('from') === 'portal';
+
+// -------- chibi (héros / PNJ / renard) --------
+function makeChibi({ cloak, skin, hood, tail }) {
+  const g = new THREE.Group();
+  const parts = {};
+  const body = toon(new THREE.CapsuleGeometry(0.42, 0.55, 4, 10), cloak, { outlineScale: 1.07, flat: false });
+  body.position.y = 0.78; g.add(body); parts.body = body;
+  const head = toon(new THREE.SphereGeometry(0.5, 12, 10), skin, { outlineScale: 1.06, flat: false });
+  head.position.y = 1.55; g.add(head); parts.head = head;
+  const hoodMesh = toon(new THREE.SphereGeometry(0.56, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), hood, { outlineScale: 1.06, flat: false });
+  hoodMesh.position.y = 1.62; hoodMesh.rotation.x = -0.18;
+  g.add(hoodMesh); parts.hood = hoodMesh;
+  for (const side of [-1, 1]) {
+    const eye = toon(new THREE.SphereGeometry(0.065, 8, 6), 0x2c2436, { outline: false, flat: false });
+    eye.position.set(side * 0.17, 1.53, 0.44); g.add(eye);
+    const spark = emissive(new THREE.SphereGeometry(0.02, 6, 6), 0xffffff, 2);
+    spark.position.set(side * 0.17 + side * 0.02, 1.56, 0.49); g.add(spark);
+    const cheek = toon(new THREE.SphereGeometry(0.09, 8, 6), 0xffb0a6, { outline: false, flat: false });
+    cheek.scale.set(1, 0.7, 0.4); cheek.position.set(side * 0.3, 1.42, 0.38); g.add(cheek);
+  }
+  for (const side of [-1, 1]) {
+    const armGeo = new THREE.CapsuleGeometry(0.11, 0.42, 3, 8); armGeo.translate(0, -0.21, 0);
+    const arm = toon(armGeo, cloak, { outlineScale: 1.1, flat: false });
+    arm.position.set(side * 0.46, 0.95, 0); g.add(arm); parts[side < 0 ? 'armL' : 'armR'] = arm;
+    const legGeo = new THREE.CapsuleGeometry(0.13, 0.36, 3, 8); legGeo.translate(0, -0.18, 0);
+    const leg = toon(legGeo, hood, { outlineScale: 1.1, flat: false });
+    leg.position.set(side * 0.2, 0.36, 0); g.add(leg); parts[side < 0 ? 'legL' : 'legR'] = leg;
+  }
+  if (tail) {
+    const tailMesh = toon(new THREE.ConeGeometry(0.16, 0.6, 8), tail, { outlineScale: 1.1, flat: false });
+    tailMesh.position.set(0, 0.55, -0.4); tailMesh.rotation.x = Math.PI * 0.55;
+    g.add(tailMesh); parts.tail = tailMesh;
+    for (const side of [-1, 1]) {
+      const ear = toon(new THREE.ConeGeometry(0.1, 0.22, 6), tail, { outlineScale: 1.1, flat: false });
+      ear.position.set(side * 0.16, 1.85, 0.05); g.add(ear);
+    }
+  }
+  return { group: g, parts };
+}
+
+const hero = makeChibi({ cloak: 0x4fae6a, skin: 0xf5c99b, hood: 0x357a52, tail: null });
+if (arrivingByPortal) hero.group.position.set(portal.group.position.x, 0, portal.group.position.z - 2.2);
+else hero.group.position.set(0, 0, -4);
+scene.add(hero.group);
+
+const lantern = emissive(new THREE.SphereGeometry(0.14, 10, 8), 0xffd27a, 1.8);
+lantern.position.set(0.55, 1.1, 0.15); hero.group.add(lantern);
+const lanternLight = new THREE.PointLight(0xffcf6e, 0.9, 4, 2);
+lanternLight.position.copy(lantern.position); hero.group.add(lanternLight);
+
+const fox = makeChibi({ cloak: 0xe8834a, skin: 0xfff2e0, hood: 0xffffff, tail: 0xe8834a });
+fox.group.scale.setScalar(0.55);
+fox.group.position.set(1.6, 0, -3);
+scene.add(fox.group);
+
+// -------- PNJ Elda + interaction --------
+const elda = makeChibi({ cloak: 0xb79bea, skin: 0xf5c99b, hood: 0x8a6fd6, tail: null });
+elda.group.position.set(-2, 0, 5.5);
+elda.group.rotation.y = Math.PI;
+scene.add(elda.group);
+elda.group.userData.glowMeshes = [
+  addGlowOutline(elda.parts.body, 1.14),
+  addGlowOutline(elda.parts.head, 1.14),
+  addGlowOutline(elda.parts.hood, 1.14),
+];
+
+const markerCanvas = document.createElement('canvas');
+markerCanvas.width = markerCanvas.height = 64;
+const mctx = markerCanvas.getContext('2d');
+mctx.font = 'bold 46px "Segoe UI"'; mctx.fillStyle = '#fff3d8'; mctx.strokeStyle = '#3d2a18'; mctx.lineWidth = 6;
+mctx.textAlign = 'center'; mctx.textBaseline = 'middle';
+mctx.strokeText('!', 32, 30); mctx.fillText('!', 32, 30);
+const markerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(markerCanvas), depthTest: false }));
+markerSprite.scale.set(0.5, 0.5, 1);
+markerSprite.position.set(0, 2.5, 0);
+elda.group.add(markerSprite);
+
+const ELDA_LINES = [
+  ['Elda', 'Bienvenue près de l’Arbre Doré, jeune éclaireur.'],
+  ['Elda', 'À l’est, un vieux pont s’est brisé. Une leçon t’attend à son entrée pour comprendre les fractions — ensuite, retrouve la bonne planche pour traverser.'],
+  ['Elda', 'Vas-y quand tu es prêt, je resterai ici à veiller sur l’arbre.'],
+];
+const dialogue = { open: false, index: 0, active: null, canTalk: false, talkTarget: null, awaitingWedgeClick: false, correctWedge: -1 };
+const hintEl = document.getElementById('interact-hint');
+const boxEl = document.getElementById('dialogue-box');
+const nameEl = boxEl.querySelector('.name');
+const textEl = boxEl.querySelector('.text');
+const continueEl = boxEl.querySelector('.continue');
+
+function openDialogue(lines) {
+  dialogue.open = true; dialogue.index = 0; dialogue.active = lines;
+  moving = false; hintEl.classList.remove('show'); showLine();
+}
+function showLine() {
+  dialogue.awaitingWedgeClick = false;
+  const [name, text, onEnter] = dialogue.active[dialogue.index];
+  nameEl.textContent = name; textEl.textContent = text;
+  boxEl.classList.add('show');
+  onEnter?.();
+  continueEl.textContent = dialogue.awaitingWedgeClick ? 'Touche le bon morceau de la galette' : 'clique ou Espace pour continuer';
+}
+function advanceDialogue() {
+  dialogue.index++;
+  if (dialogue.index >= dialogue.active.length) {
+    if (dialogue.active === ELDA_LINES && stage === 'meet-elda') stage = 'lesson';
+    else if (dialogue.active === LESSON_LINES) stage = 'bridge';
+    dialogue.open = false; dialogue.active = null; boxEl.classList.remove('show');
+    updateQuestBox();
+    return;
+  }
+  showLine();
+}
+boxEl.addEventListener('pointerdown', e => { e.stopPropagation(); if (!dialogue.awaitingWedgeClick) advanceDialogue(); });
+addEventListener('keydown', e => {
+  if (dialogue.open && (e.key === ' ' || e.key === 'Enter')) { if (!dialogue.awaitingWedgeClick) advanceDialogue(); return; }
+  if (!dialogue.open && (e.key === 'e' || e.key === 'E') && dialogue.canTalk) openDialogue(dialogue.talkTarget === 'lesson' ? LESSON_LINES : ELDA_LINES);
+});
+
+// -------- le pont des fractions (à l'est de la prairie) --------
+const BANK_NEAR_X = 15, BANK_FAR_X = 27;
+function makeBank(x) {
+  const bank = toon(new THREE.CylinderGeometry(2.1, 2.3, 0.3, 16), 0x8fd66a, { outlineScale: 1.03, flat: false });
+  bank.position.set(x, 0.1, 0);
+  scene.add(bank);
+  return bank;
+}
+makeBank(BANK_NEAR_X);
+makeBank(BANK_FAR_X);
+
+// -------- panneau du pont --------
+function makeSignSprite(text) {
+  const c = document.createElement('canvas'); c.width = 160; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(61,42,24,0.92)';
+  ctx.beginPath(); ctx.roundRect(4, 4, 152, 56, 14); ctx.fill();
+  ctx.strokeStyle = '#ffd39b'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(4, 4, 152, 56, 14); ctx.stroke();
+  ctx.fillStyle = '#fff6de'; ctx.font = 'bold 26px "Segoe UI"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 80, 34);
+  const tex = new THREE.CanvasTexture(c);
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+}
+const signpost = new THREE.Group();
+const signPostMast = toon(new THREE.CylinderGeometry(0.09, 0.11, 1.6, 7), 0x7a5334, { outlineScale: 1.08 });
+signPostMast.position.y = 0.8; signpost.add(signPostMast);
+const signBoard = makeSignSprite('Pont →');
+signBoard.scale.set(1.4, 0.56, 1);
+signBoard.position.set(0, 1.55, 0);
+signpost.add(signBoard);
+signpost.position.set(BANK_NEAR_X - 3, 0, 2.6);
+scene.add(signpost);
+
+// -------- leçon 1 : la galette dorée (comprendre 1/4 avant le pont) --------
+// part de galette PLEINE (avec épaisseur) : indispensable pour que l'astuce de
+// contour lumineux (duplicata agrandi, face arrière) fonctionne comme sur un
+// volume rond — une simple part plate ne montre son rebord que par endroits.
+function makeWedgeGeometry(angleStart, angleLength, radius, thickness, segments = 8) {
+  const positions = [];
+  const indices = [];
+  const topCenter = 0;
+  positions.push(0, thickness, 0);
+  const topArc = 1;
+  for (let i = 0; i <= segments; i++) {
+    const a = angleStart + (angleLength * i) / segments;
+    positions.push(Math.cos(a) * radius, thickness, Math.sin(a) * radius);
+  }
+  for (let i = 0; i < segments; i++) indices.push(topCenter, topArc + i + 1, topArc + i);
+
+  const botCenter = positions.length / 3;
+  positions.push(0, 0, 0);
+  const botArc = botCenter + 1;
+  for (let i = 0; i <= segments; i++) {
+    const a = angleStart + (angleLength * i) / segments;
+    positions.push(Math.cos(a) * radius, 0, Math.sin(a) * radius);
+  }
+  for (let i = 0; i < segments; i++) indices.push(botCenter, botArc + i, botArc + i + 1);
+
+  for (let i = 0; i < segments; i++) {
+    const t0 = topArc + i, t1 = topArc + i + 1, b0 = botArc + i, b1 = botArc + i + 1;
+    indices.push(t0, b0, t1, t1, b0, b1);
+  }
+  const topArcLast = topArc + segments, botArcLast = botArc + segments;
+  indices.push(topCenter, botCenter, topArc);
+  indices.push(topArc, botCenter, botArc);
+  indices.push(topCenter, topArcLast, botCenter);
+  indices.push(topArcLast, botArcLast, botCenter);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+function makePieStand() {
+  const g = new THREE.Group();
+  const stump = toon(new THREE.CylinderGeometry(0.7, 0.8, 0.5, 14), 0x8a5a3a, { outlineScale: 1.05 });
+  stump.position.y = 0.25; g.add(stump);
+  const wedgeColors = [0xffd27a, 0xffb84a, 0xffd27a, 0xffb84a];
+  const wedges = [];
+  for (let i = 0; i < 4; i++) {
+    const angleStart = i * (Math.PI / 2);
+    const geo = makeWedgeGeometry(angleStart, Math.PI / 2, 1.05, 0.14);
+    const wedge = toon(geo, wedgeColors[i], { outlineScale: 1.03, flat: false });
+    const mid = angleStart + Math.PI / 4;
+    wedge.userData.dirX = Math.cos(mid);
+    wedge.userData.dirZ = Math.sin(mid);
+    wedge.userData.baseY = 0.52;
+    wedge.position.y = 0.52;
+    wedge.userData.index = i;
+    g.add(wedge);
+    wedges.push(wedge);
+  }
+  return { group: g, wedges, stump };
+}
+const pieStand = makePieStand();
+pieStand.group.position.set(10.5, 0, -1.5);
+scene.add(pieStand.group);
+addObstacle(10.5, -1.5, 0.9);
+
+const lessonMarkerSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: markerSprite.material.map, depthTest: false }));
+lessonMarkerSprite.scale.set(0.5, 0.5, 1);
+lessonMarkerSprite.position.set(0, 2.2, 0);
+pieStand.group.add(lessonMarkerSprite);
+
+let pieSplitTarget = 0, pieSplitProgress = 0;
+function setPieSplit(target) { pieSplitTarget = target; }
+let liftedWedgeIndex = -1, liftProgress = 0;
+function liftWedge(index) { liftedWedgeIndex = index; }
+
+const LESSON_LINES = [
+  ['Leçon', 'Avant de traverser, une petite leçon ! Voici une galette dorée entière : un tout, un seul morceau.', () => setPieSplit(0)],
+  ['Leçon', 'Je la coupe en 4 parts bien égales.', () => setPieSplit(1)],
+  ['Leçon', 'Chaque part s’appelle « un quart ». On l’écrit 1/4 : 1 morceau pris parmi les 4 qui forment la galette entière.', () => liftWedge(0)],
+  ['Leçon', 'À toi ! Touche le morceau qui représente 1/4 de la galette.', () => { liftWedge(-1); dialogue.awaitingWedgeClick = true; dialogue.correctWedge = 0; }],
+  ['Leçon', 'Voilà, tu as trouvé 1/4 ! Sur le pont, chaque planche porte une fraction comme celle-ci : observe bien avant de sauter.'],
+];
+
+// -------- chemin de pierres --------
+const pathStoneGeo = new THREE.CylinderGeometry(0.42, 0.46, 0.08, 8);
+function layPath(waypoints, countPerSegment) {
+  const stones = [];
+  for (let s = 0; s < waypoints.length - 1; s++) {
+    const a = waypoints[s], b = waypoints[s + 1];
+    for (let i = 0; i < countPerSegment; i++) {
+      const t = (i + 0.5) / countPerSegment;
+      stones.push([
+        THREE.MathUtils.lerp(a[0], b[0], t) + (Math.random() - 0.5) * 0.5,
+        THREE.MathUtils.lerp(a[1], b[1], t) + (Math.random() - 0.5) * 0.5,
+      ]);
+    }
+  }
+  return stones;
+}
+const pathPoints = [
+  ...layPath([[0, -4], [-1.4, 1], [-2, 5.5]], 5),
+  ...layPath([[0, -4], [8, -1], [BANK_NEAR_X - 1, 0]], 6),
+];
+const pathMesh = new THREE.InstancedMesh(pathStoneGeo, new THREE.MeshToonMaterial({ color: 0xd8b98a, gradientMap: warmGradient }), pathPoints.length);
+pathMesh.castShadow = false; pathMesh.receiveShadow = true;
+pathPoints.forEach(([x, z], i) => {
+  dummy.position.set(x, 0.04, z); dummy.rotation.set(0, Math.random() * Math.PI, 0); dummy.scale.setScalar(0.85 + Math.random() * 0.3); dummy.updateMatrix();
+  pathMesh.setMatrixAt(i, dummy.matrix);
+});
+dummy.scale.set(1, 1, 1);
+pathMesh.instanceMatrix.needsUpdate = true;
+scene.add(pathMesh);
+
+const water = toon(new THREE.PlaneGeometry(20, 20, 1, 1), 0x4fb8d6, { outline: false, flat: false });
+water.rotation.x = -Math.PI / 2; water.position.set((BANK_NEAR_X + BANK_FAR_X) / 2, 0.03, 0);
+water.receiveShadow = false;
+scene.add(water);
+const waterSparkles = [];
+for (let i = 0; i < 26; i++) {
+  const s = emissive(new THREE.SphereGeometry(0.05, 6, 5), 0xffffff, 1.6);
+  s.position.set(BANK_NEAR_X - 1 + Math.random() * (BANK_FAR_X - BANK_NEAR_X + 2), 0.1, (Math.random() - 0.5) * 16);
+  s.userData.phase = Math.random() * Math.PI * 2; s.userData.baseY = s.position.y;
+  scene.add(s); waterSparkles.push(s);
+}
+
+// -------- mare aux nénuphars (à l'écart du couloir du pont) --------
+const pondCenter = [5.5, 3.5];
+function scatterRing(centerX, centerZ, count, rMin, rMax, fn) {
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const r = rMin + Math.random() * (rMax - rMin);
+    fn(centerX + Math.cos(a) * r, centerZ + Math.sin(a) * r);
+  }
+}
+const pond = toon(new THREE.CircleGeometry(2.2, 24), 0x4fb8d6, { outline: false, flat: false });
+pond.rotation.x = -Math.PI / 2; pond.position.set(pondCenter[0], 0.04, pondCenter[1]);
+scene.add(pond);
+addObstacle(pondCenter[0], pondCenter[1], 2.2);
+
+function makeLilyPad(withFlower) {
+  const g = new THREE.Group();
+  const pad = toon(new THREE.CircleGeometry(0.26, 10, 0, Math.PI * 1.7), 0x5fa858, { outline: false, flat: false });
+  pad.rotation.x = -Math.PI / 2; g.add(pad);
+  if (withFlower) {
+    const flower = toon(new THREE.SphereGeometry(0.08, 8, 6), 0xf3a6c9, { outline: false, flat: false });
+    flower.position.y = 0.05; g.add(flower);
+  }
+  return g;
+}
+const lilySpots = [[4.7, 2.4], [6.3, 1.8], [6.7, 4.1], [5.1, 4.3], [5.8, 3.4]];
+lilySpots.forEach(([x, z], i) => {
+  const pad = makeLilyPad(i % 2 === 0);
+  pad.position.set(x, 0.045, z);
+  pad.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(pad);
+});
+
+const reedStemGeo = new THREE.CylinderGeometry(0.025, 0.03, 0.55, 5);
+const reedTopGeo = new THREE.CapsuleGeometry(0.035, 0.12, 2, 5);
+const reedCount = 16;
+const reedStemMesh = new THREE.InstancedMesh(reedStemGeo, new THREE.MeshToonMaterial({ color: 0x6fae4f, gradientMap: warmGradient }), reedCount);
+const reedTopMesh = new THREE.InstancedMesh(reedTopGeo, new THREE.MeshToonMaterial({ color: 0x9a6b46, gradientMap: warmGradient }), reedCount);
+reedStemMesh.castShadow = false; reedTopMesh.castShadow = false;
+let reedI = 0;
+scatterRing(pondCenter[0], pondCenter[1], reedCount, 2.25, 2.6, (x, z) => {
+  dummy.position.set(x, 0.27, z); dummy.rotation.set(0, Math.random() * Math.PI, 0.05); dummy.updateMatrix();
+  reedStemMesh.setMatrixAt(reedI, dummy.matrix);
+  dummy.position.set(x, 0.58, z); dummy.updateMatrix();
+  reedTopMesh.setMatrixAt(reedI, dummy.matrix);
+  reedI++;
+});
+dummy.rotation.set(0, 0, 0);
+reedStemMesh.instanceMatrix.needsUpdate = true; reedTopMesh.instanceMatrix.needsUpdate = true;
+scene.add(reedStemMesh, reedTopMesh);
+
+scatterRing(pondCenter[0], pondCenter[1], 8, 2.25, 2.6, (x, z) => {
+  const r = 0.28 + Math.random() * 0.22;
+  const rock = toon(new THREE.IcosahedronGeometry(r, 0), rockPalette[Math.floor(Math.random() * rockPalette.length)], { outlineScale: 1.08 });
+  rock.position.set(x, 0.12, z);
+  rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+  scene.add(rock);
+  addObstacle(x, z, r * 0.85);
+});
+
+function makeDock(len) {
+  const g = new THREE.Group();
+  const plankGeo = new THREE.BoxGeometry(0.5, 0.08, 0.5);
+  for (let i = 0; i < len; i++) {
+    const plank = toon(plankGeo, 0xb98a55, { outlineScale: 1.05 });
+    plank.position.set(0, 0.3, i * 0.5); g.add(plank);
+  }
+  for (const [px, pz] of [[-0.2, 0], [0.2, 0], [-0.2, (len - 1) * 0.5], [0.2, (len - 1) * 0.5]]) {
+    const post = toon(new THREE.CylinderGeometry(0.05, 0.06, 0.5, 6), 0x7a5334, { outlineScale: 1.08 });
+    post.position.set(px, 0.05, pz); g.add(post);
+  }
+  return g;
+}
+const dock = makeDock(4);
+dock.position.set(pondCenter[0], 0, 1.6);
+scene.add(dock);
+
+const pondBarrel = toon(new THREE.CylinderGeometry(0.22, 0.24, 0.4, 10), 0x9a6b46, { outlineScale: 1.06 });
+pondBarrel.position.set(4.0, 0.2, 2.0);
+scene.add(pondBarrel);
+addObstacle(4.0, 2.0, 0.25);
+
+const pondLanternPost = new THREE.Group();
+const plPost = toon(new THREE.CylinderGeometry(0.06, 0.07, 1.3, 6), 0x7a5334, { outlineScale: 1.08 });
+plPost.position.y = 0.65; pondLanternPost.add(plPost);
+const plArm = toon(new THREE.CylinderGeometry(0.04, 0.04, 0.4, 6), 0x7a5334, { outlineScale: 1.1 });
+plArm.rotation.z = Math.PI / 2; plArm.position.set(0.2, 1.25, 0); pondLanternPost.add(plArm);
+const plLantern = emissive(new THREE.SphereGeometry(0.1, 8, 6), 0xffd27a, 1.5);
+plLantern.position.set(0.42, 1.1, 0); pondLanternPost.add(plLantern);
+pondLanternPost.position.set(7.5, 0, 4.9);
+scene.add(pondLanternPost);
+addObstacle(7.5, 4.9, 0.15);
+
+const FRACTIONS = ['1/4', '1/2', '3/4', '1/3', '2/3'];
+const PLANK_XS = [17, 19, 21, 23, 25];
+const PLANK_ZJ = [-0.3, 0.3, -0.2, 0.35, -0.15];
+function makeFractionSprite(text) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 80;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(61,42,24,0.92)';
+  ctx.beginPath(); ctx.roundRect(4, 4, 120, 72, 16); ctx.fill();
+  ctx.strokeStyle = '#ffd39b'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(4, 4, 120, 72, 16); ctx.stroke();
+  ctx.fillStyle = '#fff6de'; ctx.font = 'bold 40px "Segoe UI"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 42);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sprite.scale.set(1.15, 0.72, 1);
+  return sprite;
+}
+const planks = FRACTIONS.map((frac, i) => {
+  const group = new THREE.Group();
+  const board = toon(new THREE.BoxGeometry(1.5, 0.22, 1.1), 0xb98a55, { outlineScale: 1.05, flat: false });
+  group.add(board);
+  const label = makeFractionSprite(frac);
+  label.position.set(0, 1.05, 0); group.add(label);
+  group.position.set(PLANK_XS[i], 0.2, PLANK_ZJ[i]);
+  group.userData = { fraction: frac, solved: false, board, label, phase: Math.random() * Math.PI * 2 };
+  board.userData.haloTarget = group;
+  group.userData.glowMeshes = [addGlowOutline(board, 1.1)];
+  scene.add(group);
+  return group;
+});
+
+// -------- survol : halo lumineux + curseur --------
+const eldaHitbox = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 8), new THREE.MeshBasicMaterial());
+eldaHitbox.visible = false; eldaHitbox.position.y = 1.1;
+eldaHitbox.userData.haloTarget = elda.group;
+elda.group.add(eldaHitbox);
+const pieHitbox = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, 1.5, 8), new THREE.MeshBasicMaterial());
+pieHitbox.visible = false; pieHitbox.position.y = 0.75;
+pieHitbox.userData.haloTarget = pieStand.group;
+pieStand.group.add(pieHitbox);
+
+let hoveredGroup = null;
+function setHoveredGroup(group) {
+  if (group === hoveredGroup) return;
+  if (hoveredGroup) hoveredGroup.userData.glowMeshes?.forEach(g => { g.visible = false; });
+  if (group) group.userData.glowMeshes?.forEach(g => { g.visible = true; });
+  hoveredGroup = group;
+}
+
+function hoverTargets() {
+  const list = [eldaHitbox, pieHitbox];
+  planks.forEach(p => { if (!p.userData.solved) list.push(p.userData.board); });
+  return list;
+}
+
+// -------- effet de clic au sol --------
+const clickRings = [];
+function spawnClickRing(position) {
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.18, 0.26, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff6de, transparent: true, opacity: 0.9, side: THREE.DoubleSide }),
+  );
+  ring.rotation.x = -Math.PI / 2;
+  ring.position.set(position.x, 0.06, position.z);
+  scene.add(ring);
+  clickRings.push({ mesh: ring, born: elapsed });
+}
+
+const targetEl = document.getElementById('target');
+const streakEl = document.getElementById('streak');
+const endEl = document.getElementById('end');
+let bridgeGoal = null;
+let solvedCount = 0;
+let busy = false;
+
+function pickTarget() {
+  const remaining = planks.filter(p => !p.userData.solved);
+  if (!remaining.length) { bridgeGoal = null; return; }
+  bridgeGoal = remaining[Math.floor(Math.random() * remaining.length)];
+  targetEl.innerHTML = `Saute sur : <b>${bridgeGoal.userData.fraction}</b>`;
+}
+function updateStreak() { streakEl.textContent = `Réussies : ${solvedCount}/${planks.length}`; }
+pickTarget(); updateStreak(); updateQuestBox();
+
+// -------- particules --------
+let elapsed = 0;
+let spaceT = 0;
+const particles = [];
+function burst(position, color, { count = 16, spread = 2.6, life = 0.7, size = 0.22 } = {}) {
+  const positions = new Float32Array(count * 3);
+  const velocities = [];
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = position.x; positions[i * 3 + 1] = position.y; positions[i * 3 + 2] = position.z;
+    const dir = new THREE.Vector3((Math.random() - 0.5), Math.random() * 1.3 + 0.2, (Math.random() - 0.5)).normalize();
+    velocities.push(dir.multiplyScalar(spread * (0.5 + Math.random())));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ size, map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  particles.push({ pts, velocities, born: elapsed, life });
+}
+
+// -------- tweens de saut --------
+const tweens = [];
+function jumpTo(obj, toVec3, duration, onDone) {
+  const from = obj.position.clone();
+  const yaw = Math.atan2(toVec3.x - from.x, toVec3.z - from.z);
+  obj.rotation.y = yaw;
+  tweens.push({ obj, from, to: toVec3.clone(), duration, t: 0, onDone });
+}
+function respawnHero() {
+  hero.group.position.set(BANK_NEAR_X, 0.25, 0);
+  hero.group.scale.set(1, 1, 1);
+  hero.group.visible = true;
+}
+function handlePlankClick(plankGroup) {
+  if (busy) return;
+  busy = true;
+  const landPos = plankGroup.position.clone(); landPos.y = 0.32;
+  const dist = hero.group.position.distanceTo(landPos);
+  const duration = THREE.MathUtils.clamp(dist * 0.16, 0.32, 0.85);
+  jumpTo(hero.group, landPos, duration, () => {
+    if (plankGroup === bridgeGoal) {
+      plankGroup.userData.solved = true;
+      plankGroup.userData.board.material.color.set(0xffd27a);
+      burst(landPos.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xffd27a, { count: 20, life: 0.6 });
+      solvedCount++; updateStreak();
+      addReward(10, 4);
+      pickTarget();
+      if (solvedCount === planks.length) {
+        stage = 'done';
+        progress.stars += 1;
+        updateProgressPanel();
+        updateQuestBox();
+        setTimeout(() => {
+          jumpTo(hero.group, new THREE.Vector3(BANK_FAR_X, 0.25, 0), 0.5, () => {
+            endEl.style.display = 'flex';
+            busy = false;
+          });
+        }, 250);
+      } else {
+        updateQuestBox();
+        busy = false;
+      }
+    } else {
+      burst(landPos.clone().add(new THREE.Vector3(0, 0.1, 0)), 0x9fd8ff, { count: 22, life: 0.55, spread: 3.2 });
+      report('Oups, ce n’est pas la bonne fraction — retour au bord !');
+      const fallFrom = plankGroup.position.clone();
+      tweens.push({ obj: plankGroup, from: fallFrom, to: fallFrom.clone().add(new THREE.Vector3(0, -1.4, 0)),
+        duration: 0.6, t: 0, onDone: () => { plankGroup.position.copy(fallFrom); } });
+      hero.group.visible = false;
+      setTimeout(() => { respawnHero(); report(); busy = false; }, 500);
+    }
+  });
+}
+
+function report(msg) {
+  hud.innerHTML = `<b>Spike 3D — Un seul monde</b><br>` +
+    `Clic gauche : déplacer / sauter sur une planche. Clic droit : orbiter.<br>` +
+    `${msg || 'Approche-toi d’Elda (robe violette) puis E pour parler.'}`;
+  positionQuestBox();
+}
+report();
+
+// -------- traversée du portail --------
+const portalFadeEl = document.getElementById('portal-fade');
+setTimeout(() => portalFadeEl.classList.remove('show'), 250);
+let portalTraveling = false;
+function travelThroughPortal() {
+  portalTraveling = true;
+  moving = false;
+  portalFadeEl.classList.add('show');
+  setTimeout(() => { location.href = 'spike3d-planet2.html?from=portal'; }, 650);
+}
+
+// -------- interaction unifiée (déplacement + saut sur planche) --------
+const ray = new THREE.Raycaster();
+const moveTarget = new THREE.Vector3();
+let moving = false;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || busy || portalTraveling) return;
+  ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+  if (dialogue.open) {
+    if (dialogue.awaitingWedgeClick) {
+      const wedgeHit = ray.intersectObjects(pieStand.wedges)[0];
+      if (wedgeHit) {
+        const idx = wedgeHit.object.userData.index;
+        if (idx === dialogue.correctWedge) {
+          dialogue.awaitingWedgeClick = false;
+          burst(wedgeHit.point, 0xffd27a, { count: 18, life: 0.5 });
+          advanceDialogue();
+        } else {
+          burst(wedgeHit.point, 0x9fd8ff, { count: 12, life: 0.4, spread: 1.8 });
+        }
+      }
+    }
+    return;
+  }
+  const boards = planks.filter(p => !p.userData.solved).map(p => p.userData.board);
+  const plankHit = ray.intersectObjects(boards)[0];
+  if (plankHit) {
+    const plankGroup = planks.find(p => p.userData.board === plankHit.object);
+    if (plankGroup) { handlePlankClick(plankGroup); return; }
+  }
+  const hit = ray.intersectObject(ground)[0];
+  if (hit) { moveTarget.copy(hit.point); moving = true; spawnClickRing(hit.point); }
+});
+
+let rotating = false;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button === 2) { rotating = true; renderer.domElement.style.cursor = 'grabbing'; }
+});
+addEventListener('pointerup', e => {
+  if (e.button === 2) rotating = false;
+});
+
+renderer.domElement.addEventListener('pointermove', e => {
+  if (rotating) { renderer.domElement.style.cursor = 'grabbing'; return; }
+  ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+  let cursor = 'default';
+  let hoverGroup = null;
+  if (dialogue.open) {
+    if (dialogue.awaitingWedgeClick && ray.intersectObjects(pieStand.wedges)[0]) cursor = 'pointer';
+  } else if (!busy) {
+    const hoverHit = ray.intersectObjects(hoverTargets())[0];
+    if (hoverHit) { cursor = 'pointer'; hoverGroup = hoverHit.object.userData.haloTarget; }
+  }
+  renderer.domElement.style.cursor = cursor;
+  setHoveredGroup(hoverGroup);
+});
+
+addEventListener('resize', () => {
+  aspect = innerWidth / innerHeight;
+  camera.left = -frustum * aspect / 2; camera.right = frustum * aspect / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// hooks de test (banc d'essai uniquement, sans impact gameplay)
+window.__spikeDebug = {
+  setPlanetRadius: (v) => { planetRadiusUniform.value = v; },
+  getPlanetRadius: () => planetRadiusUniform.value,
+  dumpCurvatureShader: () => {
+    const m = new THREE.MeshToonMaterial({ color: 0xffffff, gradientMap: warmGradient });
+    applyCurvature(m);
+    let vs = null;
+    const orig = m.onBeforeCompile;
+    m.onBeforeCompile = (shader) => { orig(shader); vs = shader.vertexShader; };
+    const geo = new THREE.SphereGeometry(1, 4, 4);
+    const mesh = new THREE.Mesh(geo, m);
+    const tmpScene = new THREE.Scene();
+    tmpScene.add(mesh);
+    renderer.compile(tmpScene, camera);
+    return vs;
+  },
+  gotoElda: () => { moveTarget.copy(elda.group.position); moving = true; },
+  openDialogue: () => openDialogue(ELDA_LINES),
+  gotoBridge: () => { moveTarget.set(BANK_NEAR_X, 0, 0); moving = true; },
+  getTarget: () => bridgeGoal?.userData.fraction,
+  clickFraction: frac => { const p = planks.find(pl => pl.userData.fraction === frac); if (p) handlePlankClick(p); },
+  getHeroPos: () => ({ x: hero.group.position.x, z: hero.group.position.z, moving }),
+  goto: (x, z) => { moveTarget.set(x, 0, z); moving = true; },
+  wedgeScreenPos: (index) => {
+    const v = new THREE.Vector3();
+    pieStand.wedges[index].getWorldPosition(v);
+    v.project(camera);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  },
+  screenPosOf: (x, y, z) => {
+    const v = new THREE.Vector3(x, y, z);
+    v.project(camera);
+    return { x: (v.x * 0.5 + 0.5) * innerWidth, y: (-v.y * 0.5 + 0.5) * innerHeight };
+  },
+  getCursor: () => renderer.domElement.style.cursor,
+  getRipplePixel: () => Array.from(portal.ripple.ctx.getImageData(30, 64, 1, 1).data),
+  hideThings: (which) => {
+    const map = { outcrop, outcropTreeA, outcropTreeB, neighborPlanet, portal: portal.group, stars, well: undefined };
+    for (const name of which) { if (map[name]) map[name].visible = false; }
+  },
+  getZoomState: () => ({
+    zoom: camera.zoom, spaceT, fogFar: scene.fog.far,
+    skyBg: skyBgEl.style.background, starOpacity: starsMat.opacity,
+    camY: camera.position.y, camDist: camera.position.distanceTo(controls.target),
+  }),
+  getNeighborDebug: () => {
+    const v = new THREE.Vector3();
+    neighborPlanet.getWorldPosition(v);
+    const ndc = v.clone().project(camera);
+    return {
+      worldPos: v.toArray(),
+      ndc: ndc.toArray(),
+      visible: neighborPlanet.visible,
+      camPos: camera.position.toArray(),
+      target: controls.target.toArray(),
+      camZoom: camera.zoom,
+      frustumLRTB: [camera.left, camera.right, camera.top, camera.bottom],
+    };
+  },
+  getNdcFor: (x, y, z) => new THREE.Vector3(x, y, z).project(camera).toArray(),
+  isGlowVisible: () => hoveredGroup !== null,
+};
+
+// -------- collision héros / décor --------
+const heroRadius = 0.4;
+function collides(x, z) {
+  for (const o of obstacles) {
+    const dx = x - o.x, dz = z - o.z;
+    const minDist = o.r + heroRadius;
+    if (dx * dx + dz * dz < minDist * minDist) return true;
+  }
+  return false;
+}
+
+// -------- boucle --------
+let t = 0;
+let frames = 0, fpsTime = performance.now();
+const clock = new THREE.Clock();
+
+function animateWalk(chibi, dt, walking) {
+  const speed = walking ? 8 : 2.2;
+  t += dt * speed;
+  const bob = walking ? Math.abs(Math.sin(t)) * 0.09 : Math.sin(t * 0.6) * 0.02;
+  chibi.group.position.y = bob;
+  chibi.parts.hood.rotation.z = Math.sin(t * 0.5) * 0.05;
+  const swing = walking ? Math.sin(t) * 0.55 : 0;
+  chibi.parts.legL.rotation.x = swing; chibi.parts.legR.rotation.x = -swing;
+  chibi.parts.armL.rotation.x = -swing * 0.8; chibi.parts.armR.rotation.x = swing * 0.8;
+  if (chibi.parts.tail) chibi.parts.tail.rotation.z = Math.sin(t * 0.8) * 0.25;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  if (paused) return;
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+
+  const distToElda = hero.group.position.distanceTo(elda.group.position);
+  const distToLesson = hero.group.position.distanceTo(pieStand.group.position);
+  if (!dialogue.open && distToLesson < 2.6) { dialogue.canTalk = true; dialogue.talkTarget = 'lesson'; }
+  else if (!dialogue.open && distToElda < 2.4) { dialogue.canTalk = true; dialogue.talkTarget = 'elda'; }
+  else { dialogue.canTalk = false; dialogue.talkTarget = null; }
+  hintEl.classList.toggle('show', dialogue.canTalk);
+  actionBarEl.classList.toggle('hide', dialogue.open);
+  markerSprite.visible = !dialogue.open;
+  lessonMarkerSprite.visible = !dialogue.open;
+
+  if (!portalTraveling && hero.group.position.distanceTo(portal.group.position) < 1.2) {
+    travelThroughPortal();
+  }
+  drawRipple(portal.ripple, elapsed);
+  portal.sparkles.forEach(sp => {
+    const a = sp.userData.angle + elapsed * 0.6;
+    sp.position.set(
+      portal.group.position.x + Math.cos(a) * sp.userData.radius,
+      1.6 + Math.sin(elapsed * 1.8 + sp.userData.phase) * 0.6,
+      portal.group.position.z + Math.sin(a) * sp.userData.radius,
+    );
+  });
+
+  pieSplitProgress += (pieSplitTarget - pieSplitProgress) * Math.min(1, dt * 4);
+  const liftTarget = liftedWedgeIndex >= 0 ? 1 : 0;
+  liftProgress += (liftTarget - liftProgress) * Math.min(1, dt * 4);
+  pieStand.wedges.forEach((w, i) => {
+    w.position.x = w.userData.dirX * 0.16 * pieSplitProgress;
+    w.position.z = w.userData.dirZ * 0.16 * pieSplitProgress;
+    w.position.y = w.userData.baseY + (i === liftedWedgeIndex ? liftProgress * 0.35 : 0);
+  });
+
+  const nearBridge = hero.group.position.x > BRIDGE_MIN_X - 2 || moveTarget.x > BRIDGE_MIN_X - 2;
+  targetEl.classList.toggle('show', nearBridge && bridgeGoal);
+  streakEl.classList.toggle('show', nearBridge);
+
+  let walking = false;
+  if (moving && !dialogue.open && !busy) {
+    const d = moveTarget.clone().sub(hero.group.position); d.y = 0;
+    const dist = d.length();
+    if (dist > 0.15) {
+      const dirX = d.x / dist, dirZ = d.z / dist;
+      let remaining = Math.min(dist, 5 * dt);
+      const subStep = 0.08;
+      while (remaining > 0) {
+        const s = Math.min(subStep, remaining);
+        const curX = hero.group.position.x, curZ = hero.group.position.z;
+        let nx = curX + dirX * s, nz = curZ + dirZ * s;
+        const hit = obstacles.find(o => {
+          const dx = nx - o.x, dz = nz - o.z;
+          const minDist = o.r + heroRadius;
+          return dx * dx + dz * dz < minDist * minDist;
+        });
+        if (hit) {
+          // glisse le long de la tangente du cercle plutôt que de bloquer net
+          const dist0 = Math.hypot(curX - hit.x, curZ - hit.z) || 0.0001;
+          const nrmX = (curX - hit.x) / dist0, nrmZ = (curZ - hit.z) / dist0;
+          const tangX = -nrmZ, tangZ = nrmX;
+          const proj = dirX * tangX + dirZ * tangZ;
+          let tx = curX + tangX * proj * s, tz = curZ + tangZ * proj * s;
+          if (collides(tx, tz)) { tx = curX; tz = curZ; }
+          nx = tx; nz = tz;
+        }
+        hero.group.position.x = nx;
+        hero.group.position.z = nz;
+        remaining -= s;
+      }
+      hero.group.rotation.y = Math.atan2(d.x, d.z);
+      walking = true;
+    } else { moving = false; }
+  }
+  if (!busy) animateWalk(hero, dt, walking);
+
+  fox.group.position.x = hero.group.position.x + 1.2;
+  fox.group.position.z = hero.group.position.z - 1.1;
+  animateWalk(fox, dt, walking);
+  animateWalk(elda, dt, false);
+
+  fruits.forEach((f, i) => { f.position.y += Math.sin(performance.now() * 0.002 + i) * 0.0006; f.rotation.y += dt * 0.6; });
+  treeGlow.intensity = 1.2 + Math.sin(performance.now() * 0.003) * 0.3;
+
+  totem.userData.glow.intensity = 0.7 + Math.sin(performance.now() * 0.002) * 0.25;
+  totemSparkles.forEach(sp => {
+    const a = sp.userData.angle + elapsed * 0.4;
+    sp.position.set(
+      totem.position.x + Math.cos(a) * sp.userData.radius,
+      0.7 + Math.sin(elapsed * 1.5 + sp.userData.phase) * 0.5,
+      totem.position.z + Math.sin(a) * sp.userData.radius,
+    );
+  });
+
+  const fp = fireflyGeo.attributes.position;
+  for (let i = 0; i < fireflyCount; i++) { const ph = fireflyPhase[i] + performance.now() * 0.0006; fp.array[i * 3 + 1] += Math.sin(ph) * 0.0015; }
+  fp.needsUpdate = true;
+  const bp = butterflyGeo.attributes.position;
+  for (let i = 0; i < butterflyCount; i++) {
+    const ph = butterflyPhase[i] + elapsed * 1.3;
+    bp.array[i * 3] = butterflyBaseX[i] + Math.cos(ph) * 0.9;
+    bp.array[i * 3 + 1] = 0.7 + Math.abs(Math.sin(ph * 2.4)) * 0.5;
+    bp.array[i * 3 + 2] = butterflyBaseZ[i] + Math.sin(ph) * 0.9;
+  }
+  bp.needsUpdate = true;
+  for (const s of waterSparkles) s.position.y = s.userData.baseY + Math.sin(elapsed * 1.6 + s.userData.phase) * 0.05;
+  for (const p of planks) if (!p.userData.solved) p.position.y = 0.2 + Math.sin(elapsed * 1.2 + p.userData.phase) * 0.04;
+
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    tw.t += dt / tw.duration;
+    const prog = Math.min(tw.t, 1);
+    if (tw.obj === hero.group) {
+      const arc = Math.sin(prog * Math.PI) * 1.1;
+      hero.group.position.x = THREE.MathUtils.lerp(tw.from.x, tw.to.x, prog);
+      hero.group.position.z = THREE.MathUtils.lerp(tw.from.z, tw.to.z, prog);
+      hero.group.position.y = THREE.MathUtils.lerp(tw.from.y, tw.to.y, prog) + arc;
+      hero.group.scale.y = 1 + Math.sin(prog * Math.PI) * 0.25;
+    } else {
+      tw.obj.position.lerpVectors(tw.from, tw.to, prog);
+      tw.obj.rotation.z = prog * 0.9;
+    }
+    if (prog >= 1) {
+      if (tw.obj === hero.group) hero.group.scale.set(1, 1, 1);
+      tweens.splice(i, 1);
+      tw.onDone?.();
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    const age = elapsed - p.born;
+    if (age >= p.life) { scene.remove(p.pts); p.pts.geometry.dispose(); p.pts.material.dispose(); particles.splice(i, 1); continue; }
+    const arr = p.pts.geometry.attributes.position.array;
+    for (let j = 0; j < p.velocities.length; j++) {
+      arr[j * 3] += p.velocities[j].x * dt;
+      arr[j * 3 + 1] += p.velocities[j].y * dt; p.velocities[j].y -= 3.2 * dt;
+      arr[j * 3 + 2] += p.velocities[j].z * dt;
+    }
+    p.pts.geometry.attributes.position.needsUpdate = true;
+    p.pts.material.opacity = 1 - age / p.life;
+  }
+  for (let i = clickRings.length - 1; i >= 0; i--) {
+    const c = clickRings[i];
+    const age = elapsed - c.born;
+    const life = 0.5;
+    if (age >= life) { scene.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); clickRings.splice(i, 1); continue; }
+    const p = age / life;
+    c.mesh.scale.setScalar(1 + p * 1.8);
+    c.mesh.material.opacity = 0.9 * (1 - p);
+  }
+
+  controls.target.lerp(new THREE.Vector3(hero.group.position.x, 1.2, hero.group.position.z), 0.06);
+  controls.update();
+
+  // avance le zoom RÉEL vers la cible à vitesse bornée dans le temps (pas dans le nombre
+  // de crans reçus) -> même un gros geste de molette/trackpad reste une transition douce
+  camera.zoom += (targetZoom - camera.zoom) * Math.min(1, dt * 2.2);
+  camera.updateProjectionMatrix();
+
+  // -------- dézoom vers la vue spatiale (planète + voisines) --------
+  // le zoom orbital change de façon MULTIPLICATIVE (chaque cran de molette
+  // réduit camera.zoom d'un pourcentage) -> interpoler sur la valeur brute
+  // concentre toute la transition sur les tout premiers crans, puis plus rien
+  // ne bouge pendant très longtemps. Interpoler sur le logarithme du zoom
+  // donne un rythme réellement régulier, cran après cran.
+  spaceT = THREE.MathUtils.clamp(
+    THREE.MathUtils.inverseLerp(Math.log(GAMEPLAY_ZOOM), Math.log(controls.minZoom * 1.4), Math.log(camera.zoom)), 0, 1,
+  );
+  // recule la caméra en s'éloignant du dézoom (invisible en ortho, la taille à l'écran
+  // ne dépend que de camera.zoom) -> reste hors de la sphère-planète qui apparaît
+  let camDist = camera.position.distanceTo(controls.target);
+  if (spaceT > 0.001) {
+    const camOffset = camera.position.clone().sub(controls.target);
+    const curDist = camOffset.length();
+    const wantDist = THREE.MathUtils.lerp(curDist, 320, spaceT);
+    camOffset.multiplyScalar(wantDist / curDist);
+    camera.position.copy(controls.target).add(camOffset);
+    camDist = wantDist;
+  }
+  // fond (#sky-bg, DOM) : 3 couches qui se relaient en poids -> ciel proche,
+  // puis halo bleu d'altitude, puis noir de l'espace, exactement la
+  // progression de la planche (nuages -> bleu -> espace). Un mélange de
+  // couleurs par poids (plutôt que 3 calques en opacité superposés) reste
+  // toujours pleinement coloré, jamais de zone sombre entre deux étapes.
+  const wDay = 1 - THREE.MathUtils.smoothstep(spaceT, 0, 0.4);
+  const wAtmo = THREE.MathUtils.smoothstep(spaceT, 0.15, 0.4) * (1 - THREE.MathUtils.smoothstep(spaceT, 0.55, 0.8));
+  const wSpace = THREE.MathUtils.smoothstep(spaceT, 0.55, 0.95);
+  const wSum = Math.max(wDay + wAtmo + wSpace, 1e-6);
+  const mixColor = (a, b, c) => new THREE.Color(
+    (a.r * wDay + b.r * wAtmo + c.r * wSpace) / wSum,
+    (a.g * wDay + b.g * wAtmo + c.g * wSpace) / wSum,
+    (a.b * wDay + b.b * wAtmo + c.b * wSpace) / wSum,
+  );
+  const skyBottom = mixColor(SKY_DAY.bottom, SKY_ATMO.bottom, SKY_SPACE);
+  const skyTop = mixColor(SKY_DAY.top, SKY_ATMO.top, SKY_SPACE);
+  skyBgEl.style.background = `linear-gradient(to top, ${skyBottom.getStyle()} 0%, ${skyTop.getStyle()} 100%)`;
+  starsMat.opacity = wSpace;
+  // le brouillard doit toujours rester DERRIÈRE tout ce qui est encore
+  // visible -> calé sur la distance RÉELLE caméra-cible plutôt que sur spaceT
+  // seul (la caméra recule bien plus vite que spaceT ne progresse à cause du
+  // rattrapage cumulatif par frame ci-dessus ; un brouillard qui ne suivait
+  // que spaceT restait trop court et noyait tout le sol dans un mur ambré).
+  scene.fog.far = Math.max(170, camDist + 150);
+  scene.fog.near = Math.max(70, camDist - 120);
+  neighborPlanet.rotation.y += dt * 0.05;
+  neighborLabel.material.opacity = spaceT;
+  sun.intensity = THREE.MathUtils.lerp(2.0, 0.4, spaceT);
+  sun.castShadow = spaceT < 0.5;
+  renderer.shadowMap.enabled = spaceT < 0.5;
+  // courbure « petite planète » en 2 temps : (1) monte vite tôt pour qu'on
+  // voie déjà un horizon rond dès la vue « région » ; (2) continue ensuite à
+  // se resserrer jusqu'à la fin du dézoom. 5000 (pas un nombre énorme type
+  // 1e7) reste imperceptiblement plat au zoom de jeu tout en évitant les
+  // soucis de précision flottante sur `planetShell` (rayon = cette valeur).
+  const curveNear = THREE.MathUtils.smoothstep(spaceT, 0, 0.22);
+  const curveFar = THREE.MathUtils.smoothstep(spaceT, 0.32, 1);
+  const rpNear = THREE.MathUtils.lerp(5000, 190, curveNear);
+  const Rp = THREE.MathUtils.lerp(rpNear, 98, curveFar);
+  planetRadiusUniform.value = Rp;
+  // coque : MÊME équation que la courbure du sol (`y = -Rp + sqrt(Rp²-d²)`
+  // est l'équation d'une sphère de rayon Rp centrée en (cx,-Rp,cz)) -> une
+  // sphère unité mise à l'échelle/repositionnée avec CE Rp reste toujours
+  // parfaitement continue avec le sol, sous n'importe quel angle de caméra.
+  // Décalée d'une épaisseur CONSTANTE (0.15, pas un rayon rétréci en %) :
+  // rétrécir le RAYON (essayé d'abord) crée un écart qui grandit avec la
+  // distance au centre -> quasi nul près de l'apex mais ~2 unités pile à la
+  // jointure avec le bord du sol (96) à rayon de courbure serré (98), assez
+  // pour créer une marche visible à cet endroit précis. Translater le CENTRE
+  // vers le bas d'une petite constante garde un écart UNIFORME à tout d.
+  planetShell.scale.setScalar(Rp);
+  planetShell.position.set(PLANET_CENTER.x, -Rp - 0.15, PLANET_CENTER.z);
+
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - fpsTime >= 1000) {
+    fpsEl.textContent = `${frames} FPS`;
+    fpsEl.style.color = frames >= 55 ? '#7ee08a' : frames >= 30 ? '#ffd94a' : '#ff8a7a';
+    frames = 0; fpsTime = now;
+  }
+}
+loop();
+</script>
+</body>
+</html>

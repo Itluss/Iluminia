@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Eluminia — Spike 3D « Le pont des fractions » (gameplay)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+  #hud { position: fixed; top: 10px; left: 10px; background: rgba(60,42,30,0.82); color: #fff3d8;
+         padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; max-width: 340px; }
+  #fps { position: fixed; top: 10px; right: 10px; background: rgba(60,42,30,0.82); color: #7ee08a;
+         padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: bold; }
+  #target { position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+         background: linear-gradient(#7a5334, #5b3d23); border: 3px solid #3d2a18; border-radius: 14px;
+         padding: 10px 22px; color: #fff6de; font-size: 16px; font-weight: 700; text-align: center;
+         box-shadow: 0 8px 18px rgba(0,0,0,0.3); }
+  #target b { color: #ffd39b; font-size: 20px; }
+  #streak { position: fixed; top: 66px; left: 50%; transform: translateX(-50%);
+         color: #fff3d8; font-size: 12px; opacity: 0.85; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+  #end { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(20,26,20,0.45); }
+  #end .card { background: linear-gradient(#7a5334, #5b3d23); border: 3px solid #3d2a18; border-radius: 18px;
+         padding: 24px 32px; color: #fff6de; text-align: center; font-size: 18px; box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
+  #end .card small { display: block; margin-top: 8px; opacity: 0.75; font-size: 12px; }
+</style>
+</head>
+<body>
+<div id="hud">Chargement…</div>
+<div id="fps">— FPS</div>
+<div id="target">Saute sur : <b>—</b></div>
+<div id="streak"></div>
+<div id="end"><div class="card">🌉 Bravo, pont traversé !<small>Recharge la page pour rejouer</small></div></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+// ============================================================
+// SPIKE 3D « Le pont des fractions » — test de gameplay, pas
+// seulement de décor. Reprend le mécanisme validé en 2D
+// (public/defi-pont.html : sauter sur la bonne fraction) dans
+// le même style toon/procédural que spike3d-warm.html.
+// ============================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.addEventListener('error', e => {
+  document.getElementById('hud').innerHTML = `<b>Erreur :</b> ${e.message}`;
+});
+
+const hud = document.getElementById('hud');
+const fpsEl = document.getElementById('fps');
+const targetEl = document.getElementById('target');
+const streakEl = document.getElementById('streak');
+const endEl = document.getElementById('end');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0xbfe8ee, 40, 90);
+
+const frustum = 11;
+let aspect = innerWidth / innerHeight;
+const camera = new THREE.OrthographicCamera(-frustum * aspect / 2, frustum * aspect / 2, frustum / 2, -frustum / 2, 0.1, 500);
+camera.position.set(15, 13, 15);
+camera.lookAt(0, 0.5, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.target.set(0, 0.5, 0);
+controls.minZoom = 0.6; controls.maxZoom = 2;
+controls.enablePan = false;
+
+// -------- toon shading + contours peints (mêmes recettes que spike3d-warm) --------
+function makeToonGradient(colors) {
+  const c = document.createElement('canvas');
+  c.width = colors.length; c.height = 1;
+  const ctx = c.getContext('2d');
+  colors.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(i, 0, 1, 1); });
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+const warmGradient = makeToonGradient(['#5b4468', '#c9825f', '#ffd39b', '#fff6de']);
+const OUTLINE = 0x3d2f52;
+function addOutline(mesh, scale = 1.06) {
+  const outline = new THREE.Mesh(mesh.geometry, new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.BackSide }));
+  outline.scale.setScalar(scale);
+  mesh.add(outline);
+  return outline;
+}
+function toon(geo, color, opts = {}) {
+  const mat = new THREE.MeshToonMaterial({ color, gradientMap: warmGradient, flatShading: opts.flat ?? true });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  if (opts.outline !== false) addOutline(mesh, opts.outlineScale ?? 1.06);
+  return mesh;
+}
+function emissive(geo, color, intensity = 1.4) {
+  const mat = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false });
+  return new THREE.Mesh(geo, mat);
+}
+function makeGlowSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const glowTex = makeGlowSprite();
+
+// -------- lumière --------
+scene.add(new THREE.AmbientLight(0xdff2ff, 0.55));
+const sun = new THREE.DirectionalLight(0xfff0d0, 1.9);
+sun.position.set(14, 22, 10); sun.castShadow = true;
+sun.shadow.mapSize.set(1536, 1536);
+sun.shadow.camera.left = -20; sun.shadow.camera.right = 20;
+sun.shadow.camera.top = 20; sun.shadow.camera.bottom = -20;
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x9fd8ff, 0.4);
+rim.position.set(-10, 8, -12);
+scene.add(rim);
+
+// -------- ciel --------
+const skyGeo = new THREE.SphereGeometry(220, 24, 16);
+const pos = skyGeo.attributes.position;
+const skyColors = new Float32Array(pos.count * 3);
+const top = new THREE.Color(0x7fc7f5), bottom = new THREE.Color(0xdff2ee);
+for (let i = 0; i < pos.count; i++) {
+  const t = THREE.MathUtils.clamp((pos.getY(i) + 10) / 200, 0, 1);
+  const c = bottom.clone().lerp(top, t);
+  skyColors[i * 3] = c.r; skyColors[i * 3 + 1] = c.g; skyColors[i * 3 + 2] = c.b;
+}
+skyGeo.setAttribute('color', new THREE.BufferAttribute(skyColors, 3));
+scene.add(new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false })));
+
+// -------- eau --------
+const water = toon(new THREE.PlaneGeometry(60, 40, 1, 1), 0x4fb8d6, { outline: false, flat: false });
+water.rotation.x = -Math.PI / 2; water.position.y = -0.05;
+scene.add(water);
+const sparkles = [];
+for (let i = 0; i < 30; i++) {
+  const s = emissive(new THREE.SphereGeometry(0.05, 6, 5), 0xffffff, 1.6);
+  s.position.set((Math.random() - 0.5) * 26, 0.02, (Math.random() - 0.5) * 16);
+  s.userData.phase = Math.random() * Math.PI * 2;
+  s.userData.baseY = s.position.y;
+  scene.add(s); sparkles.push(s);
+}
+
+// -------- rives (départ / arrivée) --------
+function makeBank(z) {
+  const bank = toon(new THREE.CylinderGeometry(2.1, 2.3, 0.5, 16), 0x8fd66a, { outlineScale: 1.03, flat: false });
+  bank.position.set(0, 0.15, z);
+  scene.add(bank);
+  return bank;
+}
+makeBank(-7.5);
+makeBank(7.5);
+
+// -------- planches-fractions --------
+const FRACTIONS = ['1/4', '1/2', '3/4', '1/3', '2/3'];
+const PLANK_X = [-0.35, 0.3, -0.15, 0.4, -0.3];
+const PLANK_Z = [-4.2, -2.1, 0, 2.1, 4.2];
+function makeFractionSprite(text) {
+  const c = document.createElement('canvas'); c.width = 128; c.height = 80;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(61,42,24,0.92)';
+  ctx.beginPath(); ctx.roundRect(4, 4, 120, 72, 16); ctx.fill();
+  ctx.strokeStyle = '#ffd39b'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(4, 4, 120, 72, 16); ctx.stroke();
+  ctx.fillStyle = '#fff6de'; ctx.font = 'bold 40px "Segoe UI"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 42);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  sprite.scale.set(1.15, 0.72, 1);
+  return sprite;
+}
+
+const planks = FRACTIONS.map((frac, i) => {
+  const group = new THREE.Group();
+  const board = toon(new THREE.BoxGeometry(1.5, 0.22, 1.1), 0xb98a55, { outlineScale: 1.05, flat: false });
+  group.add(board);
+  const label = makeFractionSprite(frac);
+  label.position.set(0, 1.05, 0);
+  group.add(label);
+  group.position.set(PLANK_X[i], 0.2, PLANK_Z[i]);
+  group.userData = { fraction: frac, solved: false, board, label, phase: Math.random() * Math.PI * 2 };
+  scene.add(group);
+  return group;
+});
+
+// -------- héros chibi (repris du banc village) --------
+function makeChibi({ cloak, skin, hood }) {
+  const g = new THREE.Group();
+  const parts = {};
+  const body = toon(new THREE.CapsuleGeometry(0.4, 0.5, 4, 10), cloak, { outlineScale: 1.07, flat: false });
+  body.position.y = 0.75; g.add(body); parts.body = body;
+  const head = toon(new THREE.SphereGeometry(0.48, 12, 10), skin, { outlineScale: 1.06, flat: false });
+  head.position.y = 1.5; g.add(head); parts.head = head;
+  const hoodMesh = toon(new THREE.SphereGeometry(0.54, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), hood, { outlineScale: 1.06, flat: false });
+  hoodMesh.position.y = 1.57; hoodMesh.rotation.x = -0.18;
+  g.add(hoodMesh); parts.hood = hoodMesh;
+  for (const side of [-1, 1]) {
+    const eye = toon(new THREE.SphereGeometry(0.062, 8, 6), 0x2c2436, { outline: false, flat: false });
+    eye.position.set(side * 0.16, 1.48, 0.42); g.add(eye);
+    const cheek = toon(new THREE.SphereGeometry(0.085, 8, 6), 0xffb0a6, { outline: false, flat: false });
+    cheek.scale.set(1, 0.7, 0.4); cheek.position.set(side * 0.28, 1.38, 0.36); g.add(cheek);
+  }
+  return { group: g, parts };
+}
+const hero = makeChibi({ cloak: 0x4fae6a, skin: 0xf5c99b, hood: 0x357a52 });
+hero.group.position.set(0, 0.42, -7.3);
+scene.add(hero.group);
+
+function report(msg) {
+  hud.innerHTML = `<b>Spike 3D — Le pont des fractions</b><br>Clique une planche pour y sauter. Clic droit : orbiter.<br>${msg || ''}`;
+}
+report();
+
+// -------- particules (réussite / chute) --------
+const particles = [];
+function burst(position, color, { count = 16, spread = 2.6, life = 0.7, size = 0.22 } = {}) {
+  const positions = new Float32Array(count * 3);
+  const velocities = [];
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = position.x; positions[i * 3 + 1] = position.y; positions[i * 3 + 2] = position.z;
+    const dir = new THREE.Vector3((Math.random() - 0.5), Math.random() * 1.3 + 0.2, (Math.random() - 0.5)).normalize();
+    velocities.push(dir.multiplyScalar(spread * (0.5 + Math.random())));
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ size, map: glowTex, color, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending });
+  const pts = new THREE.Points(geo, mat);
+  scene.add(pts);
+  particles.push({ pts, velocities, born: elapsed, life });
+}
+
+// -------- état de jeu --------
+let elapsed = 0;
+let solvedCount = 0;
+let target = null;
+let busy = false;
+
+function pickTarget() {
+  const remaining = planks.filter(p => !p.userData.solved);
+  if (!remaining.length) {
+    endEl.style.display = 'flex';
+    targetEl.innerHTML = 'Saute sur : <b>—</b>';
+    return;
+  }
+  target = remaining[Math.floor(Math.random() * remaining.length)];
+  targetEl.innerHTML = `Saute sur : <b>${target.userData.fraction}</b>`;
+}
+function updateStreak() { streakEl.textContent = `Réussies : ${solvedCount}/${planks.length}`; }
+pickTarget(); updateStreak();
+
+// -------- tweens de saut --------
+const tweens = [];
+function jumpTo(obj, toVec3, duration, onDone) {
+  const from = obj.position.clone();
+  const yaw = Math.atan2(toVec3.x - from.x, toVec3.z - from.z);
+  obj.rotation.y = yaw;
+  tweens.push({ obj, from, to: toVec3.clone(), duration, t: 0, onDone });
+}
+
+function respawnHero() {
+  hero.group.position.set(0, 0.42, -7.3);
+  hero.group.scale.set(1, 1, 1);
+  hero.group.visible = true;
+}
+
+function handlePlankClick(plankGroup) {
+  if (busy) return;
+  busy = true;
+  const landPos = plankGroup.position.clone(); landPos.y = 0.42;
+  const dist = hero.group.position.distanceTo(landPos);
+  const duration = THREE.MathUtils.clamp(dist * 0.16, 0.32, 0.85);
+  jumpTo(hero.group, landPos, duration, () => {
+    if (plankGroup === target) {
+      plankGroup.userData.solved = true;
+      plankGroup.userData.board.material.color.set(0xffd27a);
+      burst(landPos.clone().add(new THREE.Vector3(0, 0.4, 0)), 0xffd27a, { count: 20, life: 0.6 });
+      solvedCount++; updateStreak();
+      pickTarget();
+      busy = false;
+    } else {
+      // planche fragile : elle cède sous le mauvais saut
+      burst(landPos.clone().add(new THREE.Vector3(0, 0.1, 0)), 0x9fd8ff, { count: 22, life: 0.55, spread: 3.2 });
+      report('Oups, ce n’est pas la bonne fraction — retour au bord !');
+      const fallTween = { obj: plankGroup, from: plankGroup.position.clone(), rotZ: 0, t: 0, duration: 0.6 };
+      tweens.push({ obj: plankGroup, from: plankGroup.position.clone(),
+        to: plankGroup.position.clone().add(new THREE.Vector3(0, -1.4, 0)), duration: 0.6,
+        onDone: () => { plankGroup.position.copy(fallTween.from); } });
+      hero.group.visible = false;
+      setTimeout(() => { respawnHero(); report(); busy = false; }, 500);
+    }
+  });
+}
+
+// -------- interaction --------
+const ray = new THREE.Raycaster();
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || busy) return;
+  ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+  const boards = planks.map(p => p.userData.board);
+  const hit = ray.intersectObjects(boards)[0];
+  if (!hit) return;
+  const plankGroup = planks.find(p => p.userData.board === hit.object);
+  if (plankGroup && !plankGroup.userData.solved) handlePlankClick(plankGroup);
+});
+
+addEventListener('resize', () => {
+  aspect = innerWidth / innerHeight;
+  camera.left = -frustum * aspect / 2; camera.right = frustum * aspect / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// hooks de test (banc d'essai uniquement, sans impact gameplay)
+window.__bridgeDebug = {
+  getTarget: () => target?.userData.fraction,
+  clickFraction: frac => { const p = planks.find(pl => pl.userData.fraction === frac); if (p) handlePlankClick(p); },
+};
+
+// -------- boucle --------
+let frames = 0, fpsTime = performance.now();
+const clock = new THREE.Clock();
+
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+
+  for (const s of sparkles) s.position.y = s.userData.baseY + Math.sin(elapsed * 1.6 + s.userData.phase) * 0.05;
+  for (const p of planks) if (!p.userData.solved) p.position.y = 0.2 + Math.sin(elapsed * 1.2 + p.userData.phase) * 0.04;
+
+  for (let i = tweens.length - 1; i >= 0; i--) {
+    const tw = tweens[i];
+    tw.t += dt / tw.duration;
+    const prog = Math.min(tw.t, 1);
+    const arc = Math.sin(prog * Math.PI) * 1.1;
+    tw.obj.position.lerpVectors(tw.from, tw.to, prog);
+    if (tw.obj === hero.group) {
+      tw.obj.position.y = THREE.MathUtils.lerp(tw.from.y, tw.to.y, prog) + arc;
+      tw.obj.scale.y = 1 + Math.sin(prog * Math.PI) * 0.25;
+    } else {
+      tw.obj.rotation.z = prog * 0.9;
+    }
+    if (prog >= 1) {
+      if (tw.obj === hero.group) tw.obj.scale.set(1, 1, 1);
+      tweens.splice(i, 1);
+      tw.onDone?.();
+    }
+  }
+
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    const age = elapsed - p.born;
+    if (age >= p.life) { scene.remove(p.pts); p.pts.geometry.dispose(); p.pts.material.dispose(); particles.splice(i, 1); continue; }
+    const arr = p.pts.geometry.attributes.position.array;
+    for (let j = 0; j < p.velocities.length; j++) {
+      arr[j * 3] += p.velocities[j].x * dt;
+      arr[j * 3 + 1] += p.velocities[j].y * dt; p.velocities[j].y -= 3.2 * dt;
+      arr[j * 3 + 2] += p.velocities[j].z * dt;
+    }
+    p.pts.geometry.attributes.position.needsUpdate = true;
+    p.pts.material.opacity = 1 - age / p.life;
+  }
+
+  controls.update();
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - fpsTime >= 1000) {
+    fpsEl.textContent = `${frames} FPS`;
+    fpsEl.style.color = frames >= 55 ? '#7ee08a' : frames >= 30 ? '#ffd94a' : '#ff8a7a';
+    frames = 0; fpsTime = now;
+  }
+}
+loop();
+</script>
+</body>
+</html>

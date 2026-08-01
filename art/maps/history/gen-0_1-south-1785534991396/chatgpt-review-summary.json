@@ -1,0 +1,97 @@
+{
+  "attempts": [
+    {
+      "score": 88,
+      "seamVisible": true,
+      "pathContinuous": true,
+      "riverContinuous": true,
+      "perspectiveStable": true,
+      "lightingConsistent": true,
+      "biomeGradual": true,
+      "cutElement": false,
+      "notes": "The seam is visible where the old and new regions meet. River and path continuity are maintained, and there's no noticeable perspective or lighting mismatch. The transition between biomes is smooth, and no elements are cut off.",
+      "verdict": "revise",
+      "raw": {
+        "model": "gpt-4o",
+        "usage": {
+          "prompt_tokens": 1861,
+          "completion_tokens": 91,
+          "total_tokens": 1952,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "score": 90,
+      "seamVisible": true,
+      "pathContinuous": true,
+      "riverContinuous": true,
+      "perspectiveStable": true,
+      "lightingConsistent": true,
+      "biomeGradual": true,
+      "cutElement": false,
+      "notes": "Visible seam between existing map and extension. Other elements are consistent and continuous. Overall, well integrated except for the visible seam.",
+      "verdict": "revise",
+      "raw": {
+        "model": "gpt-4o",
+        "usage": {
+          "prompt_tokens": 1861,
+          "completion_tokens": 73,
+          "total_tokens": 1934,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    },
+    {
+      "score": 72,
+      "seamVisible": true,
+      "pathContinuous": true,
+      "riverContinuous": false,
+      "perspectiveStable": true,
+      "lightingConsistent": true,
+      "biomeGradual": true,
+      "cutElement": true,
+      "notes": "The seam between the existing and new region is visible. The river continuity is broken at the seam. There is a noticeable cut-off element where the bridge meets the river. Perspective and lighting are consistent, and the biome transition is smooth.",
+      "verdict": "revise",
+      "raw": {
+        "model": "gpt-4o",
+        "usage": {
+          "prompt_tokens": 1861,
+          "completion_tokens": 95,
+          "total_tokens": 1956,
+          "prompt_tokens_details": {
+            "cached_tokens": 0,
+            "audio_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0,
+            "audio_tokens": 0,
+            "accepted_prediction_tokens": 0,
+            "rejected_prediction_tokens": 0
+          }
+        }
+      }
+    }
+  ],
+  "finalScore": 72,
+  "passed": false,
+  "chosenAttempt": 3
+}

@@ -1,0 +1,649 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Eluminia — Spike 3D « Porte des étoiles » (planète 2)</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+  #hud { position: fixed; top: 10px; left: 10px; background: rgba(40,26,58,0.82); color: #f1e3ff;
+         padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.5; max-width: 360px; }
+  #fps { position: fixed; top: 10px; right: 10px; background: rgba(40,26,58,0.82); color: #8ef0c9;
+         padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: bold; }
+  #portal-fade { position: fixed; inset: 0; background: #eaf6ff; opacity: 0; pointer-events: none;
+         transition: opacity 0.6s ease; z-index: 50; }
+  #portal-fade.show { opacity: 1; }
+  /* ciel en fond DOM, derrière le canvas transparent (voir village) */
+  #sky-bg { position: fixed; inset: 0; z-index: -1; background: linear-gradient(to top, #6b4fa8 0%, #1c1236 100%); }
+</style>
+</head>
+<body>
+<div id="sky-bg"></div>
+<div id="hud">Chargement…</div>
+<div id="fps">— FPS</div>
+<div id="portal-fade" class="show"></div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+// ============================================================
+// SPIKE 3D « Porte des étoiles » — planète 2, univers volontairement
+// différent (palette mauve/cyan, cristaux, rochers flottants), reliée
+// à spike3d-village.html par un portail (vraie navigation de page,
+// donc vrai chargement d'un autre monde — pas un téléport de scène).
+// ============================================================
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+window.addEventListener('error', e => {
+  document.getElementById('hud').innerHTML = `<b>Erreur :</b> ${e.message}`;
+});
+
+const hud = document.getElementById('hud');
+const fpsEl = document.getElementById('fps');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setClearColor(0x000000, 0); // le fond vient de #sky-bg (DOM), le canvas reste transparent
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const skyBgEl = document.getElementById('sky-bg');
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x2a1f4a, 50, 140);
+
+const frustum = 13;
+let aspect = innerWidth / innerHeight;
+const camera = new THREE.OrthographicCamera(-frustum * aspect / 2, frustum * aspect / 2, frustum / 2, -frustum / 2, 0.1, 1200);
+camera.position.set(26, 24, 26);
+camera.lookAt(0, 2, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.enableZoom = false; // zoom géré à la main plus bas (rythme garanti, indépendant du device)
+controls.mouseButtons = { LEFT: null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+controls.target.set(0, 2, 0);
+controls.minZoom = 0.018; controls.maxZoom = 2.2;
+
+// -------- zoom lissé « à la main » (voir village pour l'explication) --------
+let targetZoom = camera.zoom;
+renderer.domElement.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const factor = Math.exp(-e.deltaY * 0.0012);
+  targetZoom = THREE.MathUtils.clamp(targetZoom * factor, controls.minZoom, controls.maxZoom);
+}, { passive: false });
+controls.enablePan = false;
+const GAMEPLAY_ZOOM = 0.6;
+
+// -------- toon shading + contours peints (identique au banc village) --------
+function makeToonGradient(colors) {
+  const c = document.createElement('canvas');
+  c.width = colors.length; c.height = 1;
+  const ctx = c.getContext('2d');
+  colors.forEach((col, i) => { ctx.fillStyle = col; ctx.fillRect(i, 0, 1, 1); });
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+const coolGradient = makeToonGradient(['#241a3d', '#5b3f8a', '#9a7ad6', '#e8dcff']);
+const OUTLINE = 0x241a3d;
+
+// -------- courbure « petite planète » (déforme tout le décor au dézoom) --------
+const PLANET_CENTER = { x: 0, z: 0 };
+const planetRadiusUniform = { value: 100000 };
+function applyCurvature(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uPlanetRadius = planetRadiusUniform;
+    shader.vertexShader = `uniform float uPlanetRadius;\n${shader.vertexShader}`.replace(
+      '#include <begin_vertex>',
+      `#include <begin_vertex>
+      {
+        vec4 curveWorldPos = modelMatrix * vec4(transformed, 1.0);
+        float curveDx = curveWorldPos.x - ${PLANET_CENTER.x.toFixed(1)};
+        float curveDz = curveWorldPos.z - ${PLANET_CENTER.z.toFixed(1)};
+        float curveD2 = curveDx * curveDx + curveDz * curveDz;
+        float curveR2 = uPlanetRadius * uPlanetRadius;
+        transformed.y -= uPlanetRadius - sqrt(max(curveR2 - curveD2, 0.0001));
+      }`,
+    );
+  };
+  material.needsUpdate = true;
+  return material;
+}
+function addOutline(mesh, scale = 1.06) {
+  const outline = new THREE.Mesh(mesh.geometry, applyCurvature(new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.BackSide })));
+  outline.scale.setScalar(scale);
+  mesh.add(outline);
+  return outline;
+}
+function toon(geo, color, opts = {}) {
+  const mat = applyCurvature(new THREE.MeshToonMaterial({ color, gradientMap: coolGradient, flatShading: opts.flat ?? true }));
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.castShadow = true; mesh.receiveShadow = true;
+  if (opts.outline !== false) addOutline(mesh, opts.outlineScale ?? 1.06);
+  return mesh;
+}
+// même rendu toon + contour peint, mais SANS la déformation de courbure — pour
+// les icônes de planète (déjà sphériques : la courbure de calotte les abîmerait).
+function toonPlain(geo, color, opts = {}) {
+  const mat = new THREE.MeshToonMaterial({ color, gradientMap: coolGradient, flatShading: opts.flat ?? false, fog: opts.fog ?? true });
+  const mesh = new THREE.Mesh(geo, mat);
+  let outline = null;
+  if (opts.outline !== false) {
+    outline = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: OUTLINE, side: THREE.BackSide, fog: opts.fog ?? true }));
+    outline.scale.setScalar(opts.outlineScale ?? 1.05);
+    mesh.add(outline);
+  }
+  return { mesh, outline };
+}
+function emissive(geo, color, intensity = 1.4) {
+  const mat = applyCurvature(new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: intensity, toneMapped: false }));
+  return new THREE.Mesh(geo, mat);
+}
+function makeGlowSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 32;
+  const ctx = c.getContext('2d');
+  const grad = ctx.createRadialGradient(16, 16, 0, 16, 16, 16);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad; ctx.fillRect(0, 0, 32, 32);
+  return new THREE.CanvasTexture(c);
+}
+const glowTex = makeGlowSprite();
+
+// -------- obstacles (collision simple cercle-cercle avec le héros) --------
+const obstacles = [];
+function addObstacle(x, z, r) { obstacles.push({ x, z, r }); }
+const heroRadius = 0.4;
+function collides(x, z) {
+  for (const o of obstacles) {
+    const dx = x - o.x, dz = z - o.z;
+    const minDist = o.r + heroRadius;
+    if (dx * dx + dz * dz < minDist * minDist) return true;
+  }
+  return false;
+}
+
+// -------- lumière nocturne mauve --------
+scene.add(new THREE.AmbientLight(0x8a6fd6, 0.55));
+const sun = new THREE.DirectionalLight(0xb79bea, 1.6);
+sun.position.set(16, 28, 12); sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+scene.add(sun);
+const rim = new THREE.DirectionalLight(0x6fd8ff, 0.6);
+rim.position.set(-14, 10, -18);
+scene.add(rim);
+
+// -------- ciel (fond DOM #sky-bg, voir village pour l'explication) --------
+const SKY_DAY = { bottom: new THREE.Color(0x6b4fa8), top: new THREE.Color(0x1c1236) };
+const SKY_ATMO = { bottom: new THREE.Color(0x9fe0ff), top: new THREE.Color(0x2a1c6b) };
+const SKY_SPACE = new THREE.Color(0x040611);
+
+const moonGeo = new THREE.SphereGeometry(6, 16, 12);
+const moon = emissive(moonGeo, 0xdcefff, 0.9);
+moon.position.set(-60, 45, -90);
+scene.add(moon);
+
+// -------- ciel étoilé (révélé au dézoom, vue depuis l'espace) --------
+const starCount = 900;
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount; i++) {
+  const r = 80 + Math.random() * 220;
+  const a = Math.random() * Math.PI * 2, b = Math.acos(2 * Math.random() - 1);
+  starPos[i * 3] = Math.sin(b) * Math.cos(a) * r;
+  starPos[i * 3 + 1] = Math.abs(Math.cos(b) * r) * 0.6 + 15;
+  starPos[i * 3 + 2] = Math.sin(b) * Math.sin(a) * r;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starsMat = new THREE.PointsMaterial({ size: 2.6, color: 0xffffff, transparent: true, opacity: 0, depthWrite: false, fog: false, sizeAttenuation: false });
+const stars = new THREE.Points(starGeo, starsMat);
+scene.add(stars);
+
+// -------- planète voisine (le village, relié par le portail — visible seulement de loin) --------
+const neighborPlanet = new THREE.Group();
+const { mesh: neighborGlobe } = toonPlain(new THREE.SphereGeometry(9, 20, 16), 0x6fae4f, { outlineScale: 1.06, fog: false });
+neighborPlanet.add(neighborGlobe);
+const neighborAtmo = new THREE.Mesh(new THREE.SphereGeometry(10, 20, 16), new THREE.MeshBasicMaterial({ color: 0xffe0ac, transparent: true, opacity: 0.22, side: THREE.BackSide, fog: false }));
+neighborPlanet.add(neighborAtmo);
+neighborPlanet.position.set(-80, 40, -92);
+scene.add(neighborPlanet);
+const neighborLabel = makeSignSprite('Village →');
+neighborLabel.scale.set(9, 3.2, 1);
+neighborLabel.position.set(0, 16, 0);
+neighborLabel.material.fog = false;
+neighborLabel.material.transparent = true;
+neighborLabel.material.opacity = 0;
+neighborPlanet.add(neighborLabel);
+
+// -------- sol violet --------
+function makeDiscGeometry(radius, rings, segments) {
+  const positions = [];
+  const indices = [];
+  for (let r = 0; r <= rings; r++) {
+    const rad = (radius * r) / rings;
+    for (let s = 0; s <= segments; s++) {
+      const a = (s / segments) * Math.PI * 2;
+      positions.push(Math.cos(a) * rad, 0, Math.sin(a) * rad);
+    }
+  }
+  const stride = segments + 1;
+  for (let r = 0; r < rings; r++) {
+    for (let s = 0; s < segments; s++) {
+      const a0 = r * stride + s, a1 = a0 + 1;
+      const b0 = (r + 1) * stride + s, b1 = b0 + 1;
+      indices.push(a0, a1, b0, a1, b1, b0);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+const groundEdge = toon(makeDiscGeometry(80, 24, 48), 0x3a2a5c, { outline: false, flat: false });
+groundEdge.position.set(0, -0.05, 0); groundEdge.receiveShadow = true;
+scene.add(groundEdge);
+const ground = toon(makeDiscGeometry(76, 24, 48), 0x4f3a7a, { outline: false, flat: false });
+ground.position.set(0, 0, 0); ground.receiveShadow = true;
+scene.add(ground);
+
+function scatter(count, radiusMin, radiusMax, fn) {
+  let placed = 0, attempts = 0;
+  while (placed < count && attempts < count * 4) {
+    attempts++;
+    const a = Math.random() * Math.PI * 2;
+    const r = radiusMin + Math.random() * (radiusMax - radiusMin);
+    const x = Math.cos(a) * r, z = Math.sin(a) * r;
+    if (Math.hypot(x, z) < 3) continue;
+    fn(x, z, placed); placed++;
+  }
+}
+const dummy = new THREE.Object3D();
+
+// -------- touffes phosphorescentes --------
+const tuftGeo = new THREE.ConeGeometry(0.13, 0.38, 5);
+const tuftMesh = new THREE.InstancedMesh(tuftGeo, new THREE.MeshToonMaterial({ color: 0x7a5ec2, gradientMap: coolGradient }), 60);
+tuftMesh.castShadow = false; tuftMesh.receiveShadow = false;
+let tuftI = 0;
+scatter(60, 4, 70, (x, z) => {
+  dummy.position.set(x, 0.19, z); dummy.rotation.set(0, Math.random() * Math.PI, 0); dummy.updateMatrix();
+  tuftMesh.setMatrixAt(tuftI++, dummy.matrix);
+});
+tuftMesh.count = tuftI;
+tuftMesh.instanceMatrix.needsUpdate = true;
+scene.add(tuftMesh);
+
+// -------- cristaux --------
+const crystalPalette = [0x6fd8ff, 0xc98aff, 0x8ef0c9, 0xff8ad6];
+function makeCrystalCluster(scale) {
+  const g = new THREE.Group();
+  const shards = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < shards; i++) {
+    const color = crystalPalette[Math.floor(Math.random() * crystalPalette.length)];
+    const h = 0.9 + Math.random() * 1.4;
+    const shard = emissive(new THREE.ConeGeometry(0.22 + Math.random() * 0.14, h, 6), color, 1.1);
+    addOutline(shard, 1.06);
+    shard.position.set((Math.random() - 0.5) * 0.5, h / 2, (Math.random() - 0.5) * 0.5);
+    shard.rotation.set((Math.random() - 0.5) * 0.3, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
+    g.add(shard);
+  }
+  g.scale.setScalar(scale);
+  return g;
+}
+scatter(13, 6, 68, (x, z) => {
+  const s = 0.75 + Math.random() * 0.6;
+  const cluster = makeCrystalCluster(s);
+  cluster.position.set(x, 0, z);
+  cluster.rotation.y = Math.random() * Math.PI * 2;
+  scene.add(cluster);
+  addObstacle(x, z, 0.4 * s);
+});
+
+// -------- rochers flottants --------
+const floatingRocks = [];
+scatter(9, 8, 55, (x, z) => {
+  const r = 0.5 + Math.random() * 0.5;
+  const rock = toon(new THREE.IcosahedronGeometry(r, 0), 0x574a7a, { outlineScale: 1.06 });
+  const baseY = 1.6 + Math.random() * 2.2;
+  rock.position.set(x, baseY, z);
+  rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+  rock.userData.baseY = baseY; rock.userData.phase = Math.random() * Math.PI * 2;
+  scene.add(rock);
+  floatingRocks.push(rock);
+});
+
+// -------- lucioles violettes --------
+const fireflyCount = 24;
+const fireflyGeo = new THREE.BufferGeometry();
+const fireflyPos = new Float32Array(fireflyCount * 3);
+const fireflyPhase = new Float32Array(fireflyCount);
+for (let i = 0; i < fireflyCount; i++) {
+  const a = Math.random() * Math.PI * 2, r = 3 + Math.random() * 40;
+  fireflyPos[i * 3] = Math.cos(a) * r;
+  fireflyPos[i * 3 + 1] = 1.2 + Math.random() * 3;
+  fireflyPos[i * 3 + 2] = Math.sin(a) * r;
+  fireflyPhase[i] = Math.random() * Math.PI * 2;
+}
+fireflyGeo.setAttribute('position', new THREE.BufferAttribute(fireflyPos, 3));
+const fireflies = new THREE.Points(fireflyGeo, new THREE.PointsMaterial({
+  size: 0.32, map: glowTex, color: 0x9fe8ff, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
+}));
+scene.add(fireflies);
+
+// -------- chibi (héros) --------
+function makeChibi({ cloak, skin, hood, tail }) {
+  const g = new THREE.Group();
+  const parts = {};
+  const body = toon(new THREE.CapsuleGeometry(0.42, 0.55, 4, 10), cloak, { outlineScale: 1.07, flat: false });
+  body.position.y = 0.78; g.add(body); parts.body = body;
+  const head = toon(new THREE.SphereGeometry(0.5, 12, 10), skin, { outlineScale: 1.06, flat: false });
+  head.position.y = 1.55; g.add(head); parts.head = head;
+  const hoodMesh = toon(new THREE.SphereGeometry(0.56, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.62), hood, { outlineScale: 1.06, flat: false });
+  hoodMesh.position.y = 1.62; hoodMesh.rotation.x = -0.18;
+  g.add(hoodMesh); parts.hood = hoodMesh;
+  for (const side of [-1, 1]) {
+    const eye = toon(new THREE.SphereGeometry(0.065, 8, 6), 0x2c2436, { outline: false, flat: false });
+    eye.position.set(side * 0.17, 1.53, 0.44); g.add(eye);
+    const spark = emissive(new THREE.SphereGeometry(0.02, 6, 6), 0xffffff, 2);
+    spark.position.set(side * 0.17 + side * 0.02, 1.56, 0.49); g.add(spark);
+    const cheek = toon(new THREE.SphereGeometry(0.09, 8, 6), 0xffb0a6, { outline: false, flat: false });
+    cheek.scale.set(1, 0.7, 0.4); cheek.position.set(side * 0.3, 1.42, 0.38); g.add(cheek);
+  }
+  for (const side of [-1, 1]) {
+    const armGeo = new THREE.CapsuleGeometry(0.11, 0.42, 3, 8); armGeo.translate(0, -0.21, 0);
+    const arm = toon(armGeo, cloak, { outlineScale: 1.1, flat: false });
+    arm.position.set(side * 0.46, 0.95, 0); g.add(arm); parts[side < 0 ? 'armL' : 'armR'] = arm;
+    const legGeo = new THREE.CapsuleGeometry(0.13, 0.36, 3, 8); legGeo.translate(0, -0.18, 0);
+    const leg = toon(legGeo, hood, { outlineScale: 1.1, flat: false });
+    leg.position.set(side * 0.2, 0.36, 0); g.add(leg); parts[side < 0 ? 'legL' : 'legR'] = leg;
+  }
+  if (tail) {
+    const tailMesh = toon(new THREE.ConeGeometry(0.16, 0.6, 8), tail, { outlineScale: 1.1, flat: false });
+    tailMesh.position.set(0, 0.55, -0.4); tailMesh.rotation.x = Math.PI * 0.55;
+    g.add(tailMesh); parts.tail = tailMesh;
+  }
+  return { group: g, parts };
+}
+
+// -------- portail stellaire (retour vers le village) --------
+function makeSignSprite(text) {
+  const c = document.createElement('canvas'); c.width = 180; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(42,25,72,0.92)';
+  ctx.beginPath(); ctx.roundRect(4, 4, 172, 56, 14); ctx.fill();
+  ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(4, 4, 172, 56, 14); ctx.stroke();
+  ctx.fillStyle = '#f1e3ff'; ctx.font = 'bold 24px "Segoe UI"';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 90, 34);
+  const tex = new THREE.CanvasTexture(c);
+  return new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+}
+function makeRippleTexture() {
+  const size = 128;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const tex = new THREE.CanvasTexture(canvas);
+  return { canvas, ctx: canvas.getContext('2d'), tex };
+}
+function drawRipple(ripple, time) {
+  const { canvas, ctx } = ripple;
+  const size = canvas.width, cx = size / 2, cy = size / 2, maxR = size / 2;
+  ctx.clearRect(0, 0, size, size);
+  const base = ctx.createRadialGradient(cx, cy, 0, cx, cy, maxR);
+  base.addColorStop(0, '#e8fbff');
+  base.addColorStop(0.55, '#8fe0ff');
+  base.addColorStop(1, '#3fa8e8');
+  ctx.fillStyle = base;
+  ctx.beginPath(); ctx.arc(cx, cy, maxR, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+  for (let i = 0; i < 5; i++) {
+    const r = ((time * 26 + i * (maxR * 1.3) / 5) % (maxR * 1.3));
+    ctx.globalAlpha = Math.max(0, 1 - r / maxR) * 0.8;
+    ctx.lineWidth = 2.5 + Math.sin(time * 3 + i) * 1.2;
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  ripple.tex.needsUpdate = true;
+}
+function makePortal(ringColor, horizonColor) {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(2.0, 2.2, 0.15, 20), 0x3a2a5c, { outlineScale: 1.04, flat: false });
+  base.position.y = 0.075; g.add(base);
+  const ring = toon(new THREE.TorusGeometry(1.5, 0.22, 12, 28), ringColor, { outlineScale: 1.04 });
+  ring.position.y = 1.6; g.add(ring);
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const chevron = toon(new THREE.BoxGeometry(0.26, 0.32, 0.16), 0xc9a24a, { outlineScale: 1.08 });
+    chevron.position.set(Math.cos(a) * 1.62, 1.6 + Math.sin(a) * 1.62, 0.16);
+    chevron.rotation.z = a;
+    g.add(chevron);
+  }
+  const ripple = makeRippleTexture();
+  const horizonMat = new THREE.MeshBasicMaterial({ map: ripple.tex, side: THREE.DoubleSide, toneMapped: false });
+  const horizon = new THREE.Mesh(new THREE.CircleGeometry(1.32, 28), horizonMat);
+  horizon.position.set(0, 1.6, 0);
+  g.add(horizon);
+  const portalLight = new THREE.PointLight(horizonColor, 1.3, 7, 2);
+  portalLight.position.set(0, 1.6, 0.2); g.add(portalLight);
+  const sparkles = [];
+  for (let i = 0; i < 10; i++) {
+    const sp = emissive(new THREE.SphereGeometry(0.05, 6, 5), horizonColor, 1.8);
+    const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.1;
+    sp.userData.angle = a; sp.userData.radius = r; sp.userData.phase = Math.random() * Math.PI * 2;
+    g.add(sp); sparkles.push(sp);
+  }
+  return { group: g, horizon, ripple, sparkles };
+}
+const portalLabel = makeSignSprite('Retour →');
+portalLabel.scale.set(1.5, 0.54, 1);
+portalLabel.position.set(0, 3.1, 0);
+const portal = makePortal(0x6fd8ff, 0x6fd8ff);
+portal.group.add(portalLabel);
+portal.group.position.set(0, 0, 0);
+scene.add(portal.group);
+
+const params = new URLSearchParams(location.search);
+const hero = makeChibi({ cloak: 0x4fae6a, skin: 0xf5c99b, hood: 0x357a52, tail: null });
+hero.group.position.set(0, 0, -2.6);
+scene.add(hero.group);
+
+const lantern = emissive(new THREE.SphereGeometry(0.14, 10, 8), 0xffd27a, 1.8);
+lantern.position.set(0.55, 1.1, 0.15); hero.group.add(lantern);
+const lanternLight = new THREE.PointLight(0xffcf6e, 0.9, 4, 2);
+lanternLight.position.copy(lantern.position); hero.group.add(lanternLight);
+
+function report(msg) {
+  hud.innerHTML = `<b>Spike 3D — Porte des étoiles (planète 2)</b><br>` +
+    `Clic gauche : déplacer. Clic droit : orbiter.<br>` +
+    `${msg || 'Un univers différent, relié par le portail. Approche-toi pour repartir.'}`;
+}
+report();
+
+const portalFadeEl = document.getElementById('portal-fade');
+setTimeout(() => portalFadeEl.classList.remove('show'), 250);
+let portalTraveling = false;
+function travelThroughPortal() {
+  portalTraveling = true;
+  moving = false;
+  portalFadeEl.classList.add('show');
+  setTimeout(() => { location.href = 'spike3d-village.html?from=portal'; }, 650);
+}
+
+// -------- interaction (déplacement au clic) --------
+const ray = new THREE.Raycaster();
+const moveTarget = new THREE.Vector3();
+let moving = false;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button !== 0 || portalTraveling) return;
+  ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+  const hit = ray.intersectObject(ground)[0];
+  if (hit) { moveTarget.copy(hit.point); moving = true; }
+});
+
+let rotating = false;
+renderer.domElement.addEventListener('pointerdown', e => {
+  if (e.button === 2) { rotating = true; renderer.domElement.style.cursor = 'grabbing'; }
+});
+addEventListener('pointerup', e => {
+  if (e.button === 2) rotating = false;
+});
+renderer.domElement.addEventListener('pointermove', () => {
+  if (!rotating) renderer.domElement.style.cursor = 'default';
+});
+
+addEventListener('resize', () => {
+  aspect = innerWidth / innerHeight;
+  camera.left = -frustum * aspect / 2; camera.right = frustum * aspect / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+window.__spikeDebug = {
+  goto: (x, z) => { moveTarget.set(x, 0, z); moving = true; },
+  getHeroPos: () => ({ x: hero.group.position.x, z: hero.group.position.z, moving }),
+  getZoomState: () => ({ zoom: camera.zoom, fogFar: scene.fog.far, skyBg: skyBgEl.style.background, starOpacity: starsMat.opacity }),
+};
+
+// -------- boucle --------
+let t = 0;
+let elapsed = 0;
+let frames = 0, fpsTime = performance.now();
+const clock = new THREE.Clock();
+
+function animateWalk(chibi, dt, walking) {
+  const speed = walking ? 8 : 2.2;
+  t += dt * speed;
+  const bob = walking ? Math.abs(Math.sin(t)) * 0.09 : Math.sin(t * 0.6) * 0.02;
+  chibi.group.position.y = bob;
+  chibi.parts.hood.rotation.z = Math.sin(t * 0.5) * 0.05;
+  const swing = walking ? Math.sin(t) * 0.55 : 0;
+  chibi.parts.legL.rotation.x = swing; chibi.parts.legR.rotation.x = -swing;
+  chibi.parts.armL.rotation.x = -swing * 0.8; chibi.parts.armR.rotation.x = swing * 0.8;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = Math.min(clock.getDelta(), 0.05);
+  elapsed += dt;
+
+  if (!portalTraveling && hero.group.position.distanceTo(portal.group.position) < 1.2) {
+    travelThroughPortal();
+  }
+  drawRipple(portal.ripple, elapsed);
+  portal.sparkles.forEach(sp => {
+    const a = sp.userData.angle + elapsed * 0.6;
+    sp.position.set(
+      portal.group.position.x + Math.cos(a) * sp.userData.radius,
+      1.6 + Math.sin(elapsed * 1.8 + sp.userData.phase) * 0.6,
+      portal.group.position.z + Math.sin(a) * sp.userData.radius,
+    );
+  });
+
+  let walking = false;
+  if (moving && !portalTraveling) {
+    const d = moveTarget.clone().sub(hero.group.position); d.y = 0;
+    const dist = d.length();
+    if (dist > 0.15) {
+      const step = Math.min(dist, 5 * dt);
+      const curX = hero.group.position.x, curZ = hero.group.position.z;
+      let nx = curX + (d.x / dist) * step, nz = curZ + (d.z / dist) * step;
+      if (collides(nx, nz)) {
+        if (!collides(nx, curZ)) { nz = curZ; }
+        else if (!collides(curX, nz)) { nx = curX; }
+        else { nx = curX; nz = curZ; }
+      }
+      hero.group.position.x = nx;
+      hero.group.position.z = nz;
+      hero.group.rotation.y = Math.atan2(d.x, d.z);
+      walking = true;
+    } else { moving = false; }
+  }
+  animateWalk(hero, dt, walking);
+
+  for (const rock of floatingRocks) {
+    rock.position.y = rock.userData.baseY + Math.sin(elapsed * 0.8 + rock.userData.phase) * 0.3;
+    rock.rotation.y += dt * 0.15;
+  }
+
+  const fp = fireflyGeo.attributes.position;
+  for (let i = 0; i < fireflyCount; i++) { const ph = fireflyPhase[i] + performance.now() * 0.0006; fp.array[i * 3 + 1] += Math.sin(ph) * 0.0015; }
+  fp.needsUpdate = true;
+
+  controls.target.lerp(new THREE.Vector3(hero.group.position.x, 1.2, hero.group.position.z), 0.06);
+  controls.update();
+
+  camera.zoom += (targetZoom - camera.zoom) * Math.min(1, dt * 2.2);
+  camera.updateProjectionMatrix();
+
+  // -------- dézoom vers la vue spatiale (planète + voisines) --------
+  // interpolation sur le logarithme du zoom (voir village) -> rythme régulier
+  const spaceT = THREE.MathUtils.clamp(
+    THREE.MathUtils.inverseLerp(Math.log(GAMEPLAY_ZOOM), Math.log(controls.minZoom * 1.4), Math.log(camera.zoom)), 0, 1,
+  );
+  // recule la caméra en s'éloignant du dézoom (invisible en ortho) -> reste hors
+  // de la sphère-planète qui apparaît en toute fin de zoom
+  let camDist = camera.position.distanceTo(controls.target);
+  if (spaceT > 0.001) {
+    const camOffset = camera.position.clone().sub(controls.target);
+    const curDist = camOffset.length();
+    const wantDist = THREE.MathUtils.lerp(curDist, 320, spaceT);
+    const dir = camOffset.normalize();
+    // bascule vers une vue quasi verticale en toute fin de dézoom (voir village)
+    const tiltT = THREE.MathUtils.smoothstep(spaceT, 0.55, 1);
+    if (tiltT > 0.001) dir.lerp(new THREE.Vector3(0, 1, 0), tiltT * 0.72).normalize();
+    camera.position.copy(controls.target).addScaledVector(dir, wantDist);
+    camera.lookAt(controls.target);
+    camDist = wantDist;
+  }
+  const wDay = 1 - THREE.MathUtils.smoothstep(spaceT, 0, 0.4);
+  const wAtmo = THREE.MathUtils.smoothstep(spaceT, 0.15, 0.4) * (1 - THREE.MathUtils.smoothstep(spaceT, 0.55, 0.8));
+  const wSpace = THREE.MathUtils.smoothstep(spaceT, 0.55, 0.95);
+  const wSum = Math.max(wDay + wAtmo + wSpace, 1e-6);
+  const mixColor = (a, b, c) => new THREE.Color(
+    (a.r * wDay + b.r * wAtmo + c.r * wSpace) / wSum,
+    (a.g * wDay + b.g * wAtmo + c.g * wSpace) / wSum,
+    (a.b * wDay + b.b * wAtmo + c.b * wSpace) / wSum,
+  );
+  const skyBottom = mixColor(SKY_DAY.bottom, SKY_ATMO.bottom, SKY_SPACE);
+  const skyTop = mixColor(SKY_DAY.top, SKY_ATMO.top, SKY_SPACE);
+  skyBgEl.style.background = `linear-gradient(to top, ${skyBottom.getStyle()} 0%, ${skyTop.getStyle()} 100%)`;
+  starsMat.opacity = wSpace;
+  // brouillard calé sur la distance RÉELLE caméra-cible (voir village)
+  scene.fog.far = Math.max(140, camDist + 150);
+  scene.fog.near = Math.max(50, camDist - 120);
+  neighborPlanet.rotation.y += dt * 0.05;
+  neighborLabel.material.opacity = spaceT;
+  sun.intensity = THREE.MathUtils.lerp(1.6, 0.3, spaceT);
+  sun.castShadow = spaceT < 0.5;
+  renderer.shadowMap.enabled = spaceT < 0.5;
+  // courbure « petite planète » en 2 temps sur le même sol (voir village :
+  // rayons proportionnellement plus petits ici, disque de 80 au lieu de 96)
+  const curveNear = THREE.MathUtils.smoothstep(spaceT, 0, 0.22);
+  const curveFar = THREE.MathUtils.smoothstep(spaceT, 0.32, 1);
+  const rpNear = THREE.MathUtils.lerp(1e7, 160, curveNear);
+  planetRadiusUniform.value = THREE.MathUtils.lerp(rpNear, 82, curveFar);
+
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - fpsTime >= 1000) {
+    fpsEl.textContent = `${frames} FPS`;
+    fpsEl.style.color = frames >= 55 ? '#7ee08a' : frames >= 30 ? '#ffd94a' : '#ff8a7a';
+    frames = 0; fpsTime = now;
+  }
+}
+loop();
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+{
+  "name": "eluminia",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "capture": "node scripts/capture-game.mjs",
+    "visual-check": "node scripts/visual-check.mjs",
+    "verify-eluminia": "npm run build && npm run capture && npm run visual-check",
+    "map:extend": "node tools/map-pipeline/cli.mjs extend",
+    "map:preview": "node tools/map-pipeline/cli.mjs preview",
+    "map:validate": "node tools/map-pipeline/cli.mjs validate",
+    "map:approve": "node tools/map-pipeline/cli.mjs approve",
+    "map:split": "node tools/map-pipeline/cli.mjs split",
+    "map:tiles": "node tools/map-pipeline/cli.mjs tiles"
+  },
+  "dependencies": {
+    "phaser": "^3.87.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.0",
+    "pngjs": "^7.0.0",
+    "sharp": "^0.35.3",
+    "typescript": "~5.6.3",
+    "vite": "^6.3.5"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

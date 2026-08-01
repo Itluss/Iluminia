@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(npm run capture)",
+      "Bash(npm run visual-check)",
+      "Bash(npm run verify-eluminia)",
+      "Bash(node scripts/capture-game.mjs)",
+      "Bash(node scripts/visual-check.mjs)",
+      "Bash(node scripts/generate-image.mjs:*)"
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+  <body style="margin:0;background:#000">
+    <video id="v" src="/art/generated/8b19934f-1c4e-430d-80c3-9db3ddc0296c.mp4" muted playsinline></video>
+    <script>
+      const v = document.getElementById('v');
+      v.addEventListener('loadedmetadata', () => {
+        window.__ready = { duration: v.duration, width: v.videoWidth, height: v.videoHeight };
+      });
+      v.load();
+    </script>
+  </body>
+</html>

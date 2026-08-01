@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Eluminia — Spike 3D (banc d'essai)</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #87c8ea; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+  #hud { position: fixed; top: 10px; left: 10px; background: rgba(20,26,38,0.85); color: #fff4d8;
+         padding: 10px 14px; border-radius: 10px; font-size: 13px; line-height: 1.5; max-width: 340px; }
+  #fps { position: fixed; top: 10px; right: 10px; background: rgba(20,26,38,0.85); color: #7ee08a;
+         padding: 8px 12px; border-radius: 10px; font-size: 14px; font-weight: bold; }
+</style>
+</head>
+<body>
+<div id="hud">Chargement…</div>
+<div id="fps">— FPS</div>
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+// ============================================================
+// SPIKE 3D — banc d'essai de la boucle Tripo/Banana.
+// Dépose tes exports GLB dans public/art/3d/ :
+//   village.glb  (le décor)
+//   hero.glb     (le héros, idéalement riggé/animé)
+// Critères du duel : qualité EN JEU, marche du héros, 60 FPS, effort.
+// ============================================================
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+window.addEventListener('error', e => {
+  document.getElementById('hud').innerHTML = `<b>Erreur :</b> ${e.message}`;
+});
+
+const hud = document.getElementById('hud');
+const fpsEl = document.getElementById('fps');
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+document.body.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87c8ea);
+scene.fog = new THREE.Fog(0x87c8ea, 60, 140);
+
+// caméra isométrique (orthographique, 3/4 haute)
+const frustum = 26;
+let aspect = innerWidth / innerHeight;
+const camera = new THREE.OrthographicCamera(-frustum * aspect / 2, frustum * aspect / 2, frustum / 2, -frustum / 2, 0.1, 500);
+camera.position.set(30, 30, 30);
+camera.lookAt(0, 0, 0);
+
+// lumière de journée douce, ombres légères
+scene.add(new THREE.AmbientLight(0xfff4e0, 0.9));
+const sun = new THREE.DirectionalLight(0xfff0d0, 1.6);
+sun.position.set(20, 35, 12);
+sun.castShadow = true;
+sun.shadow.mapSize.set(2048, 2048);
+sun.shadow.camera.left = -40; sun.shadow.camera.right = 40;
+sun.shadow.camera.top = 40; sun.shadow.camera.bottom = -40;
+scene.add(sun);
+
+// sol de secours (remplacé visuellement par le village s'il couvre le sol)
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200, 200),
+  new THREE.MeshLambertMaterial({ color: 0x8ed46a }),
+);
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+const loader = new GLTFLoader();
+const state = { village: false, hero: false, mixer: null, walkAction: null, idleAction: null };
+const hero = new THREE.Group();
+scene.add(hero);
+
+function report() {
+  hud.innerHTML =
+    `<b>Spike 3D — banc d'essai</b><br>` +
+    `village.glb : ${state.village ? '✅ chargé' : '⬜ en attente (public/art/3d/village.glb)'}<br>` +
+    `hero.glb : ${state.hero ? '✅ chargé' : '⬜ en attente (public/art/3d/hero.glb)'}<br>` +
+    `animations héros : ${state.mixer ? (state.walkAction ? '✅ marche détectée' : '⚠️ aucune clip « walk »') : '—'}<br>` +
+    `<i>Clic pour déplacer le héros.</i>`;
+}
+report();
+
+loader.load('art/3d/village.glb', g => {
+  g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+  scene.add(g.scene);
+  state.village = true;
+  report();
+}, undefined, () => report());
+
+loader.load('art/3d/hero.glb', g => {
+  g.scene.traverse(o => { if (o.isMesh) { o.castShadow = true; } });
+  // normalise la taille du héros à ~2 unités de haut
+  const box = new THREE.Box3().setFromObject(g.scene);
+  const h = box.max.y - box.min.y || 1;
+  g.scene.scale.setScalar(2 / h);
+  hero.add(g.scene);
+  state.hero = true;
+  if (g.animations?.length) {
+    state.mixer = new THREE.AnimationMixer(g.scene);
+    const walk = g.animations.find(a => /walk|run|marche/i.test(a.name)) ?? g.animations[0];
+    const idle = g.animations.find(a => /idle|repos/i.test(a.name));
+    state.walkAction = state.mixer.clipAction(walk);
+    if (idle) { state.idleAction = state.mixer.clipAction(idle); state.idleAction.play(); }
+  }
+  report();
+}, undefined, () => {
+  // pas de héros : capsule de test pour valider caméra + déplacement
+  const capsule = new THREE.Mesh(
+    new THREE.CapsuleGeometry(0.5, 1, 8, 16),
+    new THREE.MeshLambertMaterial({ color: 0x4a7de0 }),
+  );
+  capsule.position.y = 1;
+  capsule.castShadow = true;
+  hero.add(capsule);
+  report();
+});
+
+// déplacement au clic (raycast sur le sol)
+const ray = new THREE.Raycaster();
+const target = new THREE.Vector3();
+let moving = false;
+addEventListener('pointerdown', e => {
+  ray.setFromCamera({ x: (e.clientX / innerWidth) * 2 - 1, y: -(e.clientY / innerHeight) * 2 + 1 }, camera);
+  const hit = ray.intersectObject(ground)[0];
+  if (hit) { target.copy(hit.point); moving = true; }
+});
+
+addEventListener('resize', () => {
+  aspect = innerWidth / innerHeight;
+  camera.left = -frustum * aspect / 2;
+  camera.right = frustum * aspect / 2;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// FPS
+let frames = 0, fpsTime = performance.now();
+const clock = new THREE.Clock();
+
+function loop() {
+  requestAnimationFrame(loop);
+  const dt = clock.getDelta();
+
+  if (moving) {
+    const d = target.clone().sub(hero.position); d.y = 0;
+    const dist = d.length();
+    if (dist > 0.15) {
+      hero.position.addScaledVector(d.normalize(), Math.min(dist, 6 * dt));
+      hero.rotation.y = Math.atan2(d.x, d.z);
+      if (state.walkAction && !state.walkAction.isRunning()) {
+        state.idleAction?.stop();
+        state.walkAction.play();
+      }
+    } else {
+      moving = false;
+      if (state.walkAction?.isRunning()) { state.walkAction.stop(); state.idleAction?.play(); }
+    }
+  }
+  state.mixer?.update(dt);
+
+  // caméra qui suit en douceur
+  const camTarget = hero.position.clone().add(new THREE.Vector3(30, 30, 30));
+  camera.position.lerp(camTarget, 0.05);
+  camera.lookAt(hero.position.x, 0, hero.position.z);
+
+  renderer.render(scene, camera);
+  frames++;
+  const now = performance.now();
+  if (now - fpsTime >= 1000) {
+    fpsEl.textContent = `${frames} FPS`;
+    fpsEl.style.color = frames >= 55 ? '#7ee08a' : frames >= 30 ? '#ffd94a' : '#ff8a7a';
+    frames = 0; fpsTime = now;
+  }
+}
+loop();
+</script>
+</body>
+</html>

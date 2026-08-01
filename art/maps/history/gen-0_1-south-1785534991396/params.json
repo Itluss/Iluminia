@@ -1,0 +1,56 @@
+{
+  "source": "0_1",
+  "direction": "south",
+  "theme": "pont de pierre effondré enjambant la rivière, sentier forestier qui y aboutit",
+  "newSizePx": 700,
+  "overlapPx": 550,
+  "targetChunkId": "0_2",
+  "plan": {
+    "direction": "south",
+    "axis": "y",
+    "growsFromStart": false,
+    "fixedDim": 2544,
+    "sourceExtent": 4492,
+    "newSizePx": 700,
+    "overlapPx": 550,
+    "contextCanvas": {
+      "width": 2544,
+      "height": 1250
+    },
+    "contextBandInCanvas": {
+      "x": 0,
+      "y": 0,
+      "width": 2544,
+      "height": 550
+    },
+    "generableInCanvas": {
+      "x": 0,
+      "y": 550,
+      "width": 2544,
+      "height": 700
+    },
+    "contextBandInSource": {
+      "x": 0,
+      "y": 3942,
+      "width": 2544,
+      "height": 550
+    },
+    "masterSize": {
+      "width": 2544,
+      "height": 5192
+    },
+    "sourceOffsetInMaster": {
+      "x": 0,
+      "y": 0
+    },
+    "newRegionOffsetInMaster": {
+      "x": 0,
+      "y": 4492
+    },
+    "newRegionSize": {
+      "width": 2544,
+      "height": 700
+    },
+    "originShift": "le repère (0,0) du master ne bouge pas — aucune coordonnée existante à décaler"
+  }
+}

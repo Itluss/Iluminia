@@ -1,0 +1,21 @@
+{
+  "promptText": "You are the art director for the Eluminia game world map (a 2D painterly RPG for children). A new region is about to be painted by outpainting an existing map.\n\nDirection of extension: south\nNew region theme: pont de pierre effondré enjambant la rivière, sentier forestier qui y aboutit\n\nRequired border continuities:\n- (aucun connecteur déclaré sur ce bord dans world.json : à traiter comme une bordure fermée, prolonger le décor de clôture — forêt/falaise/rivière — plutôt que d'inventer une sortie)\n\nMeasured world constants (must be respected):\nprojection: top-down-three-quarter\ncamera direction: north-to-south\nlight: overhead-warm (warm-golden, saturation medium-high, soft, contact shadows only, no long cast shadows)\nroad width: ~175px\nriver width: ~135px\ntree style: rounded painterly clusters, warm autumn palette (yellow-green to orange-brown), dark green pine accents, no individual leaf detail at this scale\nriver style: meandering, soft painterly reflections, light foam at banks, no whitewater\nfence style: wooden, waist-height, light brown, used around gardens/plots only\nlevel of detail: medium — readable at native 1:1 display, no fine texture detail expected to survive gameplay zoom\n\nIn 4-8 short bullet points, write a concise art-direction brief for this new region: what should be painted, which natural transition elements to use, what must be avoided, and any continuity risk specific to this direction/theme. Add judgment, do not just restate the constants above. Plain text bullets only, no markdown headers, no preamble.",
+  "response": {
+    "model": "gpt-4o",
+    "usage": {
+      "prompt_tokens": 359,
+      "completion_tokens": 248,
+      "total_tokens": 607,
+      "prompt_tokens_details": {
+        "cached_tokens": 0,
+        "audio_tokens": 0
+      },
+      "completion_tokens_details": {
+        "reasoning_tokens": 0,
+        "audio_tokens": 0,
+        "accepted_prediction_tokens": 0,
+        "rejected_prediction_tokens": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Eluminia map-generation-spec",
+  "type": "object",
+  "required": [
+    "specVersion", "projection", "cameraDirection", "lightDirection",
+    "roadWidthPx", "riverWidthPx", "chunkWidthPx", "chunkHeightPx",
+    "overlapWidthPx", "noEmbeddedText", "noEmbeddedUI"
+  ],
+  "properties": {
+    "specVersion": { "type": "string" },
+    "projection": { "type": "string" },
+    "cameraDirection": { "type": "string" },
+    "lightDirection": { "type": "string" },
+    "colorTemperature": { "type": "string" },
+    "saturation": { "type": "string" },
+    "roadWidthPx": { "type": "number", "minimum": 1 },
+    "riverWidthPx": { "type": "number", "minimum": 1 },
+    "chunkWidthPx": { "type": "integer", "minimum": 1 },
+    "chunkHeightPx": { "type": "integer", "minimum": 1 },
+    "overlapWidthPx": { "type": "integer", "minimum": 1 },
+    "characterApparentHeightPx": { "type": "number", "minimum": 1 },
+    "treeStyle": { "type": "string" },
+    "riverStyle": { "type": "string" },
+    "cliffStyle": { "type": "string" },
+    "bridgeStyle": { "type": "string" },
+    "fenceStyle": { "type": "string" },
+    "levelOfDetail": { "type": "string" },
+    "noEmbeddedText": { "type": "boolean", "const": true },
+    "noEmbeddedUI": { "type": "boolean", "const": true },
+    "openBorders": {
+      "type": "object",
+      "properties": {
+        "north": { "$ref": "#/definitions/borderState" },
+        "south": { "$ref": "#/definitions/borderState" },
+        "east": { "$ref": "#/definitions/borderState" },
+        "west": { "$ref": "#/definitions/borderState" }
+      }
+    }
+  },
+  "definitions": {
+    "borderState": {
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" },
+        "physicallyBlocked": { "type": "boolean" },
+        "blockedBy": { "type": "string" }
+      }
+    }
+  }
+}

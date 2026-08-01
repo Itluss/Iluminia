@@ -1,0 +1,8 @@
+- Extend the forest to the south, incorporating a mixture of deciduous and pine trees in a flowing, natural border, ensuring a seamless transition from the existing map.
+- Paint a collapsed stone bridge ("pont de pierre effondré") over the river, maintaining the soft painterly style with subtle broken stone textures; ensure the bridge remains a visual point of interest while blending with the environment.
+- The river should continue its meandering course, with gentle turns and soft reflections, avoiding any abrupt changes to preserve the world’s natural flow.
+- Design a forest path leading to the bridge, with gradual integration into the surrounding trees — use a warm earth tone that contrasts softly with the foliage.
+- Ensure any elements like cliffs or dense forest are painted to create closed borders, respecting the closed-border directive while maintaining natural continuity.
+- Avoid adding large open spaces or new exits, respecting the world.json; focus on dense forest and riverbank detailing to imply enclosure.
+- Utilize playful variations in tree color and shapes to add interest and depth to the autumn palette without breaking the warm, harmonious color scheme.
+- Exercise care in integrating the stone bridge into the environment to avoid dissonance; the remains should look naturally weathered and gently nestled into the landscape.
