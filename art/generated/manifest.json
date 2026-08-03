@@ -13,6 +13,13 @@
       "engine": "openai",
       "references": ["public/ui/icons/icon-star.png", "public/ui/icons/icon-book.png"],
       "usedIn": ["public/spike3d-village.html — panneau de découverte, compteur \"PNJ rencontrés\""]
+    },
+    {
+      "file": "public/ui/generated/res-coin.png",
+      "prompt": "Flat game icon asset: a round gold coin with an embossed 5-pointed star, thick beveled rim, cel-shaded / toon style, one soft highlight, one hard-edged AO shadow directly under the coin. Fully opaque coin silhouette on 100% transparent background, no glow/halo/vignette.",
+      "engine": "openai",
+      "references": [],
+      "usedIn": ["public/spike3d-village.html — icône ressource \"Pièces\" (HUD, XP bar, menu inventaire)"]
     }
   ]
 }
