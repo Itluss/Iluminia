@@ -21,11 +21,13 @@ Le jeu est aujourd'hui un **spike 3D procédural** :
   importmap depuis `unpkg` (`<script type="module">` direct dans le fichier).
   `npm run dev` (Vite) sert `public/` en statique — Vite ne fait aucune
   transformation, c'est un simple serveur de fichiers avec live-reload.
-- **Zéro asset externe.** Décor, personnages, PNJ, portails : tout est généré
-  par code (géométries Three.js primitives + toon shading `MeshToonMaterial`
-  + contours peints par inverted-hull, palette bonbon Eluminia). Ne PAS
-  introduire de pipeline d'assets (images, GLB) sans décision explicite de
-  Camille — le style procédural est un choix assumé, pas un pis-aller.
+- **Le monde 3D est procédural** (décor, personnages, PNJ, portails : géométries
+  Three.js + toon shading `MeshToonMaterial` + contours peints inverted-hull,
+  palette bonbon Eluminia) — ne PAS introduire de GLB/texture 3D sans décision
+  explicite de Camille. **Le HUD DOM, lui, utilise de VRAIES images** (`public/ui/`,
+  fournies par Camille depuis sa planche de référence, ex. `interface.png`) :
+  panneaux/icônes qui ne sont pas de simples rectangles doivent être incrustés
+  tels quels (voir `asset-rules.md`), pas reconstruits en CSS approximatif.
 - `index.html` (racine) fait un simple renvoi vers `/spike3d-village.html`.
 - `public/spike3d-village.html` — planète de départ : prairie procédurale,
   PNJ Elda (dialogue), village (puits/place/maisons/clôtures), pont des

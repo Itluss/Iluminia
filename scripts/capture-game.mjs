@@ -1,12 +1,14 @@
 // Capture automatisée du jeu Eluminia (Playwright / Chromium).
-// Usage : node scripts/capture-game.mjs   (GAME_URL surchargeable)
+// Usage : node scripts/capture-game.mjs   (GAME_URL, VIEWPORT_W, VIEWPORT_H, OUT_NAME surchargeables)
 import { chromium } from 'playwright';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const GAME_URL = process.env.GAME_URL || 'http://localhost:5173';
+const VIEWPORT_W = Number(process.env.VIEWPORT_W) || 1600;
+const VIEWPORT_H = Number(process.env.VIEWPORT_H) || 900;
 const OUT_DIR = resolve('art/reviews');
-const OUT_PNG = resolve(OUT_DIR, 'latest.png');
+const OUT_PNG = resolve(OUT_DIR, process.env.OUT_NAME || 'latest.png');
 const OUT_ERRORS = resolve(OUT_DIR, 'browser-errors.json');
 
 mkdirSync(OUT_DIR, { recursive: true });
@@ -17,7 +19,7 @@ let browser;
 try {
   browser = await chromium.launch();
   const page = await browser.newPage({
-    viewport: { width: 1600, height: 900 },
+    viewport: { width: VIEWPORT_W, height: VIEWPORT_H },
     deviceScaleFactor: 1,
   });
 

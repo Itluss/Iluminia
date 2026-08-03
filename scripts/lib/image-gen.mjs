@@ -2,13 +2,14 @@
 //   - openai  : gpt-image-1 (décors, fonds transparents natifs)
 //   - banana  : Nano Banana Pro / gemini-3-pro-image (personnages, COHÉRENCE
 //               entre poses ; pas d'alpha natif → détourage en aval)
-// Toute génération prend PAR DÉFAUT la bible graphique comme référence de
-// style (public/art/image.png), pour rester dans l'univers du jeu.
+// Toute génération prend PAR DÉFAUT la planche UI de Camille comme référence
+// de style (public/ui/interface.png) — le jeu est désormais le spike 3D
+// procédural, cette planche est la seule référence graphique HUD actuelle.
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { resolve, basename } from 'node:path';
 
-export const DEFAULT_STYLE_REFS = ['public/art/image.png'];
-export const OUTPUT_DIR = 'public/art/generated';
+export const DEFAULT_STYLE_REFS = ['public/ui/interface.png'];
+export const OUTPUT_DIR = 'public/ui/generated';
 export const SIZES = ['1024x1024', '1536x1024', '1024x1536', 'auto'];
 export const ENGINES = ['openai', 'banana'];
 // Nano Banana Pro exige la facturation activée sur la clé Gemini ; sans
@@ -16,9 +17,9 @@ export const ENGINES = ['openai', 'banana'];
 const BANANA_MODEL = process.env.GEMINI_IMAGE_MODEL || 'gemini-3-pro-image';
 
 const STYLE_SUFFIX =
-  " — Match exactly the art style of the reference image(s): warm painterly " +
-  "children's RPG « Les Gardiens du Savoir » (rich colors, soft light, clean " +
-  "shapes). No text, no watermark, no border, no frame.";
+  " — Match exactly the art style of the reference image(s): soft painted " +
+  "children's game UI icon, warm cream/brown palette, glossy rounded shading, " +
+  "thin dark outline. No text, no watermark, no border, no frame, no background.";
 
 export async function generateImage({
   prompt,

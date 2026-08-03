@@ -1,0 +1,18 @@
+{
+  "assets": [
+    {
+      "file": "public/ui/generated/icon-location.png",
+      "prompt": "A small game UI icon representing \"a discovered location on a map\" — a classic teardrop-shaped map pin/location marker with a small circle at its center, warm golden-amber color with a soft highlight, thick dark rounded outline matching a cute toon/chibi fantasy game icon style. Centered, simple silhouette, readable at small size, isolated on transparent background.",
+      "engine": "openai",
+      "references": ["public/ui/icons/icon-star.png", "public/ui/icons/icon-book.png"],
+      "usedIn": ["public/spike3d-village.html — panneau de découverte, compteur \"Lieux découverts\""]
+    },
+    {
+      "file": "public/ui/generated/icon-npc.png",
+      "prompt": "A small game UI icon representing \"a character you have met/talked to\" — a friendly rounded speech/chat bubble with two small dots inside it (representing conversation), warm coral/pink color with a soft highlight, thick dark rounded outline matching a cute toon/chibi fantasy game icon style. Centered, simple silhouette, readable at small size, isolated on transparent background.",
+      "engine": "openai",
+      "references": ["public/ui/icons/icon-star.png", "public/ui/icons/icon-book.png"],
+      "usedIn": ["public/spike3d-village.html — panneau de découverte, compteur \"PNJ rencontrés\""]
+    }
+  ]
+}
