@@ -13,17 +13,17 @@ const outPath = resolve('art/reviews/gpt-comparison.md');
 
 const toDataUrl = p => `data:image/png;base64,${readFileSync(p).toString('base64')}`;
 
-const prompt = `Tu compares deux images du menu inventaire d'un jeu vidéo éducatif pour enfants (style toon, palette bonbon).
+const prompt = `Tu compares deux images du menu inventaire d'un jeu vidéo pour enfants (style toon fantasy).
 
-Image 1 : la PLANCHE DE RÉFÉRENCE complète fournie par la directrice artistique. Seule la section encadrée "3. MENU INVENTAIRE" (grand panneau, à droite) fait foi comme cible — ignore les autres sections numérotées (1,2,4,5,6) de la planche.
+Image 1 : la PLANCHE DE RÉFÉRENCE complète. Seule la section encadrée "3. MENU INVENTAIRE" (grand panneau, à droite) fait foi comme cible — ignore les autres sections numérotées (1,2,4,5,6).
 
-Image 2 : une capture d'écran du menu inventaire tel qu'il est actuellement rendu dans le jeu (résolution 1600x900, HUD de jeu visible autour).
+Image 2 : une capture d'écran du menu inventaire tel qu'il est actuellement rendu dans le jeu (résolution 1600x900, HUD de jeu visible autour, ignore le HUD).
 
-Compare UNIQUEMENT la structure/style du panneau d'inventaire (image 2) à la section 3 de la planche (image 1) : proportions du panneau, header (couleur, icône, titre, bouton fermer), bandeau d'onglets (position, style, icônes), grille d'objets (taille des cases, bordures des cases vides, espacement, badges), panneau de détail à droite, pied de page (capacité, devises). Note : le contenu de la grille est volontairement différent (2 vraies ressources du jeu au lieu des items RPG de la planche) — ne signale PAS ça comme un défaut, c'est voulu.
+L'objectif est une REPRODUCTION VISUELLE LA PLUS FIDÈLE POSSIBLE de la section 3 de la planche — pas une réinterprétation. Compare précisément : silhouette générale de la fenêtre, proportions du header (couleur olive, icône sac à dos, position du titre, bouton fermer), position/style des onglets, taille relative des cases de la grille (6 colonnes), largeur relative du panneau de détail à droite, position des boutons, présentation du footer, couleurs, arrondis, ombres, espacements.
 
 Réponds en français, en deux parties :
-1. "FIDÉLITÉ" : note globale de 1 à 10 sur la fidélité structurelle/stylistique à la planche, avec une phrase de justification.
-2. "CORRECTIONS" : liste à puces des écarts concrets et actionnables (couleurs, proportions, espacements, éléments manquants ou en trop), classés par impact visuel décroissant. Sois précis (ex. "le bandeau d'onglets est X% trop bas" plutôt que "les onglets sont mal placés"). Maximum 8 puces.`;
+1. "FIDÉLITÉ" : note globale de 1 à 10 sur la fidélité à la planche, avec une phrase de justification.
+2. "CORRECTIONS" : liste à puces des écarts concrets et actionnables, classés par impact visuel décroissant. Sois précis et quantifié quand possible (ex. "le panneau de détail fait environ X% de la largeur totale contre Y% sur la planche"). Maximum 8 puces.`;
 
 const res = await fetch('https://api.openai.com/v1/chat/completions', {
   method: 'POST',

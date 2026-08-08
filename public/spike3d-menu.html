@@ -1,0 +1,1196 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Eluminia — Menu</title>
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+  @font-face { font-family: system-ui; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; overflow: hidden;
+         overscroll-behavior: none; font-family: var(--el-font); }
+  /* =========================================================================
+     HOME V12 (2026-08-06) — illuminia-design/screens/home/{reference.html,
+     reference.css} (version v12 fournie par Camille) sont la source de
+     vérité de cet écran (illuminia-design/README.md). Ce CSS REPRODUIT la
+     référence à l'identique (couleurs, bordures à 2 niveaux border+outline,
+     rayons, épaisseurs — valeurs copiées telles quelles). Écarts
+     volontaires, tous des ADAPTATIONS DE L'APPLICATION (jamais la
+     référence, qui reste immuable) : (a) la référence est en px fixes sur
+     un canevas 844×390 exact — converti ici en dvw/dvh calibrés pour
+     retomber EXACTEMENT sur les mêmes px au master 844×390 et rester
+     proportionnel sur les résolutions voisines (bug viewport mobile réel
+     déjà corrigé projet-wide, pas une interprétation) ; (b) contenu réel
+     branché sur les zones de données ; (c) état désactivé (opacité
+     réduite, non cliquable) sur les composants sans système réel côté jeu
+     (gemmes, réglages, événement, double XP, quêtes, social) — jamais de
+     valeur inventée, règle du projet déjà confirmée par Camille. --------- */
+  :root {
+    --navy: #0B1024; --panel: #121A3B; --border-dark: #05070F;
+    --blue: #3AA0FF; --turquoise: #2FE0D0; --gold: #FFB238; --cyan: #35E4FF;
+    --teal: #22C7A9; --violet: #B26CFF; --magenta: #E356E0; --amber: #FFB238;
+    --text: #FFFFFF; --text-dim: #9FB0D9;
+  }
+
+  .lobby { position: relative; width: 100%; height: 100dvh; overflow: hidden;
+         color: var(--text); font-family: "Segoe UI", sans-serif;
+         background: radial-gradient(circle at 50% 30%, #14204A, #05070F); }
+
+  /* -------- verrou paysage (passe ergonomie 2026-08-05) : hors périmètre de
+     la référence (garde fonctionnelle de l'app), inchangé. -------- */
+  #rotate-prompt { display: none; position: fixed; inset: 0; z-index: 90; background: var(--el-bg-deep);
+         color: var(--el-text-main); flex-direction: column; align-items: center; justify-content: center; text-align: center;
+         padding: 24px; font-weight: 700; }
+  #rotate-prompt .icon { font-size: 48px; margin-bottom: 14px; animation: rotateHint 1.6s ease-in-out infinite; }
+  @keyframes rotateHint { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } }
+  @media (orientation: portrait) { #rotate-prompt { display: flex; } }
+
+  /* -------- CENTER STAGE : zone réservée, ne pas peupler (future 3D
+     personnage + pet, consigne explicite). --------- */
+  .center-stage { position: absolute; z-index: 10; top: calc(15.4dvh + var(--safe-top));
+         left: 50%; transform: translateX(-50%); width: 35.5dvw; height: 76.9dvh; cursor: pointer; }
+  #character-canvas { width: 100%; height: 100%; display: block; }
+
+  /* -------- TOP LEFT : profil --------- */
+  .top-left { position: absolute; z-index: 20; top: calc(3.08dvh + var(--safe-top)); left: calc(1.42dvw + var(--safe-left));
+         display: flex; gap: 8px; align-items: center; }
+  .avatar { height: 11.79dvh; aspect-ratio: 1; flex: 0 0 auto;
+         border-radius: 50%; background: var(--panel);
+         border: 2px solid var(--border-dark); outline: 2px solid var(--blue); cursor: pointer; }
+  .profile-info { display: flex; flex-direction: column; gap: 4px; }
+  .name-row { display: flex; gap: 8px; font-size: 13px; }
+  .player-level { color: var(--text-dim); }
+  .xp-bar { width: 14.2dvw; height: 6px; background: #1A2350; border-radius: 4px; overflow: hidden; }
+  .xp-fill { height: 100%; background: var(--cyan); }
+
+  /* -------- TOP RIGHT : ressources — une seule monnaie réelle ("soin",
+     système familiers) ; gemmes/menu réglages désactivés (aucun système
+     réel). --------- */
+  .top-right { position: absolute; z-index: 20; top: calc(3.08dvh + var(--safe-top)); right: calc(1.42dvw + var(--safe-right));
+         display: flex; gap: 8px; }
+  .pill { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--gold);
+         border-radius: 20px; padding: 4px 10px; font-size: 13px; }
+  .pill.is-disabled { opacity: .5; filter: grayscale(.4); }
+  .menu-btn { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--blue);
+         border-radius: 10px; padding: 4px 10px; cursor: pointer; }
+  .menu-btn.is-disabled { opacity: .5; filter: grayscale(.4); pointer-events: none; }
+
+  /* -------- LEFT NAV : Personnage/Pets/Récompenses réels — Quêtes/Social
+     désactivés (aucun système réel). --------- */
+  .left-nav { position: absolute; z-index: 20; top: calc(20.5dvh + var(--safe-top)); left: calc(1.42dvw + var(--safe-left));
+         display: flex; flex-direction: column; gap: 10px; width: 16.6dvw; }
+  .nav-btn { position: relative; background: var(--panel); border: 2px solid var(--border-dark);
+         border-radius: 12px; padding: 10px; font-size: 12px; font-weight: bold; color: var(--text);
+         cursor: pointer; text-align: left; width: 100%; }
+  .nav-btn.character { outline: 2px solid var(--blue); }
+  .nav-btn.pets { outline: 2px solid var(--turquoise); }
+  .nav-btn.rewards { outline: 2px solid var(--gold); }
+  .nav-btn.quests { outline: 2px solid var(--cyan); }
+  .nav-btn.social { outline: 2px solid var(--teal); }
+  .nav-btn.is-disabled { opacity: .5; filter: grayscale(.4); pointer-events: none; }
+
+  /* -------- RIGHT CARDS : seul le coffre a un vrai système derrière
+     (cadeau du jour) — événement/double XP désactivés. --------- */
+  .right-cards { position: absolute; z-index: 20; top: calc(20.5dvh + var(--safe-top)); right: calc(1.42dvw + var(--safe-right));
+         display: flex; flex-direction: column; gap: 10px; width: 16.6dvw; }
+  .card { background: var(--panel); border: 2px solid var(--border-dark); border-radius: 12px;
+         padding: 10px; font-size: 12px; font-weight: bold; text-align: left; }
+  .card.event { outline: 2px solid var(--violet); }
+  .card.doublexp { outline: 2px solid var(--magenta); }
+  .card.chest { outline: 2px solid var(--cyan); cursor: pointer; color: inherit; width: 100%; }
+  .card .subtitle { display: block; margin-top: 3px; font-size: 10px; font-weight: 600; color: var(--text-dim); }
+  .card.is-disabled { opacity: .5; filter: grayscale(.4); }
+
+  /* -------- BOTTOM LEFT : défi du jour — sujet et mode réels (pas de faux
+     compteur de quêtes). --------- */
+  .bottom-left { position: absolute; z-index: 20; bottom: calc(3.08dvh + var(--safe-bottom)); left: calc(1.42dvw + var(--safe-left));
+         width: 30.8dvw; }
+  .daily-challenge { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--cyan);
+         border-radius: 14px; padding: 10px; font-size: 13px; font-weight: bold; }
+  .daily-challenge .subtitle { display: block; margin-top: 4px; font-size: 11px; font-weight: 600; color: var(--text-dim); }
+
+  /* -------- BOTTOM RIGHT : Jouer --------- */
+  .bottom-right { position: absolute; z-index: 20; bottom: calc(3.08dvh + var(--safe-bottom)); right: calc(1.42dvw + var(--safe-right)); }
+  .play-btn { background: linear-gradient(180deg, #FFD36E, #FFB238); border: 2px solid var(--border-dark);
+         outline: 3px solid var(--amber); border-radius: 16px; padding: 14px 28px; font-size: 18px; font-weight: bold;
+         color: #3A2400; cursor: pointer; }
+
+  /* -------- correctif d'intégration : la nav (5 boutons, contenu-driven)
+     et la carte de défi (coin bas-gauche) peuvent se rapprocher aux plus
+     petites résolutions imposées — vérifié par calcul (getBoundingClientRect)
+     à chaque résolution, pas à l'œil ; resserré ici seulement si nécessaire. -------- */
+  @media (max-height: 370px) {
+    .left-nav, .right-cards { gap: 6px; }
+    .nav-btn, .card { padding: 7px 10px; }
+    .daily-challenge { padding: 7px 10px; }
+  }
+
+  #gifts-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(4,9,28,0.72); z-index: 50; padding: 16px; }
+  #gifts-overlay.show { display: flex; }
+  /* -------- passe "jamais de scroll", correctif complémentaire (2026-08-05) :
+     cette carte n'avait PAS de max-height (contrairement aux 4 autres déjà
+     corrigées) — .el-modal-card de base n'en a pas non plus (conçu pour la
+     styleguide, une page qui défile normalement). Repéré par audit complet
+     sur les 5 formats demandés par Camille : débordait haut ET bas de
+     l'écran à 844×390/852×393/896×414 (jusqu'à ~40px de rongé sur le
+     bouton Fermer). max-height ajouté en filet de sécurité + espacements
+     resserrés pour ne jamais avoir besoin du scroll en pratique. --------- */
+  #gifts-card.el-modal-card { max-width: 480px; width: 100%; max-height: 90svh; overflow-y: auto; padding: 16px 20px; }
+  #gifts-card h2 { margin: 0 0 4px; font-size: 17px; }
+  #gifts-card .hint { font-size: 11px; color: var(--el-text-muted); margin: 0 0 6px; }
+  #gift-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+  .gift-row { display: flex; align-items: center; gap: 12px; padding: 5px 14px; border-radius: var(--el-radius-md);
+         background: rgba(4,9,28,0.3); text-align: left; }
+  .gift-row .g-icon { font-size: 24px; width: 32px; text-align: center; }
+  .gift-row .g-body { flex: 1; min-width: 0; }
+  .gift-row .g-title { font-weight: 800; font-size: 14px; }
+  .gift-row .g-status { font-size: 12px; color: var(--el-text-muted); margin-top: 2px; }
+  .gift-row .g-progress { width: 100%; height: 5px; border-radius: var(--el-radius-pill); background: rgba(4,9,28,0.55);
+         border: 1px solid var(--el-outline); box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); margin-top: 5px; overflow: hidden; }
+  .gift-row .g-progress-fill { height: 100%; background: var(--el-purple); }
+  .gift-row.ready { background: color-mix(in srgb, var(--el-success) 20%, transparent); box-shadow: inset 0 0 0 1.5px var(--el-success); }
+  .gift-claim-btn { padding: 8px 16px; border-radius: var(--el-radius-md); border: 2px solid var(--el-bg-panel-light);
+         background: var(--el-bg-panel-light); color: var(--el-text-main); font-weight: 800; font-size: 13px; cursor: pointer; white-space: nowrap; }
+  .gift-claim-btn:disabled { opacity: .45; cursor: default; }
+  .gift-claim-btn.ready { border: none; background: linear-gradient(180deg, color-mix(in srgb, var(--el-gold) 70%, #fff 30%), var(--el-gold) 55%, var(--el-gold-dark));
+         color: var(--el-text-on-light); box-shadow: 0 4px 0 #8a5c00; }
+  .gift-claim-btn.ready:active { transform: translateY(4px); box-shadow: 0 0 0 #8a5c00; }
+
+  /* -------- avatar : premier volet de la gestion de personnage demandée
+     par Camille (couleur maintenant, compétences dans une passe séparée).
+     Réutilise le même langage visuel corps+capuche que les personnages
+     3D (makeBlob) et les cartes roster/podium de l'arène. -------- */
+  .avatar-portrait { width: 44px; height: 44px; border-radius: 50%; position: relative;
+         border: 2.5px solid var(--el-outline); }
+  /* -------- petit visage (2 yeux) — sans lui un cercle de couleur agrandi
+     en vedette au centre de l'accueil ne "lit" pas comme un personnage.
+     Tailles en % du portrait : s'applique proportionnellement partout où
+     .avatar-portrait est utilisé (badge, garde-robe, avatar central). -------- */
+  .avatar-portrait::before, .avatar-portrait::after { content: ""; position: absolute; top: 42%;
+         width: 13%; height: 13%; border-radius: 50%; background: var(--el-outline); }
+  .avatar-portrait::before { left: 28%; }
+  .avatar-portrait::after { right: 28%; }
+  /* -------- sourire (2026-08-06) : le visage n'avait que 2 yeux, expression
+     neutre peu engageante pour une mascotte CM1-CM2. --------- */
+  .avatar-mouth { position: absolute; top: 62%; left: 50%; transform: translateX(-50%);
+         width: 26%; height: 13%; border: 0 solid transparent; border-bottom: 3px solid var(--el-outline);
+         border-radius: 0 0 50% 50%; }
+  .avatar-cap { position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+         width: 22px; height: 14px; border-radius: 50% 50% 40% 40%; border: 2px solid var(--el-outline); }
+  #wardrobe-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(4,9,28,0.72); z-index: 50; padding: 16px; }
+  #wardrobe-overlay.show { display: flex; }
+  /* -------- passe "jamais de scroll" (2026-08-05) : carte élargie + grilles
+     sur 1 ligne (6 éléments) au lieu de 3 colonnes/2 lignes — 69px de
+     dépassement mesuré à 740×360 avant ce correctif. --------- */
+  #wardrobe-card.el-modal-card { max-width: 620px; width: 100%; padding: 16px 22px;
+         max-height: 90svh; overflow-y: auto; }
+  #wardrobe-card h2 { margin: 0 0 4px; color: var(--el-gold); font-size: 17px; }
+  #wardrobe-tabs { display: flex; justify-content: center; gap: 6px; margin: 2px 0 6px; }
+  .wardrobe-tab { padding: 5px 14px; border-radius: var(--el-radius-sm); border: 2px solid var(--el-bg-panel-light); background: transparent;
+         color: var(--el-text-muted); font-weight: 800; font-size: 12px; cursor: pointer; opacity: .7; }
+  .wardrobe-tab.active { opacity: 1; background: var(--el-bg-panel-light); color: var(--el-text-main); }
+  #wardrobe-card .hint { font-size: 11px; color: var(--el-text-muted); margin: 0 0 8px; }
+  #wardrobe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 8px; margin-bottom: 8px; }
+  .wardrobe-swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 7px 4px;
+         border-radius: var(--el-radius-md); border: 2.5px solid transparent; background: rgba(4,9,28,0.3); cursor: pointer; }
+  .wardrobe-swatch .avatar-portrait { width: 38px; height: 38px; }
+  .wardrobe-swatch .swatch-name { font-size: 11px; font-weight: 800; }
+  .wardrobe-swatch.selected { border-color: var(--el-cyan); background: color-mix(in srgb, var(--el-cyan) 20%, transparent); }
+  #skills-count { font-size: 11px; font-weight: 800; color: var(--el-text-muted); margin: -2px 0 4px; }
+  #skills-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 6px; margin-bottom: 4px; }
+  .skill-swatch { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: 5px 4px;
+         border-radius: var(--el-radius-md); border: 2.5px solid transparent; background: rgba(4,9,28,0.3); cursor: pointer; }
+  .skill-swatch .skill-emoji { font-size: 24px; }
+  .skill-swatch .swatch-name { font-size: 11px; font-weight: 800; }
+  .skill-swatch .skill-desc { font-size: 9px; color: var(--el-text-muted); line-height: 1.2; }
+  .skill-swatch.selected { border-color: var(--el-cyan); background: color-mix(in srgb, var(--el-cyan) 20%, transparent); }
+
+  /* -------- leçons à revoir (2026-08-07, remplace l'ancien système
+     familiers séparé — Camille : « pets et familiers sont la même chose »).
+     Récompense : XP garanti + chance rare d'œuf (fait apparaître un
+     nouveau pet dans la Collection, voir hatchRandomPet()). --------- */
+  #gifts-btn:active { transform: scale(0.9); }
+  .gift-claim-btn, .lesson-review-btn { transition: transform .1s; }
+  .gift-claim-btn:active:not(:disabled), .lesson-review-btn:active { transform: translateY(2px); }
+  #lessons-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(15,10,26,0.72); z-index: 50; padding: 16px; }
+  #lessons-overlay.show { display: flex; }
+  #lessons-card.el-modal-card { max-width: 560px; width: 100%; max-height: 90svh; overflow-y: auto; padding-bottom: 18px; }
+  #lessons-card h2 { margin: 0 0 4px; color: var(--el-gold); font-size: 17px; }
+  /* -------- masqué en vue quiz (retour de revue 2026-08-07) : le texte
+     d'intro de la liste prenait 2 lignes inutiles pendant le quiz, seule
+     source de vraie économie d'espace verticale disponible sans rogner le
+     contenu pédagogique lui-même. -------- */
+  #lessons-card.quiz-active > .hint { display: none; }
+  #lesson-reward-msg { background: color-mix(in srgb, var(--el-success) 20%, transparent); box-shadow: inset 0 0 0 2px var(--el-success); border-radius: var(--el-radius-md);
+         padding: 4px 10px; font-weight: 800; font-size: 11px; margin-bottom: 5px; animation: pop .3s cubic-bezier(.2,1.4,.4,1); }
+  #lesson-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-bottom: 6px; }
+  .lesson-card-item { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding: 8px 10px;
+         border-radius: var(--el-radius-md); background: rgba(4,9,28,0.3); }
+  .lesson-title { font-size: 12px; font-weight: 800; }
+  .lesson-meta { font-size: 9px; color: var(--el-text-muted); }
+  .lesson-review-btn { margin-top: 3px; padding: 4px 10px; border-radius: var(--el-radius-sm); border: 2px solid var(--el-bg-panel-light);
+         background: var(--el-bg-panel-light); color: var(--el-text-main); font-weight: 800; font-size: 10px; cursor: pointer; align-self: stretch; }
+  /* -------- vue quiz d'une leçon : explication + questions à choix unique,
+     un bouton Valider en bas. Réutilise le look flat+liseré des autres
+     écrans plutôt qu'un nouveau composant. --------- */
+  #lesson-quiz-view { display: none; }
+  #lesson-quiz-view.show { display: block; }
+  #lesson-quiz-explain { font-size: 11.5px; line-height: 1.35; color: var(--el-text-muted); margin-bottom: 8px; }
+  .lesson-question { margin-bottom: 10px; }
+  .lesson-question-text { font-size: 13.5px; font-weight: 800; margin-bottom: 5px; }
+  /* -------- boutons de réponse répartis sur toute la largeur disponible,
+     largeur commune (retour de revue 2026-08-07 : trop de vide à droite +
+     largeurs incohérentes entre questions). -------- */
+  .lesson-answers { display: flex; flex-wrap: wrap; gap: 6px; }
+  .lesson-answer-btn { flex: 1 1 0; min-width: 92px; padding: 7px 8px; border-radius: var(--el-radius-sm); border: 2px solid var(--el-bg-panel-light);
+         background: rgba(4,9,28,0.3); color: var(--el-text-main); font-weight: 700; font-size: 12px; text-align: center; cursor: pointer; }
+  .lesson-answer-btn.selected { outline: 2px solid var(--el-cyan); }
+  .lesson-answer-btn.correct { outline: 2px solid var(--el-success); }
+  .lesson-answer-btn.wrong { outline: 2px solid var(--el-danger); }
+  #lesson-quiz-result { font-size: 12px; font-weight: 800; margin: 6px 0; min-height: 1px; }
+  #lesson-back-btn { margin-top: 6px; }
+
+  /* -------- collection des pets (fusion pets+familiers, 2026-08-07) —
+     les pets équipables en arène (PET_CATALOG, dupliqué depuis
+     PET_DEFINITIONS de spike3d-arena.html — même convention que WARDROBE,
+     pas de module JS partagé entre les fichiers HTML autonomes du
+     projet). --------- */
+  #collection-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(15,10,26,0.72); z-index: 50; padding: 16px; }
+  #collection-overlay.show { display: flex; }
+  /* -------- passe "jamais de scroll" (2026-08-05) : la carte profite de la
+     largeur généreuse du paysage au lieu d'empiler les pets sur plusieurs
+     lignes — grille qui s'étale (auto-fit) plutôt que 2 colonnes fixes.
+     303px de dépassement mesuré à 740×360 avant ce correctif (0 après). -------- */
+  #collection-card.el-modal-card { max-width: 640px; width: 100%; max-height: 90svh; overflow-y: auto; }
+  #collection-card h2 { margin: 0 0 4px; color: var(--el-gold); font-size: 17px; }
+  #collection-tutorial { background: color-mix(in srgb, var(--el-cyan) 18%, transparent); box-shadow: inset 0 0 0 2px var(--el-cyan); border-radius: var(--el-radius-md);
+         padding: 5px 10px; font-size: 11px; font-weight: 700; margin-bottom: 6px; text-align: left; }
+  #collection-hint { font-size: 11px; color: var(--el-text-muted); margin: 0 0 6px; }
+  #collection-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(76px, 1fr)); gap: 8px; margin-bottom: 4px; }
+  .collection-card-item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 6px;
+         border-radius: var(--el-radius-md); background: rgba(4,9,28,0.3); border: 2.5px solid transparent; position: relative; }
+  .collection-card-item.equipped { background: color-mix(in srgb, var(--el-success) 20%, transparent); border-color: var(--el-success); }
+  .collection-card-item.locked { opacity: .6; }
+  /* -------- pas encore découvert — silhouette sombre, aucun indice sur
+     l'identité du pet (cycle Découverte/Déblocage/Affinité/Maîtrise,
+     2026-08-05) : la découverte doit rester une surprise. --------- */
+  .collection-card-item.mystery { opacity: .5; }
+  .collection-card-item.mastered { background: color-mix(in srgb, var(--el-gold) 18%, transparent); border-color: var(--el-gold);
+         box-shadow: 0 0 10px 2px rgba(255,189,32,0.35); }
+  .collection-icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center;
+         justify-content: center; font-size: 22px; background: var(--el-bg-panel-light); overflow: hidden; }
+  .collection-icon img { width: 100%; height: 100%; object-fit: cover; }
+  .collection-icon.mystery-icon { background: var(--el-bg-deep); color: var(--el-text-muted); font-weight: 900; }
+  .collection-card-item.locked .collection-icon { filter: grayscale(1); }
+  .collection-name { font-size: 13px; font-weight: 800; }
+  .collection-ability { font-size: 10px; color: var(--el-text-muted); }
+  .collection-lock-info { font-size: 10px; font-weight: 700; color: var(--el-text-muted); }
+  .collection-affinity { font-size: 12px; letter-spacing: 1px; color: var(--el-gold); }
+  .collection-card-item.mastered .collection-affinity { color: var(--el-gold); font-weight: 800; }
+  .collection-equip-badge { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+         background: var(--el-gold); color: var(--el-text-on-light); font-size: 11px; font-weight: 800; display: flex;
+         align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  /* -------- revue visuelle du 2026-08-05 : le seul indice de verrouillage
+     était une désaturation + absence de bouton, ambigu avec un état "en
+     chargement" — badge cadenas explicite, même emplacement que le badge
+     "équipé" (jamais les deux en même temps, un pet verrouillé n'est jamais
+     équipé). --------- */
+  .collection-lock-badge { position: absolute; top: 6px; right: 6px; width: 20px; height: 20px; border-radius: 50%;
+         background: var(--el-bg-deep); font-size: 11px; display: flex;
+         align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.4); }
+  .collection-equip-btn { margin-top: 2px; padding: 4px 12px; border-radius: var(--el-radius-sm); border: 2px solid var(--el-bg-panel-light);
+         background: var(--el-bg-panel-light); color: var(--el-text-main); font-weight: 800; font-size: 10px; cursor: pointer; }
+  .collection-equip-btn.active { background: var(--el-success); color: #fff; border-color: var(--el-success-dark); }
+
+  /* =========================================================================
+     PROPAGATION DU THÈME V12 (2026-08-06) — Camille : "propage ce thème à
+     l'ensemble de nos écrans sous le menu". Les 4 pop-ups (Cadeaux, Garde-
+     robe/Personnage, Familiers, Collection/Pets) reprennent le langage
+     graphique validé sur la Home v12 : panneau plat sombre (var(--panel)),
+     contour à 2 niveaux (bordure fine très sombre + liseré coloré propre à
+     l'écran, PAS un gradient/relief), Segoe UI. Couleur de liseré par écran
+     = même couleur que son bouton de nav sur la Home (Récompenses=or,
+     Personnage=bleu, Pets=turquoise, Leçons=cyan — nav "Quêtes" réutilisée).
+     Ajouté APRÈS les règles de mise en page existantes (dimensions/max-
+     height/scroll déjà réglés et vérifiés) : seule la couleur/le style
+     change ici, jamais la géométrie. --------- */
+  #gifts-overlay, #wardrobe-overlay, #lessons-overlay, #collection-overlay {
+    background: rgba(5,7,15,.78);
+  }
+  #gifts-card.el-modal-card, #wardrobe-card.el-modal-card,
+  #lessons-card.el-modal-card, #collection-card.el-modal-card {
+    background: var(--panel); border: 2px solid var(--border-dark); border-radius: 20px;
+    box-shadow: 0 12px 28px rgba(0,0,0,.4); color: var(--text); font-family: "Segoe UI", sans-serif;
+  }
+  #gifts-card.el-modal-card { outline: 3px solid var(--gold); }
+  #wardrobe-card.el-modal-card { outline: 3px solid var(--blue); }
+  #lessons-card.el-modal-card { outline: 3px solid var(--cyan); }
+  #collection-card.el-modal-card { outline: 3px solid var(--turquoise); }
+  #gifts-card h2, #wardrobe-card h2, #lessons-card h2, #collection-card h2 {
+    font-weight: 900; letter-spacing: .01em;
+  }
+  #gifts-card h2 { color: var(--gold); }
+  #wardrobe-card h2 { color: var(--blue); }
+  #lessons-card h2 { color: var(--cyan); }
+  #collection-card h2 { color: var(--turquoise); }
+  #gifts-card .hint, #wardrobe-card .hint, #collection-hint,
+  #skills-count { color: var(--text-dim); }
+
+  /* -------- boutons Fermer : même recette flat+liseré, famille "alerte"
+     (rouge existant de theme.css, pas de nouveau token pour un seul usage). -------- */
+  #gifts-close-btn, #wardrobe-close-btn, #lessons-close-btn, #collection-close-btn {
+    background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--el-danger);
+    color: var(--text); box-shadow: none;
+  }
+
+  /* -------- Cadeaux : lignes plates, "prêt" = liseré succès (au lieu du
+     dégradé or précédent, cohérent avec le reste des états "prêt"). -------- */
+  .gift-row { background: var(--panel); border: 2px solid var(--border-dark); }
+  .gift-row.ready { background: var(--panel); box-shadow: none; outline: 2px solid var(--el-success); }
+  .gift-claim-btn { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--border-dark); }
+  .gift-claim-btn.ready { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--gold);
+         color: var(--text); box-shadow: none; }
+  .gift-claim-btn.ready:active { transform: translateY(2px); box-shadow: none; }
+
+  /* -------- Garde-robe : onglets/swatches en flat+liseré. -------- */
+  .wardrobe-tab { background: var(--panel); border: 2px solid var(--border-dark); color: var(--text-dim); opacity: 1; }
+  .wardrobe-tab.active { outline: 2px solid var(--blue); color: var(--text); background: var(--panel); }
+  .wardrobe-swatch { background: var(--panel); border: 2px solid var(--border-dark); }
+  .wardrobe-swatch.selected { outline: 2px solid var(--blue); border-color: var(--border-dark); background: var(--panel); }
+  .skill-swatch { background: var(--panel); border: 2px solid var(--border-dark); }
+  .skill-swatch.selected { outline: 2px solid var(--blue); border-color: var(--border-dark); background: var(--panel); }
+
+  /* -------- Leçons : cartes + boutons en flat+liseré. -------- */
+  #lesson-reward-msg { background: var(--panel); box-shadow: none; outline: 2px solid var(--el-success); }
+  .lesson-card-item { background: var(--panel); border: 2px solid var(--border-dark); }
+  .lesson-review-btn { background: var(--panel); border: 2px solid var(--border-dark); outline: 2px solid var(--cyan); color: var(--text); }
+  .lesson-answer-btn { background: var(--panel-light); border: 2px solid var(--border-dark); color: var(--text); }
+  .lesson-answer-btn.selected { background: var(--panel); outline: 2px solid var(--cyan); }
+  .lesson-answer-btn.correct { background: var(--panel); outline: 2px solid var(--el-success); }
+  .lesson-answer-btn.wrong { background: var(--panel); outline: 2px solid var(--el-danger); }
+
+  /* -------- Collection : cartes pets en flat+liseré selon état. -------- */
+  .collection-card-item { background: var(--panel); border: 2px solid var(--border-dark); }
+  .collection-card-item.equipped { background: var(--panel); border-color: var(--border-dark); outline: 2px solid var(--el-success); }
+  .collection-card-item.mastered { background: var(--panel); box-shadow: none; border-color: var(--border-dark); outline: 2px solid var(--gold); }
+  .collection-icon { background: var(--border-dark); }
+  .collection-icon.mystery-icon { background: var(--border-dark); color: var(--text-dim); }
+  .collection-equip-btn { background: var(--panel); border: 2px solid var(--border-dark); color: var(--text); }
+  .collection-equip-btn.active { background: var(--panel); border-color: var(--border-dark); outline: 2px solid var(--el-success); color: var(--text); }
+</style>
+</head>
+<body>
+
+<div id="rotate-prompt"><div class="icon">📱</div>Tourne ton téléphone à l'horizontale pour jouer !</div>
+
+<!-- =========================================================================
+     Home Screen v12 — reconstruite depuis illuminia-design/screens/home/
+     reference.html (source de vérité v12, immuable — voir illuminia-design/
+     README.md). Structure/classes reprises à l'identique ; center-stage
+     reste vide (future 3D personnage+pet, consigne explicite), et les
+     composants sans système réel côté jeu (gemmes, réglages, événement,
+     double XP, quêtes, social) portent une classe .is-disabled ajoutée ICI
+     (fichier application, pas la référence). ========================================================================= -->
+<div class="lobby">
+
+  <!-- -------- premier personnage 3D (2026-08-07) : "Max", généré via Meshy
+       (multi-image-to-3D depuis la planche 5 angles de Camille, voir
+       scripts/generate-3d-character.mjs) — public/models/max-character.glb.
+       Pas encore rigué/animé (statique pour ce premier essai). Le pet reste
+       un espace réservé (pas encore généré). --------- -->
+  <div class="center-stage">
+    <canvas id="character-canvas"></canvas>
+  </div>
+
+  <div class="top-left">
+    <button class="avatar" id="menu-profile-avatar" aria-label="Ton avatar"></button>
+    <div class="profile-info">
+      <div class="name-row">
+        <span class="player-name">Joueur</span>
+        <span class="player-level" id="menu-level-text">Niv. 1</span>
+      </div>
+      <div class="xp-bar">
+        <div class="xp-fill" id="menu-xp-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESSOURCES : Essence (retour de fragments sur un pet déjà maîtrisé) —
+       pas de 2e monnaie dépensable pour l'instant (économie de gemmes fictive). -->
+  <div class="top-right">
+    <div class="pill coins">✨ <span id="essence-pill-value">0</span></div>
+    <div class="pill gems is-disabled" title="Gemmes — bientôt">💎 —</div>
+    <div class="menu-btn is-disabled" aria-label="Menu (bientôt)">☰</div>
+  </div>
+
+  <!-- NAV GAUCHE : Personnage/Pets/Récompenses/Leçons réels — Social
+       désactivé (aucun système réel derrière). -->
+  <div class="left-nav">
+    <button id="personnage-btn" class="nav-btn character" aria-label="Personnage">PERSONNAGE</button>
+    <button id="collection-btn" class="nav-btn pets" aria-label="Pets">PETS</button>
+    <button id="gifts-btn" class="nav-btn rewards" aria-label="Récompenses">RÉCOMPENSES<span id="gifts-badge-count"></span></button>
+    <button id="lessons-btn" class="nav-btn quests" aria-label="Leçons">LEÇONS</button>
+    <button class="nav-btn social is-disabled" aria-disabled="true" aria-label="Social — bientôt">SOCIAL</button>
+  </div>
+
+  <!-- CARTES DROITE : seul le coffre a un vrai système derrière (cadeau du
+       jour) — événement/double XP désactivés (aucun système réel). -->
+  <div class="right-cards">
+    <div class="card event is-disabled" aria-disabled="true">ÉVÉNEMENT</div>
+    <div class="card doublexp is-disabled" aria-disabled="true">DOUBLE XP</div>
+    <button class="card chest" id="daily-gift-card">COFFRE GRATUIT<span class="subtitle" id="daily-gift-status"></span></button>
+  </div>
+
+  <!-- DÉFI DU JOUR : sujet + mode réels, pas de compteur de quêtes inventé. -->
+  <div class="bottom-left">
+    <div class="daily-challenge">
+      DÉFI DU JOUR
+      <span class="subtitle">Arène des Elumins · Fractions · CM1-CM2</span>
+    </div>
+  </div>
+
+  <div class="bottom-right">
+    <button class="play-btn" id="play-btn" type="button">JOUER</button>
+  </div>
+
+</div>
+
+<div id="gifts-overlay" class="el-modal-backdrop">
+  <div id="gifts-card" class="el-modal-card">
+    <h2>Tes cadeaux</h2>
+    <p class="hint">Reviens jouer pour les débloquer — rien n'est perdu si tu rates un jour.</p>
+    <div id="gift-rows"></div>
+    <button id="gifts-close-btn" class="el-btn el-btn--danger el-btn--sm" type="button">Fermer</button>
+  </div>
+</div>
+
+<div id="wardrobe-overlay" class="el-modal-backdrop">
+  <div id="wardrobe-card" class="el-modal-card">
+    <h2>Ton avatar</h2>
+    <div id="wardrobe-tabs">
+      <button class="wardrobe-tab active" type="button" data-tab="skin">Couleur</button>
+      <button class="wardrobe-tab" type="button" data-tab="skills">Compétences</button>
+    </div>
+    <p class="hint" id="wardrobe-hint">Choisis tes couleurs.</p>
+    <div id="wardrobe-grid"></div>
+    <div id="skills-count" style="display:none"></div>
+    <div id="skills-grid" style="display:none"></div>
+    <button id="wardrobe-close-btn" class="el-btn el-btn--danger el-btn--sm" type="button">Fermer</button>
+  </div>
+</div>
+
+<div id="lessons-overlay" class="el-modal-backdrop">
+  <div id="lessons-card" class="el-modal-card">
+    <h2>Leçons à revoir</h2>
+    <p class="hint">Révise, réponds au quiz : XP garanti, et parfois un œuf qui fait apparaître un nouveau pet !</p>
+    <div id="lesson-reward-msg" style="display:none"></div>
+    <div id="lesson-list-view">
+      <div id="lesson-list"></div>
+    </div>
+    <div id="lesson-quiz-view">
+      <div id="lesson-quiz-title" class="lesson-title" style="font-size:14px;margin-bottom:4px;"></div>
+      <div id="lesson-quiz-explain"></div>
+      <div id="lesson-quiz-questions"></div>
+      <div id="lesson-quiz-result"></div>
+      <button id="lesson-validate-btn" class="el-btn el-btn--primary el-btn--sm" type="button">Valider</button>
+      <button id="lesson-back-btn" class="el-btn el-btn--neutral el-btn--sm" type="button" style="display:none">Retour aux leçons</button>
+    </div>
+    <button id="lessons-close-btn" class="el-btn el-btn--danger el-btn--sm" type="button">Fermer</button>
+  </div>
+</div>
+
+<div id="collection-overlay" class="el-modal-backdrop">
+  <div id="collection-card" class="el-modal-card">
+    <h2>Collection de pets</h2>
+    <div id="collection-tutorial" style="display:none">Joue des parties pour gagner de l'XP et des fragments. Débloque des pets puis équipe-en deux avant le combat.</div>
+    <p class="hint" id="collection-hint">Touche un pet débloqué pour l'équiper (2 maximum).</p>
+    <div id="collection-grid"></div>
+    <button id="collection-close-btn" class="el-btn el-btn--danger el-btn--sm" type="button">Fermer</button>
+  </div>
+</div>
+
+<script src="ui/icons.js"></script>
+<script>
+  // -------- système de cadeaux basé sur les SESSIONS jouées, pas sur des
+  // jours calendaires consécutifs — retour de Camille : son fils n'a le
+  // droit à l'écran que 2-3 fois par semaine, un streak calendaire le
+  // pénaliserait pour rien. eluminia-days-played est un compteur qui ne
+  // recule jamais (incrémenté une fois par jour calendaire réellement joué,
+  // voir recordPlaySession() dans spike3d-arena.html) : le cadeau hebdo/
+  // mensuel se débloque au bout de N jours joués CUMULÉS, sans reset en cas
+  // d'absence. -------- */
+  const WEEKLY_EVERY = 3;
+  const MONTHLY_EVERY = 10;
+  const todayStr = () => new Date().toISOString().slice(0, 10);
+
+  function readState() {
+    const daysPlayed = Number(localStorage.getItem('eluminia-days-played')) || 0;
+    const weeklyAt = Number(localStorage.getItem('eluminia-weekly-gift-at')) || 0;
+    const monthlyAt = Number(localStorage.getItem('eluminia-monthly-gift-at')) || 0;
+    return {
+      daysPlayed,
+      dailyClaimable: localStorage.getItem('eluminia-daily-gift-date') !== todayStr(),
+      weeklyProgress: Math.min(daysPlayed - weeklyAt, WEEKLY_EVERY),
+      weeklyClaimable: daysPlayed - weeklyAt >= WEEKLY_EVERY,
+      monthlyProgress: Math.min(daysPlayed - monthlyAt, MONTHLY_EVERY),
+      monthlyClaimable: daysPlayed - monthlyAt >= MONTHLY_EVERY,
+    };
+  }
+
+  function grantXp(amount) {
+    let xp = Number(localStorage.getItem('eluminia-arena-xp')) || 0;
+    let level = Number(localStorage.getItem('eluminia-arena-level')) || 1;
+    let xpNext = Number(localStorage.getItem('eluminia-arena-xpnext')) || 30;
+    xp += amount;
+    while (xp >= xpNext) { xp -= xpNext; level++; xpNext = Math.round(xpNext * 1.25); }
+    localStorage.setItem('eluminia-arena-xp', String(xp));
+    localStorage.setItem('eluminia-arena-level', String(level));
+    localStorage.setItem('eluminia-arena-xpnext', String(xpNext));
+    renderLevel();
+  }
+
+  function renderLevel() {
+    const xp = Number(localStorage.getItem('eluminia-arena-xp')) || 0;
+    const level = Number(localStorage.getItem('eluminia-arena-level')) || 1;
+    const xpNext = Number(localStorage.getItem('eluminia-arena-xpnext')) || 30;
+    const pct = Math.min(100, Math.round((xp / xpNext) * 100));
+    document.getElementById('menu-level-text').textContent = `Niv. ${level}`;
+    document.getElementById('menu-xp-fill').style.width = `${pct}%`;
+  }
+
+  const GIFT_DEFS = [
+    { key: 'daily', icon: '🌞', title: 'Cadeau du jour', xp: 10,
+      claimable: s => s.dailyClaimable, status: s => s.dailyClaimable ? 'Prêt à réclamer !' : 'Déjà réclamé aujourd’hui — reviens demain.' },
+    { key: 'weekly', icon: '🎉', title: 'Cadeau hebdo', xp: 40,
+      claimable: s => s.weeklyClaimable, status: s => s.weeklyClaimable ? 'Prêt à réclamer !' : `${s.weeklyProgress}/${WEEKLY_EVERY} jours joués`,
+      progress: s => s.weeklyProgress / WEEKLY_EVERY },
+    { key: 'monthly', icon: '🏆', title: 'Cadeau mensuel', xp: 120,
+      claimable: s => s.monthlyClaimable, status: s => s.monthlyClaimable ? 'Prêt à réclamer !' : `${s.monthlyProgress}/${MONTHLY_EVERY} jours joués`,
+      progress: s => s.monthlyProgress / MONTHLY_EVERY },
+  ];
+
+  function claimGift(key) {
+    const state = readState();
+    const def = GIFT_DEFS.find(g => g.key === key);
+    if (!def || !def.claimable(state)) return;
+    // -------- retour de Camille 2026-08-07 : l'œuf ne vient plus des
+    // cadeaux (déplacé vers les Leçons, « ça se mérite ») — les cadeaux
+    // ne donnent plus que de l'XP garanti. --------
+    if (key === 'daily') localStorage.setItem('eluminia-daily-gift-date', todayStr());
+    if (key === 'weekly') localStorage.setItem('eluminia-weekly-gift-at', String(state.daysPlayed));
+    if (key === 'monthly') localStorage.setItem('eluminia-monthly-gift-at', String(state.daysPlayed));
+    grantXp(def.xp);
+    renderGifts();
+  }
+
+  function renderGifts() {
+    const state = readState();
+    let anyClaimable = false;
+    let claimableCount = 0;
+    document.getElementById('gift-rows').innerHTML = GIFT_DEFS.map(def => {
+      const ready = def.claimable(state);
+      if (ready) { anyClaimable = true; claimableCount++; }
+      const progressBar = def.progress && !ready
+        ? `<div class="g-progress"><div class="g-progress-fill" style="width:${Math.round(def.progress(state) * 100)}%"></div></div>` : '';
+      return `<div class="gift-row${ready ? ' ready' : ''}">
+        <div class="g-icon">${def.icon}</div>
+        <div class="g-body">
+          <div class="g-title">${def.title} — +${def.xp} XP</div>
+          <div class="g-status">${def.status(state)}</div>
+          ${progressBar}
+        </div>
+        <button class="gift-claim-btn${ready ? ' ready' : ''}" data-key="${def.key}" ${ready ? '' : 'disabled'}>Réclamer</button>
+      </div>`;
+    }).join('');
+    // -------- v12 n'a pas de composant badge (pastille ronde) — le compte
+    // réel s'ajoute en texte simple dans le libellé du bouton, sans
+    // inventer de nouvel élément visuel absent de la référence. --------
+    document.getElementById('gifts-badge-count').textContent = claimableCount ? ` (${claimableCount})` : '';
+    document.querySelectorAll('.gift-claim-btn').forEach(btn => {
+      btn.addEventListener('click', () => claimGift(btn.dataset.key));
+    });
+    // -------- carte "Coffre Gratuit" (colonne de droite, .card.chest) :
+    // reprend le vrai état du cadeau quotidien — seule carte de cette
+    // colonne à avoir un système réel derrière. --------
+    const dailyReady = GIFT_DEFS.find(d => d.key === 'daily').claimable(state);
+    document.getElementById('daily-gift-status').textContent = dailyReady ? 'Prêt !' : 'Déjà réclamé';
+  }
+
+  // -------- Essence : retour de fragments sur un pet déjà maîtrisé (voir
+  // AFFINITY_CONFIG/PET_CATALOG plus bas) — pas encore dépensable, juste
+  // affiché. L'ancien système "familiers" séparé (soin/œuf/espèces) a été
+  // retiré le 2026-08-07 : « pets et familiers sont la même chose ». --------
+  function getEssence() { return Number(localStorage.getItem('eluminia-essence')) || 0; }
+  function renderEssencePill() {
+    document.getElementById('essence-pill-value').textContent = getEssence();
+  }
+
+  document.getElementById('play-btn').addEventListener('click', () => { location.href = 'spike3d-arena.html'; });
+  document.getElementById('gifts-btn').addEventListener('click', () => {
+    renderGifts();
+    document.getElementById('gifts-overlay').classList.add('show');
+  });
+  document.getElementById('gifts-close-btn').addEventListener('click', () => {
+    document.getElementById('gifts-overlay').classList.remove('show');
+  });
+  // -------- le portrait 3D ouvre maintenant la Collection (pets et
+  // familiers fusionnés, retour de Camille 2026-08-07) — plus cohérent que
+  // l'ancien écran familiers séparé : ton personnage → tes pets. --------
+  document.querySelector('.center-stage').addEventListener('click', () => openCollection());
+
+  renderLevel();
+  renderGifts();
+  renderEssencePill();
+
+  // -------- avatar : garde-robe de couleurs fixe pour cette première passe
+  // (pas encore d'économie/place du marché) — une fois choisie, la couleur
+  // est lue par l'arène à la création du joueur (voir spike3d-arena.html).
+  const WARDROBE = [
+    { key: 'vert', name: 'Vert', body: 0x4fae6a, hood: 0xfff6de },
+    { key: 'bleu', name: 'Bleu', body: 0x4a90c9, hood: 0xd8f0ff },
+    { key: 'corail', name: 'Corail', body: 0xe0654a, hood: 0xffe0d0 },
+    { key: 'jaune', name: 'Jaune', body: 0xe0b23f, hood: 0xfff6de },
+    { key: 'violet', name: 'Violet', body: 0xa47bf0, hood: 0xf0e0ff },
+    { key: 'rose', name: 'Rose', body: 0xe084b0, hood: 0xfff0f5 },
+  ];
+  const hexCss = (hex) => `#${hex.toString(16).padStart(6, '0')}`;
+  function getAvatar() {
+    const key = localStorage.getItem('eluminia-avatar-skin') || 'vert';
+    return WARDROBE.find(w => w.key === key) || WARDROBE[0];
+  }
+  function setAvatar(key) {
+    localStorage.setItem('eluminia-avatar-skin', key);
+    renderWardrobe();
+  }
+  function portraitHtml(w) {
+    return `<div class="avatar-portrait" style="background:${hexCss(w.body)}"><div class="avatar-cap" style="background:${hexCss(w.hood)}"></div><div class="avatar-mouth"></div></div>`;
+  }
+  function renderWardrobe() {
+    const current = getAvatar().key;
+    document.getElementById('wardrobe-grid').innerHTML = WARDROBE.map(w => `
+      <div class="wardrobe-swatch${w.key === current ? ' selected' : ''}" data-key="${w.key}">
+        ${portraitHtml(w)}
+        <div class="swatch-name">${w.name}</div>
+      </div>`).join('');
+    document.querySelectorAll('.wardrobe-swatch').forEach(el => {
+      el.addEventListener('click', () => setAvatar(el.dataset.key));
+    });
+  }
+
+  // -------- compétences équipées : 3 parmi 6, choisies dans le menu, lues
+  // par l'arène au lancement d'une manche (clé eluminia-avatar-abilities).
+  // Retour de Camille : « les compétences se retrouvent après dans la
+  // mécanique de jeu » — même règle d'équité déjà en place dans l'arène
+  // (joueur ET PNJ piochent dans le même ensemble équipé, personne n'a un
+  // pouvoir que l'autre n'a pas). -------- */
+  const ABILITY_CATALOG = [
+    { key: 'ice', emoji: '❄️', name: 'Glace', desc: 'Gèle sur place' },
+    { key: 'lightning', emoji: '⚡', name: 'Éclair', desc: 'Choc rapide, pas cher' },
+    { key: 'fire', emoji: '🔥', name: 'Feu', desc: 'Brûle, fait perdre des points' },
+    { key: 'water', emoji: '💧', name: 'Eau', desc: 'Ralentit longtemps' },
+    { key: 'mist', emoji: '🌫️', name: 'Brume', desc: 'Aveugle, ne trouve plus les pastilles' },
+    { key: 'earth', emoji: '⛰️', name: 'Terre', desc: 'Repousse au loin' },
+  ];
+  const DEFAULT_ABILITIES = ['ice', 'lightning', 'fire'];
+  function getAbilities() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('eluminia-avatar-abilities'));
+      if (Array.isArray(raw) && raw.length === 3 && raw.every(k => ABILITY_CATALOG.some(a => a.key === k))) return raw;
+    } catch {}
+    return DEFAULT_ABILITIES.slice();
+  }
+  function setAbilities(list) { localStorage.setItem('eluminia-avatar-abilities', JSON.stringify(list)); }
+  function toggleAbility(key) {
+    const current = getAbilities();
+    if (current.includes(key)) {
+      setAbilities(current.filter(k => k !== key));
+    } else if (current.length < 3) {
+      setAbilities([...current, key]);
+    } else {
+      // 3/3 déjà choisies : remplace la plus ancienne sélection plutôt que
+      // de ne rien faire — retour de Camille, un clic doit toujours avoir
+      // un effet visible, pas un clic mort sans aucune indication.
+      setAbilities([...current.slice(1), key]);
+    }
+    renderSkills();
+  }
+  function renderSkills() {
+    const equipped = getAbilities();
+    document.getElementById('skills-count').textContent = `${equipped.length}/3 choisies`;
+    document.getElementById('skills-grid').innerHTML = ABILITY_CATALOG.map(a => `
+      <div class="skill-swatch${equipped.includes(a.key) ? ' selected' : ''}" data-key="${a.key}">
+        <div class="skill-emoji">${a.emoji}</div>
+        <div class="swatch-name">${a.name}</div>
+        <div class="skill-desc">${a.desc}</div>
+      </div>`).join('');
+    document.querySelectorAll('.skill-swatch').forEach(el => el.addEventListener('click', () => toggleAbility(el.dataset.key)));
+  }
+
+  document.getElementById('menu-profile-avatar').addEventListener('click', () => {
+    renderWardrobe();
+    document.getElementById('wardrobe-overlay').classList.add('show');
+  });
+  document.getElementById('personnage-btn').addEventListener('click', () => {
+    renderWardrobe();
+    document.getElementById('wardrobe-overlay').classList.add('show');
+  });
+  document.getElementById('wardrobe-close-btn').addEventListener('click', () => {
+    document.getElementById('wardrobe-overlay').classList.remove('show');
+  });
+  document.querySelectorAll('.wardrobe-tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.wardrobe-tab').forEach(b => b.classList.toggle('active', b === btn));
+      const skin = btn.dataset.tab === 'skin';
+      document.getElementById('wardrobe-grid').style.display = skin ? 'grid' : 'none';
+      document.getElementById('skills-grid').style.display = skin ? 'none' : 'grid';
+      document.getElementById('skills-count').style.display = skin ? 'none' : 'block';
+      document.getElementById('wardrobe-hint').textContent = skin ? 'Choisis tes couleurs.' : 'Choisis 3 compétences pour l\'arène.';
+      if (!skin) renderSkills();
+    });
+  });
+  // -------- collection des pets (fusion pets+familiers, 2026-08-07) —
+  // PET_CATALOG dupliqué depuis PET_DEFINITIONS de spike3d-arena.html (même
+  // convention que WARDROBE ci-dessus : chaque fichier HTML autonome garde
+  // sa propre copie des données dont il a besoin, localStorage est la
+  // seule source commune). Un pet peut désormais être débloqué par
+  // fragments (ciblé) OU par éclosion d'œuf (aléatoire, voir
+  // hatchRandomPet() plus bas, alimenté par l'écran Leçons). --------
+  const PET_CATALOG = [
+    { id: 'renard', name: 'Renard', ability: 'Poussée', icon: 'icon-pet-renardin.png', discoveryLevel: 1, fragmentsRequired: 0 },
+    { id: 'chat', name: 'Chat', ability: 'Aimant', icon: 'icon-pet-chat.png', discoveryLevel: 1, fragmentsRequired: 0 },
+    { id: 'herisson', name: 'Hérisson', ability: 'Bouclier (à venir)', emoji: '🦔', discoveryLevel: 3, fragmentsRequired: 30 },
+    { id: 'faucon', name: 'Faucon', ability: 'Sprint (à venir)', emoji: '🦅', discoveryLevel: 5, fragmentsRequired: 50 },
+    { id: 'grenouille', name: 'Grenouille', ability: 'Bond (à venir)', emoji: '🐸', discoveryLevel: 7, fragmentsRequired: 70 },
+  ];
+  // -------- affinité — miroir léger de AFFINITY_CONFIG (spike3d-arena.html) :
+  // le menu n'a besoin que d'afficher les étoiles, jamais d'écrire l'affinité
+  // (ça n'arrive qu'en manche, côté arène). --------
+  const AFFINITY_CONFIG = { maxPoints: 100, starCount: 10 };
+  function getAccountLevel() { return Number(localStorage.getItem('eluminia-arena-level')) || 1; }
+  function defaultPetProgress() {
+    return { discovered: false, unlocked: false, fragments: 0, affinity: 0, mastered: false, evolutionChoice: null, cosmeticUnlocks: [] };
+  }
+  // -------- migration depuis l'ancienne clé eluminia-pet-fragments — copie
+  // de la logique de migratePetProgressIfNeeded (spike3d-arena.html), utile
+  // si le joueur ouvre le menu AVANT l'arène dans une session (l'arène fait
+  // aussi tourner sa propre migration, idempotente, pas de double-conversion
+  // grâce au test de présence de la nouvelle clé). --------
+  function migratePetProgressIfNeeded() {
+    if (localStorage.getItem('eluminia-pet-progress')) return;
+    let oldFragments = {};
+    try { oldFragments = JSON.parse(localStorage.getItem('eluminia-pet-fragments')) || {}; } catch {}
+    // -------- BUG corrigé (2026-08-05, trouvé en revue visuelle) : un
+    // early-return ici sur "rien à migrer" laissait eluminia-pet-progress
+    // totalement absent pour un joueur tout neuf qui ouvre le MENU avant
+    // l'arène — Renard/Chat retombaient alors sur defaultPetProgress()
+    // (non découverts !) au lieu d'être débloqués d'office. La construction
+    // ci-dessous tourne TOUJOURS (comme dans spike3d-arena.html) : avec
+    // oldFragments vide et level=1, elle initialise correctement les pets
+    // de départ via la même règle niveau+fragments. --------
+    const level = getAccountLevel();
+    const map = {};
+    PET_CATALOG.forEach(pet => {
+      const owned = oldFragments[pet.id] || 0;
+      const wasDiscovered = level >= pet.discoveryLevel;
+      const wasUnlocked = wasDiscovered && owned >= pet.fragmentsRequired;
+      const progress = defaultPetProgress();
+      progress.discovered = wasDiscovered;
+      if (wasUnlocked) {
+        progress.unlocked = true;
+        progress.fragments = pet.fragmentsRequired;
+        progress.affinity = Math.min(AFFINITY_CONFIG.maxPoints, Math.max(0, owned - pet.fragmentsRequired));
+      } else if (wasDiscovered) {
+        progress.fragments = Math.min(pet.fragmentsRequired, owned);
+      }
+      map[pet.id] = progress;
+    });
+    localStorage.setItem('eluminia-pet-progress', JSON.stringify(map));
+    localStorage.removeItem('eluminia-pet-fragments');
+  }
+  migratePetProgressIfNeeded();
+  // -------- nettoyage de l'ancien système familier séparé (2026-08-07) —
+  // ces clés ne sont plus lues nulle part, données de dev pré-lancement,
+  // rien à préserver. --------
+  ['eluminia-familiar-soin', 'eluminia-familiar-egg', 'eluminia-familiar-owned',
+   'eluminia-familiar-active', 'eluminia-familiar-starter-given'].forEach(k => localStorage.removeItem(k));
+  function getPetProgressMap() {
+    try { return JSON.parse(localStorage.getItem('eluminia-pet-progress')) || {}; } catch { return {}; }
+  }
+  function getPetProgress(id) { return getPetProgressMap()[id] || defaultPetProgress(); }
+  function updatePetProgress(id, patch) {
+    const map = getPetProgressMap();
+    map[id] = { ...defaultPetProgress(), ...map[id], ...patch };
+    localStorage.setItem('eluminia-pet-progress', JSON.stringify(map));
+    return map[id];
+  }
+  function affinityStarsText(affinity) {
+    const filled = Math.floor((affinity / AFFINITY_CONFIG.maxPoints) * AFFINITY_CONFIG.starCount);
+    return '★'.repeat(filled) + '☆'.repeat(AFFINITY_CONFIG.starCount - filled);
+  }
+  function getPetLoadout() {
+    try {
+      const raw = JSON.parse(localStorage.getItem('eluminia-pet-loadout'));
+      if (Array.isArray(raw) && raw.length === 2 && raw.every(id => PET_CATALOG.some(p => p.id === id))) return raw;
+    } catch {}
+    return ['renard', 'chat'];
+  }
+  function setPetLoadout(loadout) { localStorage.setItem('eluminia-pet-loadout', JSON.stringify(loadout)); }
+  // -------- v12 : center-stage est un container unique vide (pas de
+  // pet-slot dédié) — nom du compagnon équipé exposé via aria-label sur la
+  // zone réservée, pas d'affichage visuel dédié (la référence n'en prévoit
+  // pas). --------
+  function renderEquippedLine() {
+    const loadout = getPetLoadout();
+    const companion = PET_CATALOG.find(p => p.id === loadout[0]);
+    document.querySelector('.center-stage').setAttribute('aria-label', `Ton compagnon : ${companion?.name || ''} — ouvrir la collection`);
+  }
+  function petIconHtml(pet) {
+    return pet.icon ? `<img src="ui/generated/${pet.icon}" alt="${pet.name}">` : (pet.emoji || '❔');
+  }
+  function toggleEquip(id) {
+    if (!getPetProgress(id).unlocked) return; // garde-fou : un pet verrouillé ne peut jamais être équipé
+    let loadout = getPetLoadout();
+    const idx = loadout.indexOf(id);
+    if (idx >= 0) loadout.splice(idx, 1);
+    else { if (loadout.length >= 2) loadout.shift(); loadout.push(id); }
+    setPetLoadout(loadout);
+    renderCollection();
+    renderEquippedLine();
+  }
+  // -------- 4 états de la carte — cycle Découverte/Déblocage/Affinité/
+  // Maîtrise (itération Camille 2026-08-05) : mystère (silhouette, rien
+  // révélé), verrouillé (découvert, fragments visibles), débloqué (étoiles
+  // d'affinité), maîtrisé (badge distinct). --------
+  function renderCollection() {
+    const loadout = getPetLoadout();
+    const level = getAccountLevel();
+    document.getElementById('collection-grid').innerHTML = PET_CATALOG.map(pet => {
+      const progress = getPetProgress(pet.id);
+      const { discovered, unlocked, mastered, fragments, affinity } = progress;
+      const slot = loadout.indexOf(pet.id);
+      let body, stateClass;
+      if (!discovered) {
+        stateClass = 'mystery';
+        body = `<div class="collection-icon mystery-icon">?</div>
+          <div class="collection-name">???</div>
+          <div class="collection-lock-info">Continue à jouer pour le découvrir</div>`;
+      } else if (!unlocked) {
+        stateClass = 'locked';
+        const need = [];
+        if (level < pet.discoveryLevel) need.push(`Niveau ${pet.discoveryLevel}`);
+        if (pet.fragmentsRequired) need.push(`${fragments}/${pet.fragmentsRequired}`);
+        body = `<div class="collection-icon">${petIconHtml(pet)}</div>
+          <div class="collection-name">${pet.name}</div>
+          <div class="collection-ability">${pet.ability}</div>
+          <div class="collection-lock-info">${need.join(' · ')}</div>`;
+      } else {
+        stateClass = mastered ? 'mastered' : 'unlocked';
+        body = `<div class="collection-icon">${petIconHtml(pet)}</div>
+          <div class="collection-name">${pet.name}</div>
+          <div class="collection-ability">${pet.ability}</div>
+          <div class="collection-affinity">${mastered ? '★ Maîtrisé' : affinityStarsText(affinity)}</div>
+          <button class="collection-equip-btn${slot >= 0 ? ' active' : ''}" data-id="${pet.id}">${slot >= 0 ? 'Retirer' : 'Équiper'}</button>`;
+      }
+      const cornerBadge = slot >= 0 ? `<span class="collection-equip-badge">${slot + 1}</span>`
+        : (discovered && !unlocked) ? `<span class="collection-lock-badge">🔒</span>` : '';
+      return `<div class="collection-card-item ${stateClass}${slot >= 0 ? ' equipped' : ''}" data-id="${pet.id}">
+        ${cornerBadge}
+        ${body}
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.collection-equip-btn').forEach(btn => {
+      btn.addEventListener('click', () => toggleEquip(btn.dataset.id));
+    });
+  }
+  function openCollection() {
+    renderCollection();
+    if (!localStorage.getItem('eluminia-collection-tutorial-seen')) {
+      document.getElementById('collection-tutorial').style.display = 'block';
+      localStorage.setItem('eluminia-collection-tutorial-seen', '1');
+    } else {
+      document.getElementById('collection-tutorial').style.display = 'none';
+    }
+    document.getElementById('collection-overlay').classList.add('show');
+  }
+  document.getElementById('collection-btn').addEventListener('click', openCollection);
+  document.getElementById('collection-close-btn').addEventListener('click', () => {
+    document.getElementById('collection-overlay').classList.remove('show');
+  });
+
+  // -------- Leçons à revoir (2026-08-07, retour de Camille) : réviser une
+  // leçon + répondre au quiz donne de l'XP garanti, et une petite chance
+  // rare de faire apparaître un nouveau pet (œuf → hatchRandomPet()).
+  // Contenu minimal pour l'instant (pas encore de pipeline photos de
+  // cours → IA, voir CLAUDE.md) : quelques leçons de fractions codées en
+  // dur, réutilisables/rejouables (pas de limite quotidienne pour cette
+  // première passe). --------
+  const EGG_CHANCE_PER_LESSON = 0.08;
+  const LESSON_XP_REWARD = 15;
+  function LQ(id, text, answers) {
+    return { id, text, answers: answers.map((a, i) => ({ id: `${id}-${i}`, text: a[0], correct: a[1] })) };
+  }
+  const LESSON_QUESTIONS = {
+    lq1: LQ('lq1', 'Une pizza coupée en 4 parts égales : combien de parts font 1/4 ?', [['1', true], ['2', false], ['4', false]]),
+    lq2: LQ('lq2', 'Quelle fraction représente "3 parts sur 4" ?', [['3/4', true], ['4/3', false], ['1/3', false]]),
+    lq3: LQ('lq3', 'Laquelle est équivalente à 1/2 ?', [['1/3', false], ['2/4', true], ['3/5', false]]),
+    lq4: LQ('lq4', '2/4 et 1/2 représentent...', [['la même quantité', true], ['des quantités différentes', false]]),
+    lq5: LQ('lq5', 'Entre 2/5 et 3/5, laquelle est la plus grande ?', [['2/5', false], ['3/5', true], ['elles sont égales', false]]),
+    lq6: LQ('lq6', '1/2 + 1/2 = ?', [['1/4', false], ['1', true], ['2/2 seulement', false]]),
+  };
+  const LESSON_DEFS = [
+    { id: 'l1', title: 'Une fraction, c\'est quoi ?', explain: 'Une fraction représente une part d\'un tout coupé en parts égales. Par exemple, 1/4 = une part sur 4 parts égales.', questionIds: ['lq1', 'lq2'] },
+    { id: 'l2', title: 'Fractions équivalentes', explain: 'Deux fractions différentes peuvent représenter la même quantité : 2/4 et 1/2, c\'est pareil.', questionIds: ['lq3', 'lq4'] },
+    { id: 'l3', title: 'Comparer des fractions', explain: 'Avec le même dénominateur (le nombre du bas), plus le numérateur (le nombre du haut) est grand, plus la fraction est grande.', questionIds: ['lq5', 'lq6'] },
+  ];
+  // -------- œuf rare : cible un pet pas encore débloqué (découvert ou
+  // pas — l'œuf peut révéler directement un pet "mystère", c'est la
+  // surprise façon Boddle). Si tout est déjà débloqué, convertit en
+  // affinité sur un pet au hasard plutôt que de gaspiller le tirage. --------
+  function hatchRandomPet() {
+    const locked = PET_CATALOG.filter(p => !getPetProgress(p.id).unlocked);
+    if (!locked.length) {
+      const pet = PET_CATALOG[Math.floor(Math.random() * PET_CATALOG.length)];
+      const progress = getPetProgress(pet.id);
+      updatePetProgress(pet.id, { affinity: Math.min(AFFINITY_CONFIG.maxPoints, progress.affinity + 10) });
+      return { petId: pet.id, kind: 'affinity-fallback' };
+    }
+    const pet = locked[Math.floor(Math.random() * locked.length)];
+    updatePetProgress(pet.id, { discovered: true, unlocked: true });
+    return { petId: pet.id, kind: 'new-pet' };
+  }
+  let currentLessonId = null;
+  let lessonAnswers = {}; // questionId -> id de la réponse choisie, remis à zéro à chaque leçon ouverte
+  function renderLessonList() {
+    document.getElementById('lesson-list').innerHTML = LESSON_DEFS.map(l => `
+      <div class="lesson-card-item">
+        <div class="lesson-title">${l.title}</div>
+        <div class="lesson-meta">${l.questionIds.length} questions · +${LESSON_XP_REWARD} XP garanti</div>
+        <button class="lesson-review-btn" data-id="${l.id}">Réviser</button>
+      </div>`).join('');
+    document.querySelectorAll('.lesson-review-btn').forEach(btn => {
+      btn.addEventListener('click', () => openLessonQuiz(btn.dataset.id));
+    });
+  }
+  function openLessonQuiz(lessonId) {
+    const lesson = LESSON_DEFS.find(l => l.id === lessonId);
+    if (!lesson) return;
+    currentLessonId = lessonId;
+    lessonAnswers = {};
+    document.getElementById('lesson-quiz-title').textContent = lesson.title;
+    document.getElementById('lesson-quiz-explain').textContent = lesson.explain;
+    document.getElementById('lesson-quiz-questions').innerHTML = lesson.questionIds.map(qid => {
+      const q = LESSON_QUESTIONS[qid];
+      return `<div class="lesson-question" data-qid="${qid}">
+        <div class="lesson-question-text">${q.text}</div>
+        <div class="lesson-answers">${q.answers.map(a =>
+          `<button class="lesson-answer-btn" data-qid="${qid}" data-aid="${a.id}">${a.text}</button>`).join('')}</div>
+      </div>`;
+    }).join('');
+    document.querySelectorAll('.lesson-answer-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        lessonAnswers[btn.dataset.qid] = btn.dataset.aid;
+        document.querySelectorAll(`.lesson-answer-btn[data-qid="${btn.dataset.qid}"]`).forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+    document.getElementById('lesson-quiz-result').textContent = '';
+    document.getElementById('lesson-validate-btn').style.display = 'inline-block';
+    document.getElementById('lesson-back-btn').style.display = 'none';
+    document.getElementById('lesson-list-view').style.display = 'none';
+    document.getElementById('lesson-quiz-view').classList.add('show');
+    document.getElementById('lessons-card').classList.add('quiz-active');
+  }
+  function validateLessonQuiz() {
+    const lesson = LESSON_DEFS.find(l => l.id === currentLessonId);
+    if (!lesson) return;
+    let correctCount = 0;
+    lesson.questionIds.forEach(qid => {
+      const q = LESSON_QUESTIONS[qid];
+      const chosenId = lessonAnswers[qid];
+      const chosen = q.answers.find(a => a.id === chosenId);
+      document.querySelectorAll(`.lesson-answer-btn[data-qid="${qid}"]`).forEach(btn => {
+        const a = q.answers.find(x => x.id === btn.dataset.aid);
+        if (a.correct) btn.classList.add('correct');
+        else if (btn.dataset.aid === chosenId) btn.classList.add('wrong');
+      });
+      if (chosen && chosen.correct) correctCount++;
+    });
+    grantXp(LESSON_XP_REWARD);
+    let rewardText = `${correctCount}/${lesson.questionIds.length} bonnes réponses — +${LESSON_XP_REWARD} XP`;
+    if (Math.random() < EGG_CHANCE_PER_LESSON) {
+      const hatch = hatchRandomPet();
+      renderEssencePill();
+      if (hatch.kind === 'new-pet') {
+        const pet = PET_CATALOG.find(p => p.id === hatch.petId);
+        rewardText += ` — 🥚 Un œuf est apparu... c'est ${pet.name} ! 🎉`;
+      } else {
+        rewardText += ' — 🥚 Un œuf est apparu... (déjà tous tes pets débloqués, converti en affinité)';
+      }
+    }
+    document.getElementById('lesson-quiz-result').textContent = rewardText;
+    document.getElementById('lesson-validate-btn').style.display = 'none';
+    document.getElementById('lesson-back-btn').style.display = 'inline-block';
+  }
+  function backToLessonList() {
+    document.getElementById('lesson-quiz-view').classList.remove('show');
+    document.getElementById('lesson-list-view').style.display = 'block';
+    document.getElementById('lessons-card').classList.remove('quiz-active');
+    renderLessonList();
+  }
+  document.getElementById('lessons-btn').addEventListener('click', () => {
+    renderLessonList();
+    document.getElementById('lesson-quiz-view').classList.remove('show');
+    document.getElementById('lesson-list-view').style.display = 'block';
+    document.getElementById('lesson-reward-msg').style.display = 'none';
+    document.getElementById('lessons-card').classList.remove('quiz-active');
+    document.getElementById('lessons-overlay').classList.add('show');
+  });
+  document.getElementById('lessons-close-btn').addEventListener('click', () => {
+    document.getElementById('lessons-overlay').classList.remove('show');
+  });
+  document.getElementById('lesson-validate-btn').addEventListener('click', validateLessonQuiz);
+  document.getElementById('lesson-back-btn').addEventListener('click', backToLessonList);
+
+  renderEquippedLine();
+  // -------- lien direct depuis le bouton "Collection" de l'écran de fin de
+  // manche de l'arène (spike3d-arena.html?open=collection style) --------
+  if (new URLSearchParams(location.search).get('open') === 'collection') openCollection();
+
+  window.__menuDebug = {
+    getState: readState,
+    forceClaim: claimGift,
+    setDaysPlayed: (n) => localStorage.setItem('eluminia-days-played', String(n)),
+    reset: () => { ['eluminia-days-played','eluminia-daily-gift-date','eluminia-weekly-gift-at','eluminia-monthly-gift-at'].forEach(k => localStorage.removeItem(k)); },
+    getAvatar,
+    setAvatar,
+    getAbilities,
+    setAbilities,
+    toggleAbility,
+    getPetProgress: () => PET_CATALOG.map(pet => ({ id: pet.id, name: pet.name, ...getPetProgress(pet.id) })),
+    getEquipped: getPetLoadout,
+    setEquipped: (loadout) => { setPetLoadout(loadout); renderCollection(); renderEquippedLine(); },
+    toggleEquip,
+    openCollection,
+    hasSeenCollectionTutorial: () => !!localStorage.getItem('eluminia-collection-tutorial-seen'),
+    resetCollectionTutorial: () => localStorage.removeItem('eluminia-collection-tutorial-seen'),
+    getEssence,
+    hatchRandomPet: () => { const r = hatchRandomPet(); renderEssencePill(); return r; },
+    openLessons: () => document.getElementById('lessons-btn').click(),
+    openLessonQuiz,
+    validateLessonQuiz,
+    getLessonDefs: () => LESSON_DEFS.map(l => ({ id: l.id, title: l.title })),
+  };
+</script>
+
+<!-- -------- rendu du personnage 3D "Max" (2026-08-07) — premier essai,
+     modèle statique (pas encore rigué/animé). Trois.js chargé UNIQUEMENT
+     pour cette scène (menu.html était 100% DOM/CSS jusqu'ici) — même
+     version que les autres écrans (0.160.0, importmap unpkg). --------- -->
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+  const canvas = document.getElementById('character-canvas');
+  const stage = document.querySelector('.center-stage');
+
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 50);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 1.4));
+  const keyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+  keyLight.position.set(2, 4, 5);
+  scene.add(keyLight);
+  const rimLight = new THREE.DirectionalLight(0x9fd6ff, 0.9);
+  rimLight.position.set(-3, 2, -4);
+  scene.add(rimLight);
+
+  function resize() {
+    const w = stage.clientWidth, h = stage.clientHeight;
+    if (!w || !h) return;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+
+  new GLTFLoader().load('models/max-character.glb', (gltf) => {
+    const model = gltf.scene;
+    // -------- correctif rendu "image plate" (2026-08-07) : le matériau
+    // exporté par Meshy a un canal emissive (emissiveFactor blanc plein +
+    // emissiveTexture, texture proche du baseColor) — l'émissif s'ajoute à
+    // la scène indépendamment de l'éclairage et écrase les ombres/reflets
+    // du vrai calcul PBR, d'où l'effet "sticker" signalé. Neutralisé ici
+    // pour laisser la lumière de la scène façonner le volume. --------
+    model.traverse((node) => {
+      if (node.isMesh && node.material) {
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((m) => { m.emissiveMap = null; m.emissive?.set(0, 0, 0); m.needsUpdate = true; });
+      }
+    });
+    // -------- cadrage auto : centre le modèle et pose la caméra en
+    // "portrait plein pied" quelle que soit l'échelle réelle exportée
+    // par Meshy (jamais la même d'un essai à l'autre). --------
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    const center = box.getCenter(new THREE.Vector3());
+    model.position.sub(center);
+    scene.add(model);
+
+    // -------- ombre au sol : sans elle le personnage semble flotter/collé
+    // sur le fond, même avec un éclairage correct (le sol procédural du
+    // reste du jeu a toujours une ombre de contact sous les personnages). --------
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(size.x * 0.6, 32),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.35, depthWrite: false })
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.y = -size.y / 2 + 0.01;
+    scene.add(shadow);
+
+    const radius = size.length() / 2;
+    const dist = radius / Math.sin((camera.fov * Math.PI / 180) / 2);
+    camera.position.set(0, size.y * 0.06, dist * 1.15);
+    camera.lookAt(0, size.y * 0.06, 0);
+
+    // -------- rotation "piédestal" (2026-08-07, demande Camille) : preuve
+    // visuelle que c'est un vrai modèle 3D, pas une image incrustée. Face à
+    // la caméra à la connexion (rotation.y=0, pose "face" déjà utilisée
+    // pour le cadrage), puis tour complet lent et continu — pas de
+    // prefers-reduced-motion ici : la rotation EST la fonctionnalité
+    // demandée (démontrer la 3D), pas une animation décorative annexe. --------
+    turntable = model;
+    resize();
+  }, undefined, (err) => {
+    console.error('Chargement du personnage 3D échoué :', err);
+  });
+
+  let turntable = null;
+  const ROTATION_SPEED = (Math.PI * 2) / 14; // 1 tour complet / 14s
+  const clock = new THREE.Clock();
+  resize();
+  (function animate() {
+    requestAnimationFrame(animate);
+    if (turntable) turntable.rotation.y += ROTATION_SPEED * clock.getDelta();
+    else clock.getDelta();
+    renderer.render(scene, camera);
+  })();
+</script>
+</body>
+</html>

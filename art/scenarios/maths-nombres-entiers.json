@@ -1,0 +1,63 @@
+{
+  "questId": "maths-nombres-entiers",
+  "universe": {
+    "name": "L'Observatoire d'Astra",
+    "characterName": "Astra, le Vieux Compteur",
+    "lorePitch": "Astra était un gnome astronome qui classait les étoiles par leur distance, en nombres. Un jour, il a disparu, laissant derrière lui des éclats de cristal gravés de nombres, éparpillés autour de son observatoire en ruine.",
+    "moodKeywords": ["indigo night", "warm stone", "starlight", "ancient", "cozy magic"],
+    "boardPrompt": "A concept art board for a small magical clearing called Astra's Observatory: a circular ancient stone platform inlaid with a glowing pale starry-blue mosaic ring, a weathered stone obelisk at its center carved with a glowing five-pointed star rune, four lantern posts with glowing orbs around the circle, floating glowing crystal shards each showing a number. Warm, nostalgic, magical mood, not dark or scary."
+  },
+  "narrative": {
+    "loreOnEnter": "Ici se dressait l'Observatoire d'Astra, le Vieux Compteur — il ne reste que ses éclats de nombres, éparpillés dans l'herbe.",
+    "doneText": "L'Observatoire d'Astra s'illumine à nouveau — tu as retrouvé tous ses éclats !"
+  },
+  "difficultyRounds": [
+    {
+      "roundNumber": 1,
+      "instruction": "Retrouve les éclats compris entre <b>40 000</b> et <b>60 000</b>",
+      "timeLimitSeconds": 25,
+      "maxErrors": 2,
+      "content": [
+        { "label": "45 000", "correct": true },
+        { "label": "52 300", "correct": true },
+        { "label": "58 900", "correct": true },
+        { "label": "12 000", "correct": false },
+        { "label": "78 400", "correct": false },
+        { "label": "91 200", "correct": false }
+      ]
+    },
+    {
+      "roundNumber": 2,
+      "instruction": "Astra affine sa mesure — retrouve les éclats compris entre <b>45 000</b> et <b>55 000</b>",
+      "timeLimitSeconds": 20,
+      "maxErrors": 1,
+      "content": [
+        { "label": "46 200", "correct": true },
+        { "label": "49 800", "correct": true },
+        { "label": "51 500", "correct": true },
+        { "label": "54 700", "correct": true },
+        { "label": "44 900", "correct": false },
+        { "label": "55 100", "correct": false },
+        { "label": "38 600", "correct": false },
+        { "label": "62 000", "correct": false }
+      ]
+    },
+    {
+      "roundNumber": 3,
+      "instruction": "Dernière mesure d'Astra, la plus précise — retrouve les éclats compris entre <b>48 000</b> et <b>52 000</b>",
+      "timeLimitSeconds": 18,
+      "maxErrors": 1,
+      "content": [
+        { "label": "48 300", "correct": true },
+        { "label": "49 600", "correct": true },
+        { "label": "50 400", "correct": true },
+        { "label": "51 700", "correct": true },
+        { "label": "47 800", "correct": false },
+        { "label": "52 300", "correct": false },
+        { "label": "53 900", "correct": false },
+        { "label": "46 100", "correct": false }
+      ]
+    }
+  ],
+  "finishReward": { "xp": 30, "coins": 10 }
+}

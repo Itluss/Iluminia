@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Eluminia — Design system 2D</title>
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; background: var(--el-bg-deep);
+    font-family: var(--el-font); color: var(--el-text-main);
+    padding: var(--el-space-6) var(--el-space-5) 80px;
+  }
+  h1 { font: 900 26px/1.2 var(--el-font); margin: 0 0 4px; }
+  .sg-sub { color: var(--el-text-muted); margin: 0 0 var(--el-space-6); font-size: 13px; }
+  section { margin-bottom: var(--el-space-6); }
+  h2 {
+    font: 800 13px/1 var(--el-font); text-transform: uppercase; letter-spacing: .06em;
+    color: var(--el-cyan); margin: 0 0 var(--el-space-4);
+    padding-bottom: var(--el-space-2); border-bottom: 2px solid var(--el-bg-panel-light);
+  }
+  .row { display: flex; flex-wrap: wrap; gap: var(--el-space-4); align-items: center; }
+  .col { display: flex; flex-direction: column; gap: var(--el-space-2); align-items: center; }
+  .col span { font-size: 11px; color: var(--el-text-muted); }
+  .swatch { width: 64px; height: 64px; border-radius: var(--el-radius-md); border: 2px solid var(--el-outline); }
+  .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: var(--el-space-4); }
+  .card { background: var(--el-bg-panel); border: 2px solid var(--el-bg-panel-light); border-radius: var(--el-radius-lg); padding: var(--el-space-4); }
+  .bars-demo { display: flex; flex-direction: column; gap: var(--el-space-3); max-width: 360px; }
+  .rank-demo { display: flex; flex-direction: column; gap: var(--el-space-2); max-width: 320px; }
+  .skills-demo { display: flex; gap: var(--el-space-3); }
+  .modal-demo-trigger { margin-top: var(--el-space-2); }
+</style>
+</head>
+<body>
+
+<h1>Eluminia — Design system 2D</h1>
+<p class="sg-sub">Référence vivante des tokens et composants. Piloté entièrement par <code>ui/theme.css</code> + <code>ui/icons.js</code> — aucune image, tout est CSS/SVG. Voir <code>ui/README.md</code>.</p>
+
+<section>
+  <h2>Palette</h2>
+  <div class="row">
+    <div class="col"><div class="swatch" style="background:var(--el-gold)"></div><span>gold</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-orange)"></div><span>orange</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-magenta)"></div><span>magenta</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-purple)"></div><span>purple</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-blue)"></div><span>blue</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-cyan)"></div><span>cyan</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-success)"></div><span>success</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-danger)"></div><span>danger</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-bg-panel); border-color:rgba(255,255,255,.35)"></div><span>surface</span></div>
+    <div class="col"><div class="swatch" style="background:var(--el-bg-panel-light); border-color:rgba(255,255,255,.35)"></div><span>surface-2</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Boutons — variantes</h2>
+  <div class="row">
+    <button class="el-btn el-btn--primary"><svg class="el-icon"><use href="#icon-play"></use></svg>Jouer</button>
+    <button class="el-btn el-btn--secondary">Collection</button>
+    <button class="el-btn el-btn--purple">Quêtes</button>
+    <button class="el-btn el-btn--danger">Quitter</button>
+    <button class="el-btn el-btn--success">Confirmer</button>
+    <button class="el-btn el-btn--neutral">Annuler</button>
+  </div>
+</section>
+
+<section>
+  <h2>Boutons — tailles &amp; icônes</h2>
+  <div class="row">
+    <button class="el-btn el-btn--primary el-btn--sm">Petit</button>
+    <button class="el-btn el-btn--primary">Normal</button>
+    <button class="el-btn el-btn--primary el-btn--lg">Grand</button>
+    <button class="el-btn el-btn--secondary el-btn--icon" aria-label="Paramètres"><svg class="el-icon"><use href="#icon-settings"></use></svg></button>
+    <button class="el-btn el-btn--neutral el-btn--icon" aria-label="Menu"><svg class="el-icon"><use href="#icon-menu"></use></svg></button>
+    <button class="el-btn el-btn--neutral el-btn--icon" aria-label="Retour"><svg class="el-icon"><use href="#icon-back"></use></svg></button>
+    <button class="el-btn el-btn--danger el-btn--icon" aria-label="Fermer"><svg class="el-icon"><use href="#icon-close"></use></svg></button>
+    <button class="el-btn el-btn--secondary el-btn--icon el-btn--circle" aria-label="Avatar"><svg class="el-icon"><use href="#icon-avatar"></use></svg></button>
+  </div>
+</section>
+
+<section>
+  <h2>Boutons — états</h2>
+  <div class="row">
+    <div class="col"><button class="el-btn el-btn--secondary">Normal</button><span>normal</span></div>
+    <div class="col"><button class="el-btn el-btn--secondary is-pressed">Appui</button><span>appuyé</span></div>
+    <div class="col"><button class="el-btn el-btn--secondary is-selected">Sélection</button><span>sélectionné</span></div>
+    <div class="col"><button class="el-btn el-btn--secondary" disabled>Désactivé</button><span>désactivé</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Barres de statut</h2>
+  <div class="bars-demo">
+    <div class="el-bar el-bar--health">
+      <span class="el-bar-icon"><svg class="el-icon"><use href="#icon-heart"></use></svg></span>
+      <div class="el-bar-track"><div class="el-bar-fill" style="width:100%"></div></div>
+      <span class="el-bar-label">2500/2500</span>
+    </div>
+    <div class="el-bar el-bar--health is-low">
+      <span class="el-bar-icon"><svg class="el-icon"><use href="#icon-heart"></use></svg></span>
+      <div class="el-bar-track"><div class="el-bar-fill" style="width:15%"></div></div>
+      <span class="el-bar-label">380/2500</span>
+    </div>
+    <div class="el-bar el-bar--energy">
+      <span class="el-bar-icon"><svg class="el-icon"><use href="#icon-bolt"></use></svg></span>
+      <div class="el-bar-track"><div class="el-bar-fill" style="width:50%"></div></div>
+      <span class="el-bar-label">60/120</span>
+    </div>
+    <div class="el-bar el-bar--xp">
+      <span class="el-bar-icon"><svg class="el-icon"><use href="#icon-star"></use></svg></span>
+      <div class="el-bar-track"><div class="el-bar-fill" style="width:68%"></div></div>
+      <span class="el-bar-label">850/1250</span>
+    </div>
+    <div class="el-bar">
+      <span class="el-bar-label">Niveau 5 → 6</span>
+      <div class="el-segments">
+        <div class="seg is-filled"></div><div class="seg is-filled"></div><div class="seg is-filled"></div>
+        <div class="seg is-filled"></div><div class="seg"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Compteurs &amp; badges</h2>
+  <div class="row">
+    <span class="el-chip"><svg class="el-icon el-icon--sm"><use href="#icon-coin"></use></svg>3450</span>
+    <span class="el-chip"><svg class="el-icon el-icon--sm"><use href="#icon-gem"></use></svg>280</span>
+    <span class="el-chip"><svg class="el-icon el-icon--sm"><use href="#icon-crystal"></use></svg>36</span>
+    <span class="el-chip"><svg class="el-icon el-icon--sm"><use href="#icon-trophy"></use></svg>1250</span>
+    <span class="el-tag">NEW</span>
+    <span class="el-tag" style="background:var(--el-orange)">HOT</span>
+    <span class="el-tag" style="background:var(--el-purple)">-50%</span>
+    <button class="el-btn el-btn--secondary el-btn--icon has-notif" style="position:relative" aria-label="Cadeaux">
+      <svg class="el-icon"><use href="#icon-gift"></use></svg>
+      <span class="el-notif-dot">3</span>
+    </button>
+  </div>
+</section>
+
+<section>
+  <h2>Compétences (recharge circulaire)</h2>
+  <div class="skills-demo">
+    <div class="el-skill-slot is-ready" style="--charge:100">
+      <div class="el-skill-slot-icon"><svg class="el-icon el-icon--lg"><use href="#icon-bolt"></use></svg></div>
+      <span class="el-skill-slot-level">3</span>
+    </div>
+    <div class="el-skill-slot" style="--charge:55">
+      <div class="el-skill-slot-icon"><svg class="el-icon el-icon--lg"><use href="#icon-gem"></use></svg></div>
+    </div>
+    <div class="el-skill-slot is-charging" style="--charge:45">
+      <div class="el-skill-slot-icon"><svg class="el-icon el-icon--lg"><use href="#icon-crystal"></use></svg></div>
+    </div>
+    <div class="el-skill-slot is-locked" style="--charge:0">
+      <div class="el-skill-slot-icon"><svg class="el-icon el-icon--lg"><use href="#icon-lock"></use></svg></div>
+    </div>
+    <div class="el-skill-slot is-empty" style="--charge:0">
+      <div class="el-skill-slot-icon"><svg class="el-icon el-icon--lg"><use href="#icon-plus"></use></svg></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Joystick</h2>
+  <div class="el-joystick-base" style="position:relative; width:116px; height:116px;">
+    <div class="el-joystick-thumb"></div>
+  </div>
+</section>
+
+<section>
+  <h2>Panneau de question &amp; réponses</h2>
+  <div class="card" style="max-width:480px;">
+    <div class="el-question-panel" style="margin-bottom:var(--el-space-3);">
+      <span class="el-question-icon"><svg class="el-icon"><use href="#icon-question"></use></svg></span>
+      <span class="el-question-text">Combien font 7 × 8 ?</span>
+      <span class="el-question-timer"><svg class="el-icon el-icon--sm"><use href="#icon-bolt"></use></svg>15</span>
+    </div>
+    <div class="el-answers">
+      <button class="el-answer">48</button>
+      <button class="el-answer">54</button>
+      <button class="el-answer is-correct">56</button>
+      <button class="el-answer is-wrong">64</button>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Classement</h2>
+  <div class="rank-demo">
+    <div class="el-rank-row is-mine">
+      <span class="el-rank-pos">1</span>
+      <span class="el-rank-avatar" style="background:var(--el-magenta)"></span>
+      <span class="el-rank-name">Luminia</span>
+      <span class="el-rank-score"><svg class="el-icon el-icon--sm"><use href="#icon-trophy"></use></svg>1250</span>
+    </div>
+    <div class="el-rank-row">
+      <span class="el-rank-pos">2</span>
+      <span class="el-rank-avatar" style="background:var(--el-blue)"></span>
+      <span class="el-rank-name">Nova</span>
+      <span class="el-rank-score"><svg class="el-icon el-icon--sm"><use href="#icon-trophy"></use></svg>980</span>
+    </div>
+    <div class="el-rank-row">
+      <span class="el-rank-pos">3</span>
+      <span class="el-rank-avatar" style="background:var(--el-success)"></span>
+      <span class="el-rank-name">Zyro</span>
+      <span class="el-rank-score"><svg class="el-icon el-icon--sm"><use href="#icon-trophy"></use></svg>760</span>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Fenêtres</h2>
+  <div class="row" style="align-items:flex-start;">
+    <div class="el-modal-card" style="max-width:280px;">
+      <button class="el-btn el-btn--danger el-btn--icon el-modal-close" aria-label="Fermer"><svg class="el-icon"><use href="#icon-close"></use></svg></button>
+      <h3 class="el-modal-title">Titre de la fenêtre</h3>
+      <p class="el-modal-body">Ceci est un message d'exemple pour informer le joueur.</p>
+      <div class="el-modal-actions">
+        <button class="el-btn el-btn--neutral el-btn--sm">Annuler</button>
+        <button class="el-btn el-btn--success el-btn--sm">Confirmer</button>
+      </div>
+    </div>
+    <div class="el-modal-card el-modal-card--reward" style="max-width:240px;">
+      <h3 class="el-modal-title">Récompense obtenue !</h3>
+      <svg class="el-icon" style="width:56px;height:56px;margin:8px 0;"><use href="#icon-gift"></use></svg>
+      <div class="el-modal-actions">
+        <button class="el-btn el-btn--primary el-btn--sm">Récupérer</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Notification courte</h2>
+  <div class="el-toast show" style="position:static; transform:none; display:inline-flex;">
+    <svg class="el-icon el-icon--sm"><use href="#icon-check"></use></svg> Bonne réponse !
+  </div>
+</section>
+
+<script src="ui/icons.js"></script>
+</body>
+</html>

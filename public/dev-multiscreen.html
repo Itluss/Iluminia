@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Eluminia — Dev : diagnostic multi-résolutions</title>
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; background: var(--el-bg-deep); font-family: var(--el-font); color: var(--el-text-main); padding: 20px; }
+  h1 { font: 900 20px/1.2 var(--el-font); margin: 0 0 4px; }
+  .sub { color: var(--el-text-muted); font-size: 13px; margin: 0 0 16px; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 18px; }
+  .controls button { padding: 8px 16px; border-radius: var(--el-radius-sm); border: 2px solid var(--el-bg-panel-light);
+         background: var(--el-bg-panel); color: var(--el-text-main); font-weight: 800; font-size: 12px; cursor: pointer; }
+  .controls button.active { background: var(--el-cyan); color: var(--el-text-on-light); border-color: var(--el-cyan-dark); }
+  .summary { font-size: 13px; font-weight: 800; margin-bottom: 14px; }
+  .summary .pass { color: var(--el-success); }
+  .summary .fail { color: var(--el-danger); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; align-items: start; }
+  .cell { background: var(--el-bg-panel); border: 2px solid var(--el-bg-panel-light); border-radius: var(--el-radius-md); padding: 10px; }
+  .cell.state-pass { border-color: var(--el-success); }
+  .cell.state-fail { border-color: var(--el-danger); }
+  .cell .label { font-size: 12px; font-weight: 800; color: var(--el-gold); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .cell .label span.ratio { color: var(--el-text-muted); font-weight: 600; }
+  .badge { font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: var(--el-radius-pill); }
+  .badge.pass { background: color-mix(in srgb, var(--el-success) 30%, transparent); color: var(--el-success); }
+  .badge.fail { background: color-mix(in srgb, var(--el-danger) 30%, transparent); color: var(--el-danger); }
+  .badge.pending { background: var(--el-bg-panel-light); color: var(--el-text-muted); }
+  .frame-wrap { overflow: hidden; border-radius: var(--el-radius-sm); border: 2px solid var(--el-outline); background: #000; }
+  .frame-wrap iframe { border: none; display: block; transform-origin: top left; pointer-events: none; }
+  .frame-wrap.live iframe { pointer-events: auto; }
+  .cell .toggle-live { font-size: 10px; color: var(--el-text-muted); margin-top: 4px; cursor: pointer; text-decoration: underline; background: none; border: none; padding: 0; }
+  .diag { font-size: 10px; color: var(--el-danger); margin-top: 4px; white-space: pre-wrap; font-family: monospace; max-height: 80px; overflow-y: auto; }
+</style>
+</head>
+<body>
+
+<h1>Eluminia — Diagnostic multi-résolutions</h1>
+<p class="sub">Pour chaque case : le vrai écran (iframe live) + un contrôle automatique (scrollWidth/scrollHeight vs viewport, éléments interactifs hors safe-area). PASS uniquement si zéro scroll de page ET zéro élément hors-écran. "activer" = interagir en taille réelle 1:1 dans la case.</p>
+
+<div class="controls" id="screen-picker"></div>
+<div class="summary" id="summary"></div>
+<div class="grid" id="grid"></div>
+
+<script>
+  const SIZES = [
+    [740, 360], [844, 390], [852, 393], [896, 414], [932, 430],
+    [1024, 768], [1280, 720],
+  ];
+  const SCREENS = [
+    { key: 'menu', label: 'Menu', url: 'spike3d-menu.html' },
+    { key: 'arena', label: 'Arène (pré-partie)', url: 'spike3d-arena.html' },
+    { key: 'arena-play', label: 'Arène (gameplay, sans overlay)', url: 'spike3d-arena.html', afterLoad: win => {
+      const btn = win.document.getElementById('start-btn');
+      if (btn) btn.click();
+      if (win.__arenaDebug) win.__arenaDebug.skipCountdown();
+    } },
+    { key: 'arena-roundend', label: 'Résultat (fin de manche)', url: 'spike3d-arena.html', afterLoad: win => {
+      const btn = win.document.getElementById('start-btn');
+      if (btn) btn.click();
+      if (win.__arenaDebug) { win.__arenaDebug.skipCountdown(); win.__arenaDebug.simulateMatchEnd(1, 3); }
+    } },
+    { key: 'collection', label: 'Sélection pet', url: 'spike3d-menu.html', afterLoad: win => {
+      const btn = win.document.getElementById('collection-btn');
+      if (btn) btn.click();
+    } },
+  ];
+  let current = SCREENS[0];
+  const TILE_MAX_W = 300;
+
+  function runDiagnostic(win) {
+    const doc = win.document;
+    const de = doc.documentElement;
+    const cs = getComputedStyle(de);
+    const safeTop = parseFloat(cs.getPropertyValue('--safe-top')) || 0;
+    const safeRight = parseFloat(cs.getPropertyValue('--safe-right')) || 0;
+    const safeBottom = parseFloat(cs.getPropertyValue('--safe-bottom')) || 0;
+    const safeLeft = parseFloat(cs.getPropertyValue('--safe-left')) || 0;
+    const vw = win.innerWidth, vh = win.innerHeight;
+    const offscreen = [];
+    doc.querySelectorAll('button, .el-btn, [id$="-btn"], .pet-btn, .pet-pick-btn, .quiz-choice, .wardrobe-tab').forEach(el => {
+      const rect = el.getBoundingClientRect();
+      if (rect.width === 0 && rect.height === 0) return;
+      let anc = el, hidden = false;
+      while (anc) { if (getComputedStyle(anc).display === 'none') { hidden = true; break; } anc = anc.parentElement; }
+      if (hidden) return;
+      if (rect.left < safeLeft || rect.right > vw - safeRight || rect.top < safeTop || rect.bottom > vh - safeBottom) {
+        offscreen.push(el.id || el.className.toString().slice(0, 24));
+      }
+    });
+    const hScroll = de.scrollWidth > de.clientWidth;
+    const vScroll = de.scrollHeight > de.clientHeight;
+    return {
+      pass: !hScroll && !vScroll && offscreen.length === 0,
+      scrollWidth: de.scrollWidth, clientWidth: de.clientWidth,
+      scrollHeight: de.scrollHeight, clientHeight: de.clientHeight,
+      hScroll, vScroll, offscreen,
+    };
+  }
+
+  function renderPicker() {
+    const el = document.getElementById('screen-picker');
+    el.innerHTML = '';
+    SCREENS.forEach(s => {
+      const btn = document.createElement('button');
+      btn.textContent = s.label;
+      btn.className = s.key === current.key ? 'active' : '';
+      btn.addEventListener('click', () => { current = s; render(); });
+      el.appendChild(btn);
+    });
+  }
+
+  function updateSummary(results) {
+    const total = results.length;
+    const passed = results.filter(r => r === true).length;
+    const summary = document.getElementById('summary');
+    if (results.some(r => r === null)) { summary.textContent = 'Diagnostic en cours…'; return; }
+    summary.innerHTML = `<span class="${passed === total ? 'pass' : 'fail'}">${passed}/${total} PASS</span>`;
+  }
+
+  function render() {
+    renderPicker();
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    const results = SIZES.map(() => null);
+    SIZES.forEach(([w, h], i) => {
+      const scale = Math.min(1, TILE_MAX_W / w);
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      const ratio = (w / h).toFixed(2);
+      cell.innerHTML = `
+        <div class="label"><span>${w}×${h} <span class="ratio">${ratio}:1</span></span><span class="badge pending" id="badge-${i}">…</span></div>
+        <div class="frame-wrap" style="width:${Math.round(w*scale)}px; height:${Math.round(h*scale)}px;">
+          <iframe src="${current.url}" width="${w}" height="${h}" style="transform: scale(${scale});"></iframe>
+        </div>
+        <button class="toggle-live">activer (interaction 1:1)</button>
+        <div class="diag" id="diag-${i}"></div>
+      `;
+      const wrap = cell.querySelector('.frame-wrap');
+      const iframe = cell.querySelector('iframe');
+      const btn = cell.querySelector('.toggle-live');
+      btn.addEventListener('click', () => {
+        const live = wrap.classList.toggle('live');
+        btn.textContent = live ? 'désactiver' : 'activer (interaction 1:1)';
+      });
+      iframe.addEventListener('load', () => {
+        setTimeout(() => {
+          try {
+            if (current.afterLoad) current.afterLoad(iframe.contentWindow);
+            setTimeout(() => {
+              try {
+                const r = runDiagnostic(iframe.contentWindow);
+                const badge = document.getElementById(`badge-${i}`);
+                badge.textContent = r.pass ? 'PASS' : 'FAIL';
+                badge.className = 'badge ' + (r.pass ? 'pass' : 'fail');
+                cell.className = 'cell ' + (r.pass ? 'state-pass' : 'state-fail');
+                if (!r.pass) {
+                  const parts = [];
+                  if (r.hScroll) parts.push(`scroll horizontal (${r.scrollWidth}>${r.clientWidth})`);
+                  if (r.vScroll) parts.push(`scroll vertical (${r.scrollHeight}>${r.clientHeight})`);
+                  if (r.offscreen.length) parts.push(`hors-écran: ${r.offscreen.join(', ')}`);
+                  document.getElementById(`diag-${i}`).textContent = parts.join('\n');
+                }
+                results[i] = r.pass;
+                updateSummary(results);
+              } catch (e) { /* cross-origin or not ready, ignore */ }
+            }, 200);
+          } catch (e) {}
+        }, 150);
+      });
+      grid.appendChild(cell);
+    });
+  }
+
+  render();
+</script>
+</body>
+</html>

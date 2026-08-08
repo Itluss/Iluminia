@@ -1,0 +1,207 @@
+:root {
+  --navy: #0B1024;
+  --panel: #121A3B;
+  --border-dark: #05070F;
+
+  --blue: #3AA0FF;
+  --turquoise: #2FE0D0;
+  --gold: #FFB238;
+  --cyan: #35E4FF;
+  --teal: #22C7A9;
+  --violet: #B26CFF;
+  --magenta: #E356E0;
+  --amber: #FFB238;
+
+  --text: #FFFFFF;
+  --text-dim: #9FB0D9;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #05070F;
+  font-family: "Segoe UI", sans-serif;
+  color: var(--text);
+}
+
+.lobby {
+  position: relative;
+  width: 844px;
+  height: 390px;
+  background: radial-gradient(circle at 50% 30%, #14204A, #05070F);
+  overflow: hidden;
+}
+
+/* ---------- TOP LEFT ---------- */
+.top-left {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  outline: 2px solid var(--blue);
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.name-row {
+  display: flex;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.xp-bar {
+  width: 120px;
+  height: 6px;
+  background: #1A2350;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.xp-fill {
+  width: 40%;
+  height: 100%;
+  background: var(--cyan);
+}
+
+/* ---------- TOP RIGHT ---------- */
+.top-right {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.pill {
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  outline: 2px solid var(--gold);
+  border-radius: 20px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.menu-btn {
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  outline: 2px solid var(--blue);
+  border-radius: 10px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+/* ---------- LEFT NAV ---------- */
+.left-nav {
+  position: absolute;
+  top: 80px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 140px;
+}
+
+.nav-btn {
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nav-btn.character { outline: 2px solid var(--blue); }
+.nav-btn.pets { outline: 2px solid var(--turquoise); }
+.nav-btn.rewards { outline: 2px solid var(--gold); }
+.nav-btn.quests { outline: 2px solid var(--cyan); }
+.nav-btn.social { outline: 2px solid var(--teal); }
+
+/* ---------- RIGHT CARDS ---------- */
+.right-cards {
+  position: absolute;
+  top: 80px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 140px;
+}
+
+.card {
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  border-radius: 12px;
+  padding: 10px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.card.event { outline: 2px solid var(--violet); }
+.card.doublexp { outline: 2px solid var(--magenta); }
+.card.chest { outline: 2px solid var(--cyan); }
+
+/* ---------- BOTTOM LEFT ---------- */
+.bottom-left {
+  position: absolute;
+  bottom: 12px;
+  left: 12px;
+  width: 260px;
+}
+
+.daily-challenge {
+  background: var(--panel);
+  border: 2px solid var(--border-dark);
+  outline: 2px solid var(--cyan);
+  border-radius: 14px;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+/* ---------- BOTTOM RIGHT ---------- */
+.bottom-right {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+}
+
+.play-btn {
+  background: linear-gradient(180deg, #FFD36E, #FFB238);
+  border: 2px solid var(--border-dark);
+  outline: 3px solid var(--amber);
+  border-radius: 16px;
+  padding: 14px 28px;
+  font-size: 18px;
+  font-weight: bold;
+  color: #3A2400;
+  cursor: pointer;
+}
+
+/* ---------- CENTER ---------- */
+.center-stage {
+  position: absolute;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 300px;
+}

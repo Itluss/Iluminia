@@ -27,7 +27,9 @@ fichiers).
 
 Lis aussi, dans ce dossier : `visual-quality.md` (critères), `asset-rules.md`
 (style procédural, palette, perf), `acceptance-criteria.md` (acceptation
-finale).
+finale), `board-fidelity.md` (**dès que Camille fournit une planche/image
+de référence à reproduire fidèlement** — standard obligatoire, remplace la
+Phase C par défaut sur ce point).
 
 # Pipeline obligatoire
 
@@ -63,6 +65,12 @@ icône UI illisible en CSS pur) — voir `asset-rules.md` pour le générateur
 disponible mais actuellement inutilisé. Ne jamais présenter un ajout d'image
 comme la solution par défaut ; ne jamais prétendre qu'un asset a été généré
 si aucun générateur n'a effectivement tourné.
+
+**Exception** : si Camille fournit une planche/image de référence à
+reproduire fidèlement, suivre `board-fidelity.md` à la place de cette
+phase par défaut (construction en passes, point d'arrêt avant génération
+d'icônes en série, vérification de transparence par calcul, comparaison
+GPT vision).
 
 ## Phase D — Implémenter
 

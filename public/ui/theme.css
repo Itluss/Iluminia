@@ -1,0 +1,464 @@
+/* =========================================================================
+   Eluminia — Design system 2D (theme.css)
+   Zéro build : fichier CSS statique, lié via <link> depuis chaque écran.
+   Aucune image : tout le volume/relief est simulé en CSS (dégradés,
+   box-shadow superposées, pseudo-éléments). Les icônes viennent du sprite
+   SVG injecté par ui/icons.js (<use href="#icon-xxx">).
+   Voir public/ui/README.md pour la doc d'usage.
+   ========================================================================= */
+
+:root {
+  /* ---- Couleurs — surfaces ---- */
+  --el-bg-deep: #0e1638;
+  --el-bg-panel: #182c63;
+  --el-bg-panel-light: #274384;
+  --el-outline: #0a1230; /* contour marine épais façon BD, sur tous les composants */
+
+  /* ---- Couleurs — palette principale ---- */
+  /* Harmonisée (2026-08-06, passe "recomposition lobby") vers une famille
+     plus franche/lumineuse — mêmes noms de tokens (pas de rename global
+     risqué), valeurs ajustées. */
+  --el-blue: #258cff;
+  --el-blue-dark: #1660c2;
+  --el-cyan: #20cff3;
+  --el-cyan-dark: #0da8c4;
+  --el-purple: #8a55f5;
+  --el-purple-dark: #6a34d6;
+  --el-magenta: #ef4e9b;
+  --el-magenta-dark: #c72d78;
+  --el-gold: #ffc928;
+  --el-gold-dark: #e0a000;
+  --el-orange: #ff9418;
+  --el-orange-dark: #e0700a;
+  --el-cream: #fff3d5;
+
+  /* ---- Couleurs — statut ---- */
+  --el-success: #53cc55;
+  --el-success-dark: #379e3a;
+  --el-danger: #f04455;
+  --el-danger-dark: #c72836;
+  --el-warning: #ff981c;
+  --el-warning-dark: #d97400;
+
+  /* ---- Texte ---- */
+  --el-text-main: #ffffff;
+  --el-text-muted: #c3d0ef;
+  --el-text-on-light: #1a2140;
+
+  /* ---- Forme ---- */
+  --el-radius-sm: 10px;
+  --el-radius-md: 16px;
+  --el-radius-lg: 24px;
+  --el-radius-pill: 999px;
+  --el-border-w: 3px;
+
+  /* ---- Espacement ---- */
+  --el-space-1: 4px;
+  --el-space-2: 8px;
+  --el-space-3: 12px;
+  --el-space-4: 16px;
+  --el-space-5: 24px;
+  --el-space-6: 32px;
+
+  /* ---- Contrôles tactiles ---- */
+  /* clamp plutôt qu'une valeur fixe : sur tablette (peu de vmin-height
+     contrainte), un bouton icône de 56px devient visuellement minuscule
+     dans une composition qui a grandi partout ailleurs — passe UX mobile
+     natif 2026-08-06. */
+  --el-control-min: clamp(56px, 13dvmin, 84px);
+  --el-icon-sm: 18px;
+  --el-icon-md: 24px;
+  --el-icon-lg: 32px;
+
+  /* ---- Safe areas (système centralisé, passe UX mobile natif 2026-08-06) ----
+     Ne JAMAIS écrire env(safe-area-inset-*) directement dans un composant —
+     toujours passer par ces tokens (+ les marges fonctionnelles ci-dessous,
+     qui ajoutent une marge minimale même sur un appareil sans encoche). */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  /* Marge fonctionnelle = distance minimale au bord même sans safe-area réelle */
+  --el-edge-gap: 16px;
+  --el-edge-top: max(var(--el-edge-gap), calc(var(--safe-top) + 8px));
+  --el-edge-right: max(var(--el-edge-gap), calc(var(--safe-right) + 8px));
+  --el-edge-bottom: max(var(--el-edge-gap), calc(var(--safe-bottom) + 8px));
+  --el-edge-left: max(var(--el-edge-gap), calc(var(--safe-left) + 8px));
+
+  /* ---- Élévation (profondeur "gomme" : socle plein sous le bouton) ---- */
+  --el-elev-1: 4px;
+  --el-elev-2: 6px;
+  --el-elev-3: 8px;
+
+  /* ---- Transitions ---- */
+  --el-fast: 120ms ease;
+  --el-med: 200ms ease;
+
+  /* ---- Typographie ---- */
+  --el-font: "Segoe UI", system-ui, sans-serif;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --el-fast: 0ms; --el-med: 0ms; }
+}
+
+/* Icône générique (sprite injecté par ui/icons.js) */
+.el-icon { width: var(--el-icon-md); height: var(--el-icon-md); fill: currentColor; flex: none; }
+.el-icon--sm { width: var(--el-icon-sm); height: var(--el-icon-sm); }
+.el-icon--lg { width: var(--el-icon-lg); height: var(--el-icon-lg); }
+
+/* =========================================================================
+   Boutons — .el-btn
+   Volume simulé par 2 couches : un socle plein (box-shadow solide, couleur
+   --btn-shadow) qui donne l'épaisseur, + un reflet glacé (::before) en haut.
+   État appuyé = le bouton "s'enfonce" dans son socle (translateY + socle à 0).
+   ========================================================================= */
+.el-btn {
+  --btn-face: var(--el-blue);
+  --btn-face-2: var(--el-blue-dark);
+  --btn-shadow: #123a72;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--el-space-2);
+  overflow: hidden;
+  min-height: var(--el-control-min);
+  padding: 0 var(--el-space-5);
+  border: var(--el-border-w) solid var(--el-outline);
+  border-radius: var(--el-radius-pill);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--btn-face) 70%, #fff 30%) 0%, var(--btn-face) 45%, var(--btn-face-2) 100%);
+  color: var(--el-text-main);
+  font: 900 clamp(15px, 2.6dvmin, 19px) / 1 var(--el-font);
+  letter-spacing: .01em;
+  text-shadow: 0 2px 3px rgba(0,0,0,.35);
+  box-shadow: 0 var(--el-elev-2) 0 var(--btn-shadow), 0 calc(var(--el-elev-2) + 8px) 16px rgba(4,9,28,.4);
+  cursor: pointer;
+  user-select: none;
+  transition: transform var(--el-fast), box-shadow var(--el-fast), filter var(--el-fast);
+}
+.el-btn::before {
+  content: "";
+  position: absolute;
+  left: 6%; right: 6%; top: 8%;
+  height: 40%;
+  background: linear-gradient(180deg, rgba(255,255,255,.6), rgba(255,255,255,0));
+  border-radius: var(--el-radius-pill);
+  pointer-events: none;
+}
+.el-btn:hover { filter: brightness(1.05); }
+.el-btn:active,
+.el-btn.is-pressed {
+  transform: translateY(var(--el-elev-2));
+  box-shadow: 0 0 0 var(--btn-shadow), 0 4px 10px rgba(4,9,28,.35);
+}
+.el-btn:focus-visible {
+  outline: 3px solid var(--el-cyan);
+  outline-offset: 3px;
+}
+.el-btn:disabled,
+.el-btn.is-disabled {
+  filter: grayscale(.5) brightness(.75);
+  box-shadow: 0 var(--el-elev-1) 0 rgba(0,0,0,.3);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.el-btn.is-selected {
+  box-shadow: 0 var(--el-elev-2) 0 var(--btn-shadow), 0 0 0 3px var(--el-cyan), 0 calc(var(--el-elev-2) + 8px) 16px rgba(4,9,28,.4);
+}
+
+/* Variantes de couleur */
+.el-btn--primary  { --btn-face: var(--el-gold);    --btn-face-2: var(--el-gold-dark);    --btn-shadow: #8a5c00; color: var(--el-text-on-light); text-shadow: 0 1px 0 rgba(255,255,255,.35); }
+.el-btn--secondary{ --btn-face: var(--el-cyan);    --btn-face-2: var(--el-cyan-dark);    --btn-shadow: #075f76; }
+.el-btn--purple   { --btn-face: var(--el-purple);  --btn-face-2: var(--el-purple-dark);  --btn-shadow: #3d1a80; }
+.el-btn--danger   { --btn-face: var(--el-danger);  --btn-face-2: var(--el-danger-dark);  --btn-shadow: #7a141f; }
+.el-btn--success  { --btn-face: var(--el-success); --btn-face-2: var(--el-success-dark); --btn-shadow: #175c20; }
+.el-btn--neutral  { --btn-face: var(--el-bg-panel-light); --btn-face-2: var(--el-bg-panel); --btn-shadow: #060c1f; }
+
+/* Tailles */
+.el-btn--sm { min-height: 40px; padding: 0 var(--el-space-4); font-size: clamp(12px, 2dvmin, 14px); }
+.el-btn--lg { min-height: 64px; padding: 0 var(--el-space-6); font-size: clamp(18px, 3.2dvmin, 24px); }
+
+/* Bouton icône (carré arrondi ou cercle) */
+.el-btn--icon {
+  min-height: var(--el-control-min);
+  width: var(--el-control-min);
+  padding: 0;
+  border-radius: var(--el-radius-md);
+}
+.el-btn--icon.el-btn--circle { border-radius: 50%; }
+.el-btn--icon svg { width: var(--el-icon-md); height: var(--el-icon-md); }
+
+/* =========================================================================
+   Barres de statut — .el-bar
+   ========================================================================= */
+.el-bar {
+  --bar-fill: var(--el-danger);
+  --bar-fill-2: var(--el-danger-dark);
+  display: flex;
+  align-items: center;
+  gap: var(--el-space-2);
+}
+.el-bar-icon { flex: none; width: var(--el-icon-md); height: var(--el-icon-md); }
+.el-bar-icon svg { width: 100%; height: 100%; }
+.el-bar-track {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+  height: 16px;
+  border-radius: var(--el-radius-pill);
+  background: rgba(4,9,28,.55);
+  border: 2px solid rgba(4,9,28,.5);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,.5);
+  overflow: hidden;
+}
+.el-bar-fill {
+  position: relative;
+  height: 100%;
+  border-radius: var(--el-radius-pill);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--bar-fill) 70%, #fff 30%), var(--bar-fill) 55%, var(--bar-fill-2));
+  transition: width var(--el-med);
+}
+.el-bar-fill::after {
+  content: "";
+  position: absolute; left: 4%; right: 4%; top: 12%; height: 30%;
+  background: rgba(255,255,255,.5);
+  border-radius: var(--el-radius-pill);
+}
+.el-bar-label {
+  flex: none;
+  font: 800 clamp(11px, 2dvmin, 13px)/1 var(--el-font);
+  color: var(--el-text-main);
+  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.el-bar--health  { --bar-fill: var(--el-danger);  --bar-fill-2: var(--el-danger-dark); }
+.el-bar--energy  { --bar-fill: var(--el-blue);    --bar-fill-2: var(--el-blue-dark); }
+.el-bar--xp      { --bar-fill: var(--el-magenta); --bar-fill-2: var(--el-purple-dark); }
+.el-bar--gold    { --bar-fill: var(--el-gold);    --bar-fill-2: var(--el-gold-dark); }
+.el-bar--success { --bar-fill: var(--el-success); --bar-fill-2: var(--el-success-dark); }
+.el-bar.is-low .el-bar-fill { animation: elBarPulse 1s ease-in-out infinite; }
+@keyframes elBarPulse { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.3); } }
+
+/* Progression segmentée (niveau : pastilles pleines/vides) */
+.el-segments { display: flex; gap: var(--el-space-1); }
+.el-segments .seg { width: 14px; height: 14px; border-radius: 50%; background: rgba(4,9,28,.5); border: 2px solid var(--el-outline); }
+.el-segments .seg.is-filled { background: linear-gradient(180deg, #fff2, transparent), var(--el-gold); }
+
+/* =========================================================================
+   Badges / compteurs de ressources — .el-chip
+   ========================================================================= */
+.el-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--el-space-2);
+  padding: var(--el-space-1) var(--el-space-3);
+  border-radius: var(--el-radius-pill);
+  background: var(--el-bg-panel);
+  border: 2px solid var(--el-bg-panel-light);
+  color: var(--el-text-main);
+  font: 800 13px/1 var(--el-font);
+  font-variant-numeric: tabular-nums;
+}
+.el-chip svg { width: var(--el-icon-sm); height: var(--el-icon-sm); }
+
+/* Point de notification (badge "nouveau"/compteur) */
+.el-notif-dot {
+  position: absolute; top: -4px; right: -4px;
+  min-width: 20px; height: 20px; padding: 0 4px;
+  display: none; align-items: center; justify-content: center;
+  border-radius: 50%;
+  background: var(--el-danger);
+  border: 2px solid var(--el-outline);
+  color: #fff; font: 800 10px/1 var(--el-font);
+  animation: elNotifPulse 1.2s ease-in-out infinite;
+}
+.has-notif .el-notif-dot { display: flex; }
+@keyframes elNotifPulse { 0%,100% { box-shadow: 0 0 0 0 rgba(239,64,81,.55); } 50% { box-shadow: 0 0 0 5px rgba(239,64,81,0); } }
+
+/* Étiquette courte (NEW / HOT / -50%) */
+.el-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: var(--el-radius-sm);
+  background: var(--el-danger);
+  border: 2px solid var(--el-outline);
+  color: #fff;
+  font: 800 10px/1.4 var(--el-font);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+}
+
+/* =========================================================================
+   Emplacement de compétence — .el-skill-slot
+   Reprend le principe déjà en place sur .pet-btn (conic-gradient de charge)
+   mais générique/rethemé.
+   ========================================================================= */
+.el-skill-slot {
+  position: relative;
+  width: 64px; height: 64px;
+  border-radius: var(--el-radius-md);
+  background: conic-gradient(var(--el-cyan) calc(var(--charge, 100) * 1%), var(--el-bg-deep) 0);
+  padding: 4px;
+  border: var(--el-border-w) solid var(--el-outline);
+  box-shadow: 0 4px 10px rgba(4,9,28,.4);
+}
+.el-skill-slot-icon {
+  width: 100%; height: 100%;
+  border-radius: calc(var(--el-radius-md) - 4px);
+  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  display: flex; align-items: center; justify-content: center;
+}
+.el-skill-slot-icon svg { width: var(--el-icon-lg); height: var(--el-icon-lg); }
+.el-skill-slot.is-ready { box-shadow: 0 0 0 3px var(--el-cyan), 0 0 18px 4px rgba(33,212,255,.7), 0 4px 10px rgba(4,9,28,.4); }
+.el-skill-slot.is-ready:active { transform: scale(.9); }
+.el-skill-slot.is-locked { opacity: .5; }
+.el-skill-slot.is-charging { box-shadow: 0 4px 10px rgba(4,9,28,.4); }
+.el-skill-slot.is-empty {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--el-text-muted);
+  opacity: .6;
+}
+.el-skill-slot.is-empty .el-skill-slot-icon { background: transparent; }
+.el-skill-slot.is-empty .el-icon { color: var(--el-text-muted); }
+.el-skill-slot-level {
+  position: absolute; bottom: -4px; right: -4px;
+  min-width: 18px; height: 18px; padding: 0 3px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: var(--el-gold); border: 2px solid var(--el-outline);
+  color: var(--el-text-on-light); font: 800 10px/1 var(--el-font);
+}
+
+/* =========================================================================
+   Fenêtres / modales — .el-modal
+   ========================================================================= */
+.el-modal-backdrop {
+  position: fixed; inset: 0;
+  display: none; align-items: center; justify-content: center;
+  background: rgba(4,9,28,.72);
+  padding: var(--el-space-4);
+  z-index: 60;
+}
+.el-modal-backdrop.show { display: flex; }
+.el-modal-card {
+  position: relative;
+  width: 100%; max-width: 480px;
+  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  border: var(--el-border-w) solid var(--el-bg-panel-light);
+  border-radius: var(--el-radius-lg);
+  box-shadow: 0 20px 40px rgba(0,0,0,.5);
+  padding: var(--el-space-5);
+  color: var(--el-text-main);
+  animation: elModalPop .22s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes elModalPop { 0% { transform: scale(.85); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.el-modal-title { margin: 0 0 var(--el-space-2); font: 900 20px/1.2 var(--el-font); }
+.el-modal-body { color: var(--el-text-muted); font: 500 14px/1.5 var(--el-font); margin-bottom: var(--el-space-4); }
+.el-modal-close {
+  position: absolute; top: calc(var(--el-space-3) * -1); right: calc(var(--el-space-3) * -1);
+  width: 36px; height: 36px; min-height: 36px; padding: 0;
+}
+.el-modal-actions { display: flex; gap: var(--el-space-3); justify-content: center; flex-wrap: wrap; }
+
+/* Fenêtre récompense (variante dorée) */
+.el-modal-card--reward { background: linear-gradient(180deg, #2a1c52, #1a1140); border-color: var(--el-gold); text-align: center; }
+.el-modal-card--reward .el-modal-title { color: var(--el-gold); }
+
+/* Toast / notification courte */
+.el-toast {
+  position: fixed; left: 50%; top: var(--el-space-4);
+  transform: translate(-50%, -140%);
+  display: flex; align-items: center; gap: var(--el-space-2);
+  padding: var(--el-space-2) var(--el-space-4);
+  border-radius: var(--el-radius-pill);
+  background: var(--el-bg-panel);
+  border: 2px solid var(--el-bg-panel-light);
+  color: var(--el-text-main);
+  font: 700 13px/1 var(--el-font);
+  box-shadow: 0 10px 24px rgba(0,0,0,.4);
+  transition: transform var(--el-med);
+  z-index: 70;
+}
+.el-toast.show { transform: translate(-50%, 0); }
+
+/* =========================================================================
+   Panneau de question / réponses — .el-question
+   ========================================================================= */
+.el-question-panel {
+  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  border: var(--el-border-w) solid var(--el-bg-panel-light);
+  border-radius: var(--el-radius-lg);
+  padding: var(--el-space-3) var(--el-space-4);
+  display: flex; align-items: center; gap: var(--el-space-3);
+  box-shadow: 0 10px 24px rgba(0,0,0,.4);
+}
+.el-question-icon {
+  flex: none; width: 40px; height: 40px; border-radius: var(--el-radius-md);
+  background: var(--el-purple); border: 2px solid var(--el-outline);
+  display: flex; align-items: center; justify-content: center;
+}
+.el-question-icon svg { width: 22px; height: 22px; }
+.el-question-text { flex: 1; font: 800 15px/1.3 var(--el-font); color: var(--el-text-main); }
+.el-question-timer {
+  flex: none; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  min-width: 40px; padding: 4px 8px; border-radius: var(--el-radius-sm);
+  background: var(--el-bg-deep); border: 2px solid var(--el-cyan);
+  color: var(--el-cyan); font: 800 15px/1 var(--el-font);
+}
+
+.el-answers { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--el-space-3); }
+.el-answer {
+  min-height: var(--el-control-min);
+  border: var(--el-border-w) solid var(--el-outline);
+  border-radius: var(--el-radius-md);
+  font: 800 clamp(16px, 3dvmin, 20px)/1 var(--el-font);
+  color: var(--el-text-on-light);
+  box-shadow: 0 var(--el-elev-2) 0 rgba(0,0,0,.3);
+  cursor: pointer;
+  transition: transform var(--el-fast);
+}
+.el-answer:nth-child(1) { background: var(--el-success); color: #fff; }
+.el-answer:nth-child(2) { background: var(--el-blue); color: #fff; }
+.el-answer:nth-child(3) { background: var(--el-gold); }
+.el-answer:nth-child(4) { background: var(--el-danger); color: #fff; }
+.el-answer:active { transform: translateY(var(--el-elev-2)); box-shadow: 0 0 0 rgba(0,0,0,.3); }
+.el-answer.is-correct { outline: 4px solid var(--el-success); outline-offset: 3px; }
+.el-answer.is-wrong { outline: 4px solid var(--el-danger); outline-offset: 3px; }
+
+/* =========================================================================
+   Classement — .el-rank-row
+   ========================================================================= */
+.el-rank-row {
+  display: flex; align-items: center; gap: var(--el-space-3);
+  padding: var(--el-space-2) var(--el-space-3);
+  border-radius: var(--el-radius-md);
+  background: var(--el-bg-panel-light);
+}
+.el-rank-row.is-mine { background: color-mix(in srgb, var(--el-cyan) 25%, var(--el-bg-panel-light)); box-shadow: inset 0 0 0 2px var(--el-cyan); }
+.el-rank-pos { flex: none; width: 22px; text-align: center; font: 900 14px/1 var(--el-font); color: var(--el-gold); }
+.el-rank-avatar { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--el-outline); }
+.el-rank-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 700 13px/1 var(--el-font); color: var(--el-text-main); }
+.el-rank-score { flex: none; display: flex; align-items: center; gap: 4px; font: 800 13px/1 var(--el-font); color: var(--el-gold); }
+.el-rank-score svg { width: 16px; height: 16px; }
+
+/* =========================================================================
+   Joystick — .el-joystick
+   ========================================================================= */
+.el-joystick-base {
+  position: fixed;
+  width: 116px; height: 116px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--el-bg-panel-light), var(--el-bg-deep) 70%);
+  border: var(--el-border-w) solid var(--el-outline);
+  box-shadow: inset 0 4px 10px rgba(0,0,0,.5), 0 6px 16px rgba(0,0,0,.4);
+}
+.el-joystick-thumb {
+  position: absolute; width: 52px; height: 52px; left: 50%; top: 50%;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--el-blue) 70%, #fff 30%), var(--el-blue) 55%, var(--el-blue-dark));
+  border: 3px solid var(--el-outline);
+  box-shadow: 0 4px 8px rgba(0,0,0,.4);
+}

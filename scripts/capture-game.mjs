@@ -42,11 +42,21 @@ try {
     })
     .catch(() => {});
 
-  // capturer la zone de jeu la plus précise disponible
+  // capturer la zone de jeu la plus précise disponible — MAIS seulement si
+  // le canvas trouvé occupe (quasi) tout le viewport (cas des scènes
+  // Three.js plein écran, village/arène). Un <canvas> plus petit intégré
+  // dans un HUD DOM (ex. le portrait 3D du personnage sur spike3d-menu.html,
+  // 2026-08-07) ne doit PAS remplacer la capture pleine page — sinon on ne
+  // voit plus que le canvas et tout le reste de l'écran est perdu.
   let target = null;
   for (const sel of ['canvas', '#game', '#app']) {
-    target = await page.$(sel);
-    if (target) break;
+    const el = await page.$(sel);
+    if (!el) continue;
+    const box = await el.boundingBox();
+    if (box && box.width >= VIEWPORT_W * 0.9 && box.height >= VIEWPORT_H * 0.9) {
+      target = el;
+      break;
+    }
   }
   if (target) {
     await target.screenshot({ path: OUT_PNG });

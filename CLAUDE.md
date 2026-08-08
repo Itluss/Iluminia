@@ -118,3 +118,17 @@ Serveur MCP local **eluminia-images** (`.mcp.json` →
 l'environnement. **Actuellement non utilisé** par le jeu (style 100 %
 procédural) — ne l'utiliser que sur demande explicite de Camille pour un
 besoin identifié (ex. texture, icône UI).
+
+## Génération de modèles 3D (Meshy)
+
+API **Meshy** (`https://api.meshy.ai`, endpoint `openapi/v1/image-to-3d`,
+auth `Authorization: Bearer $MESHY_API_KEY`) — clé configurée le
+2026-08-07 (`setx MESHY_API_KEY`, même convention que `OPENAI_API_KEY`),
+connexion vérifiée par un appel de liste gratuit (HTTP 200). Décision
+explicite de Camille du 2026-08-07 : premier avatar joueur en 3D généré
+depuis une planche qu'elle doit fournir (image-to-3D). **Aucun script de
+génération ni intégration écrits pour l'instant** — en attente de la
+planche de référence. Une fois le premier personnage 3D intégré, ce
+document devra être mis à jour (la règle "monde 100 % procédural, pas de
+GLB sans décision explicite" ligne ci-dessus cessera de s'appliquer à ce
+personnage précis).

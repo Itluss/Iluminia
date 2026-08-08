@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>Dev — PrimaryPlayButton (isolé)</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; width: 100%; height: 100dvh; background: #808080;
+         display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 40px;
+         font-family: "Segoe UI", system-ui, sans-serif; }
+  .row { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  /* -------- bug trouvé : "span" nu matchait aussi .play-btn__label (span
+     descendant de .row) avec une spécificité PLUS FORTE que la classe
+     dédiée — écrasait silencieusement le font-size du bouton à 12px.
+     Classe dédiée pour la légende, plus de sélecteur générique "span". -------- */
+  .row-caption { color: #fff; font-size: 12px; font-weight: 700; text-shadow: 0 1px 2px #000; }
+
+  /* =========================================================================
+     PrimaryPlayButton — reproduction fidèle du bouton JOUER de la planche
+     "HOME SCREEN - ILLUMINIA". Testé ici isolé sur fond neutre avant
+     réintégration dans le lobby (public/spike3d-menu.html #play-btn).
+     ========================================================================= */
+  .play-btn {
+    /* -------- géométrie : cible Camille à 844×390 (290-320 × 82-94px),
+       dvw/dvh au lieu de vw/vh — vw/vh classiques ne suivent pas le
+       viewport réellement visible sur mobile (barre d'adresse dynamique),
+       bug diagnostiqué et corrigé projet-wide plus tôt sur cet écran. -------- */
+    width: clamp(290px, 36dvw, 320px);
+    height: clamp(82px, 22.6dvh, 94px);
+    border-radius: clamp(28px, 3.6dvh, 34px);
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: clamp(14px, 2dvw, 22px);
+    padding: 0 clamp(20px, 3dvw, 30px);
+    border: 4px solid #17234A;
+    background: linear-gradient(180deg, #FFE16A 0%, #FFD13A 26%, #FFC928 58%, #F3A900 100%);
+    box-shadow:
+      inset 0 3px 0 rgba(255,255,255,.42),
+      inset 0 -2px 0 rgba(182,111,0,.20),
+      0 7px 0 #9A6800,
+      0 10px 14px rgba(0,0,0,.22);
+    cursor: pointer;
+    transition: transform .08s ease, box-shadow .08s ease, filter .15s ease;
+    -webkit-tap-highlight-color: transparent;
+  }
+  /* -------- comparaison directe avec la planche (crop JOUER) : mon texte
+     était trop petit (grand vide autour) et le contour trop fin/trop bleu
+     — la planche a un contour quasi NOIR épais + un texte qui remplit
+     largement le bouton. Icône plate aussi trop plane — la planche a un
+     triangle à 2 tons (highlight clair) façon mini-bouton lui-même. -------- */
+  .play-btn__icon {
+    width: clamp(34px, 5dvh, 42px); height: clamp(34px, 5dvh, 42px); flex: none;
+    filter: drop-shadow(0 2px 1px rgba(0,0,0,.4));
+  }
+  .play-btn__label {
+    font-weight: 900; letter-spacing: -.01em; line-height: 1;
+    font-size: clamp(32px, 7.5dvh, 46px);
+    color: #fff;
+    -webkit-text-stroke: 2px #14100A;
+    text-shadow: 0 3px 0 #14100A;
+    white-space: nowrap;
+  }
+  .play-btn:hover { filter: brightness(1.04); }
+  .play-btn:active,
+  .play-btn.is-pressed {
+    transform: translateY(5px);
+    box-shadow:
+      inset 0 2px 0 rgba(255,255,255,.28),
+      0 2px 0 #9A6800,
+      0 4px 8px rgba(0,0,0,.16);
+  }
+  .play-btn:focus-visible {
+    outline: 3px solid #20CFF3;
+    outline-offset: 4px;
+  }
+  .play-btn:disabled,
+  .play-btn.is-disabled {
+    filter: grayscale(.55) brightness(.8);
+    box-shadow: 0 4px 0 rgba(0,0,0,.25);
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="row">
+  <span class="row-caption">normal</span>
+  <button class="play-btn" type="button">
+    <svg class="play-btn__icon" viewBox="0 0 24 24">
+      <defs><linearGradient id="playIconGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FFFDF0"/><stop offset="55%" stop-color="#FFE9A8"/><stop offset="100%" stop-color="#F6C24E"/>
+      </linearGradient></defs>
+      <path d="M6 4.5v15l14-7.5-14-7.5z" fill="url(#playIconGrad)" stroke="#14100A" stroke-width="1.4" stroke-linejoin="round"/>
+    </svg>
+    <span class="play-btn__label">JOUER</span>
+  </button>
+</div>
+
+<div class="row">
+  <span class="row-caption">pressed (.is-pressed)</span>
+  <button class="play-btn is-pressed" type="button">
+    <svg class="play-btn__icon" viewBox="0 0 24 24">
+      <defs><linearGradient id="playIconGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FFFDF0"/><stop offset="55%" stop-color="#FFE9A8"/><stop offset="100%" stop-color="#F6C24E"/>
+      </linearGradient></defs>
+      <path d="M6 4.5v15l14-7.5-14-7.5z" fill="url(#playIconGrad)" stroke="#14100A" stroke-width="1.4" stroke-linejoin="round"/>
+    </svg>
+    <span class="play-btn__label">JOUER</span>
+  </button>
+</div>
+
+<div class="row">
+  <span class="row-caption">disabled</span>
+  <button class="play-btn" type="button" disabled>
+    <svg class="play-btn__icon" viewBox="0 0 24 24">
+      <defs><linearGradient id="playIconGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FFFDF0"/><stop offset="55%" stop-color="#FFE9A8"/><stop offset="100%" stop-color="#F6C24E"/>
+      </linearGradient></defs>
+      <path d="M6 4.5v15l14-7.5-14-7.5z" fill="url(#playIconGrad)" stroke="#14100A" stroke-width="1.4" stroke-linejoin="round"/>
+    </svg>
+    <span class="play-btn__label">JOUER</span>
+  </button>
+</div>
+
+<div class="row">
+  <span class="row-caption">focus (tab jusqu'ici)</span>
+  <button class="play-btn" type="button">
+    <svg class="play-btn__icon" viewBox="0 0 24 24">
+      <defs><linearGradient id="playIconGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#FFFDF0"/><stop offset="55%" stop-color="#FFE9A8"/><stop offset="100%" stop-color="#F6C24E"/>
+      </linearGradient></defs>
+      <path d="M6 4.5v15l14-7.5-14-7.5z" fill="url(#playIconGrad)" stroke="#14100A" stroke-width="1.4" stroke-linejoin="round"/>
+    </svg>
+    <span class="play-btn__label">JOUER</span>
+  </button>
+</div>
+
+</body>
+</html>

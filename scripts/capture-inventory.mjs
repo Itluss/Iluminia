@@ -19,11 +19,9 @@ await page.goto(GAME_URL, { waitUntil: 'networkidle', timeout: 20000 });
 await page.waitForTimeout(3400);
 // L'ouverture du panneau joue une animation de pop-in (.35s) : sans neutraliser
 // cette animation, une capture prise trop tôt fige le modal en plein zoom
-// d'entrée (~55% de sa taille finale), ce qui a faussé les revues précédentes.
+// d'entrée, ce qui a faussé des revues précédentes.
 await page.addStyleTag({ content: '#inventory-modal { animation: none !important; }' });
 await page.evaluate(() => window.__spikeDebug.openInventory());
-await page.waitForTimeout(150);
-await page.evaluate(() => window.__spikeDebug.selectInvItem('coins'));
 await page.waitForTimeout(150);
 await page.screenshot({ path: OUT_PNG });
 writeFileSync(OUT_ERRORS, JSON.stringify(errors, null, 2));

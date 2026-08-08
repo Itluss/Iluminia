@@ -62,6 +62,38 @@
          font-size: 12px; cursor: pointer; }
   #bridge-panel .help-btn.show { display: inline-block; }
 
+  /* ---- panneau de mission générique (mécaniques CUEILLETTE/CARTE/TRI/
+     APPARIEMENT) : même famille visuelle que #bridge-panel, activités
+     optionnelles indépendantes du fil Elda/pont. Une instance DOM par
+     activité, toutes partagent cette classe. ---- */
+  .hud-mission-panel { position: fixed; top: 10px; left: 50%; transform: translateX(-50%) translateY(-14px);
+         background: linear-gradient(var(--el-cream), var(--el-tan)); border: 3px solid var(--el-brown);
+         border-radius: 14px;
+         padding: 10px 22px; color: var(--el-brown-dark); font-size: 14px; font-weight: 700; text-align: center;
+         box-shadow: 0 8px 18px rgba(0,0,0,0.25); opacity: 0; transition: opacity .3s, transform .3s; }
+  .hud-mission-panel.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .hud-mission-panel .obj b { color: var(--el-green-dark); font-size: 16px; }
+  .hud-mission-panel .hint { font-size: 12px; margin-top: 4px; color: #7a5334; font-style: italic; display: none; font-weight: 600; }
+  .hud-mission-panel .hint.show { display: block; }
+  /* ---- panneau de dialogue à choix (mécanique DIALOGUE) : même famille que
+     #dialogue-box, avec une rangée de boutons de réponse à la place du clic
+     « continuer ». ---- */
+  #choice-dialogue-box { position: fixed; bottom: 22vh; left: 50%; transform: translateX(-50%) translateY(14px);
+         width: min(560px, 86vw); background: linear-gradient(var(--el-cream), var(--el-tan));
+         border: 3px solid var(--el-brown);
+         border-radius: 16px; padding: 14px 20px; color: var(--el-brown-dark); opacity: 0; pointer-events: none;
+         transition: opacity .2s, transform .2s; box-shadow: 0 10px 24px rgba(0,0,0,0.3); }
+  #choice-dialogue-box.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  #choice-dialogue-box .name { font-weight: 800; color: var(--el-purple); margin-bottom: 4px; font-size: 14px; }
+  #choice-dialogue-box .text { font-size: 14px; line-height: 1.5; margin-bottom: 10px; }
+  #choice-dialogue-box .choices { display: flex; flex-direction: column; gap: 6px; }
+  #choice-dialogue-box .choice-btn { border: 2px solid var(--el-brown); background: var(--el-cream);
+         color: var(--el-brown-dark); font-weight: 700; font-size: 13px; border-radius: 10px; padding: 7px 12px;
+         cursor: pointer; text-align: left; }
+  #choice-dialogue-box .choice-btn:hover { background: #fff6de; border-color: var(--el-green-dark); }
+  #choice-dialogue-box .choice-btn.wrong { background: #f3b6ab; border-color: #b23b2a; }
+  #choice-dialogue-box .choice-btn.correct { background: #cdeab0; border-color: var(--el-green-dark); }
+
   /* ---- inventaire de morceaux portés : rangée de chips au-dessus de la
      barre d'action, même famille visuelle crème/tan. ---- */
   #pieces-panel { position: fixed; bottom: 120px; left: 50%; transform: translateX(-50%) translateY(10px);
@@ -103,8 +135,62 @@
   #end .card .rule { width: 56%; height: 3px; margin: 9px auto 11px; border-radius: 3px;
          background: linear-gradient(90deg, transparent, #c9a24a, #ffe08a, #c9a24a, transparent); }
   #end .card small { display: block; margin-top: 4px; opacity: 0.7; font-size: 12px; color: var(--el-brown-dark); }
+  #end .card #end-continue-btn { margin-top: 14px; padding: 9px 26px; border-radius: 12px;
+         border: 2px solid var(--el-brown); background: var(--el-green); color: #fff; font-weight: 800;
+         font-size: 14px; cursor: pointer; }
+  #end .card #end-continue-btn:hover { filter: brightness(1.08); }
+  /* ---- combat (prototype) : répondre = attaquer, façon Prodigy — retour
+     direct de Camille : « pas fun », veut un vrai enjeu/danger, pas un
+     quiz de plus. Même famille visuelle que les autres overlays. ---- */
+  #battle-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(20,26,20,0.5); z-index: 75; }
+  #battle-overlay.show { display: flex; }
+  #battle-overlay .card { position: relative; background: linear-gradient(var(--el-cream), var(--el-tan));
+         border: 4px solid var(--el-brown); border-radius: 20px;
+         padding: 20px 28px 24px; color: var(--el-brown-dark); text-align: center; width: min(420px, 88vw);
+         box-shadow: 0 16px 34px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,246,222,0.55);
+         animation: end-card-pop .5s cubic-bezier(.2,1.4,.4,1); }
+  #battle-name { font-weight: 800; color: var(--el-purple); font-size: 15px; margin-bottom: 6px; }
+  #battle-hp-track { width: 100%; height: 14px; border-radius: 8px; background: rgba(0,0,0,0.2);
+         overflow: hidden; margin-bottom: 14px; border: 1.5px solid rgba(61,42,24,0.4); }
+  #battle-hp-fill { height: 100%; width: 100%; background: linear-gradient(180deg,#e8735a,#c9432e);
+         transition: width .35s ease; }
+  #battle-question { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
+  #battle-choices { display: flex; flex-direction: column; gap: 7px; margin-bottom: 12px; }
+  #battle-choices button { border: 2px solid var(--el-brown); background: var(--el-cream);
+         color: var(--el-brown-dark); font-weight: 700; font-size: 14px; border-radius: 10px; padding: 8px 14px;
+         cursor: pointer; }
+  #battle-choices button:hover:not(:disabled) { background: #fff6de; border-color: var(--el-green-dark); }
+  #battle-choices button.correct { background: #cdeab0; border-color: var(--el-green-dark); }
+  #battle-choices button.wrong { background: #f3b6ab; border-color: #b23b2a; }
+  #battle-lives { font-size: 18px; letter-spacing: 3px; }
   .flying-star { position: fixed; top: 0; left: 0; width: clamp(20px,3.6vmin,30px); height: clamp(20px,3.6vmin,30px);
          pointer-events: none; z-index: 60; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.35)); will-change: transform, opacity; }
+  /* ---- coffre de niveau (façon GW2) : chaque niveau ouvre un coffre dont
+     le contenu s'ajoute à l'inventaire. Même famille visuelle que #end. ---- */
+  #level-chest-overlay { position: fixed; inset: 0; display: none; align-items: center; justify-content: center;
+         background: rgba(20,26,20,0.45); z-index: 70; }
+  #level-chest-overlay.show { display: flex; }
+  #level-chest-overlay .card { position: relative; background: linear-gradient(var(--el-cream), var(--el-tan));
+         border: 4px solid var(--el-brown); border-radius: 20px;
+         padding: 26px 36px 24px; color: var(--el-brown-dark); text-align: center; width: min(360px, 84vw);
+         box-shadow: 0 16px 34px rgba(0,0,0,0.4), inset 0 0 0 2px rgba(255,246,222,0.55);
+         animation: end-card-pop .5s cubic-bezier(.2,1.4,.4,1); }
+  #level-chest-overlay .chest-icon { font-size: 54px; line-height: 1; margin-bottom: 4px;
+         filter: drop-shadow(0 3px 5px rgba(0,0,0,0.35)); transition: transform .25s; }
+  #level-chest-overlay .chest-icon.opened { transform: scale(1.15) rotate(-4deg); }
+  #level-chest-overlay h2 { margin: 4px 0 2px; font-size: clamp(18px,3vmin,24px); color: var(--el-green-dark); }
+  #level-chest-overlay .rule { width: 56%; height: 3px; margin: 9px auto 11px; border-radius: 3px;
+         background: linear-gradient(90deg, transparent, #c9a24a, #ffe08a, #c9a24a, transparent); }
+  #level-chest-overlay .chest-loot { display: none; flex-direction: column; gap: 6px; margin: 10px 0; }
+  #level-chest-overlay .chest-loot.show { display: flex; }
+  #level-chest-overlay .chest-loot .loot-row { display: flex; align-items: center; gap: 8px;
+         background: rgba(255,255,255,0.35); border-radius: 10px; padding: 5px 12px; font-size: 13px; font-weight: 700; }
+  #level-chest-overlay .chest-loot .loot-row img { width: 24px; height: 24px; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+  #level-chest-overlay button { margin-top: 8px; padding: 8px 22px; border-radius: 12px;
+         border: 2px solid var(--el-brown); background: var(--el-green); color: #fff; font-weight: 800;
+         font-size: 14px; cursor: pointer; }
+  #level-chest-overlay button:hover { filter: brightness(1.08); }
   /* barre XP à deux couches : `#xp-fill` (vert normal, la valeur RÉELLE) au-
      dessus de `#xp-fill-ghost` (vert clair, une PRÉVISION du gain en cours,
      façon Guild Wars) — le fantôme dépasse le vert normal pendant la
@@ -159,47 +245,107 @@
          filter: sepia(0.75) saturate(3.5) hue-rotate(-10deg) brightness(1.25)
                  drop-shadow(0 0 10px rgba(255,205,60,0.9)) drop-shadow(0 2px 4px rgba(0,0,0,0.4)); }
 
-  /* ---- fenêtre modale inventaire : fond assombri (même pattern que
-     #end/#pause-overlay). Le panneau est désormais l'image générée par
-     Nano Banana Pro à partir de la planche de Camille (fidélité fine,
-     détail peint) — le CSS ne fait plus que positionner par-dessus les
-     quelques éléments RÉELLEMENT dynamiques (bouton fermer, 2 cases
-     cliquables pièces/étoiles, texte du panneau détail, pied de page avec
-     les vraies valeurs) en coordonnées %, alignées sur l'image
-     (2528×1696 ; ratio conservé via aspect-ratio). ---- */
+  /* ---- menu inventaire : reproduction fidèle de art/board/image.png
+     section 3 (demande explicite de Camille — fidélité pixel, pas une
+     réinterprétation). Couleurs échantillonnées sur la planche, pas les
+     variables --el-* candy existantes (la planche est plus olive/ivoire que
+     la palette bonbon du reste du jeu). Catalogue et rareté/équipé pilotés
+     par données (INV_ITEMS, RARITY_STYLE) — aucune couleur codée en dur par
+     objet. ---- */
+  :root {
+    --inv-header-top: #96B85C; --inv-header-bot: #6C9438; --inv-gold: #D9B96A;
+    --inv-cream: #F3E9D2; --inv-cream-light: #FBF3E1; --inv-tan: #E8DAB8;
+    --inv-tan-dark: #DCC99D; --inv-cell-border: #E0CFA8; --inv-brown-text: #5B4630;
+    --inv-green-text: #3E6930; --inv-green-badge: #6FA050;
+  }
   #inventory-overlay { position: fixed; inset: 0; z-index: 45; display: none; align-items: center; justify-content: center;
          background: rgba(20,26,20,0.55); }
   #inventory-overlay.show { display: flex; }
-  #inventory-modal { position: relative; width: min(1120px, 96vw); aspect-ratio: 2528 / 1696;
-         background: url('/ui/generated/inventory-panel-banana.png') center / 100% 100% no-repeat;
-         border-radius: 30px; overflow: hidden;
+  #inventory-modal { position: relative; width: min(1120px, 96vw); aspect-ratio: 1360/900;
+         background: var(--inv-cream); border-radius: 26px; overflow: hidden; box-sizing: border-box;
+         border: 2px solid var(--inv-gold);
          box-shadow: 0 28px 56px rgba(0,0,0,0.42);
-         animation: end-card-pop .35s cubic-bezier(.2,1.4,.4,1); }
-  #inventory-close { position: absolute; left: 93.3%; top: 9.3%; width: 6%; aspect-ratio: 1; transform: translate(-50%,-50%);
-         border-radius: 50%; border: none; background: transparent; cursor: pointer; }
-  .inv-grid { position: absolute; left: 4.6%; top: 28.8%; width: 12.3%; height: 12.6%; display: flex; gap: 2%; }
-  .inv-slot { flex: 1; aspect-ratio: 1; border-radius: 12px; border: none; background: transparent; padding: 0;
-         cursor: pointer; }
-  .inv-slot.selected { background: rgba(255,224,150,0.55); box-shadow: 0 0 0 2px #ffd678 inset; }
-  .inv-detail { position: absolute; left: 70.5%; top: 58%; width: 26%; height: 36%;
-         display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; }
-  #inv-detail-empty, #inv-detail-filled { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .inv-detail h4 { margin: 0; font-size: clamp(13px,1.6vmin,17px); color: var(--el-green-dark); }
-  .inv-detail .cat { font-size: clamp(9px,1.05vmin,11px); font-weight: 800; color: #fff; text-transform: uppercase;
-         letter-spacing: .05em; background: var(--el-green); padding: 2px 10px; border-radius: 999px; }
-  .inv-detail p { font-size: clamp(10px,1.3vmin,13px); color: var(--el-brown-dark); opacity: 0.85; margin: 0; line-height: 1.4; }
-  /* pied de page : la valeur réelle recouvre le nombre fictif dessiné par
-     l'image générée (un fond plein de même teinte masque l'ancien chiffre). */
-  .inv-footer { position: absolute; left: 0; bottom: 0; width: 100%; height: 12.5%; box-sizing: border-box;
-         display: flex; justify-content: space-between; align-items: center; padding: 0 5.5%;
-         background: #f2e8cf; }
-  .inv-footer-count { display: flex; align-items: center; gap: 8px; font-weight: 800; color: var(--el-brown-dark);
-         font-size: clamp(12px,1.6vmin,15px); }
-  .inv-footer-count img { width: clamp(22px,2.7vmin,30px); height: clamp(22px,2.7vmin,30px); }
+         animation: end-card-pop .35s cubic-bezier(.2,1.4,.4,1);
+         display: flex; flex-direction: column; color: var(--inv-brown-text); }
+  #inventory-modal .inv-header { flex: none; display: flex; align-items: center; gap: 14px;
+         padding: 0 20px 0 14px; height: 11%;
+         background: linear-gradient(180deg, var(--inv-header-top), var(--inv-header-bot));
+         border-bottom: 2px solid var(--inv-gold); }
+  #inventory-modal .inv-header .inv-header-icon { width: clamp(38px,5.4vmin,52px); height: clamp(38px,5.4vmin,52px);
+         flex: none; border-radius: 14px; background: var(--inv-cream-light); border: 2px solid var(--inv-gold);
+         display: flex; align-items: center; justify-content: center; box-shadow: 0 3px 6px rgba(0,0,0,0.25); }
+  #inventory-modal .inv-header .inv-header-icon img { width: 68%; height: 68%; object-fit: contain; }
+  #inventory-modal .inv-header h2 { flex: 1; margin: 0; font-size: clamp(18px,2.6vmin,26px); font-weight: 800;
+         color: #fff; }
+  #inventory-close { width: clamp(28px,3.6vmin,36px); height: clamp(28px,3.6vmin,36px); flex: none; border-radius: 50%;
+         border: none; background: var(--inv-cream-light); color: var(--inv-brown-text); font-weight: 800;
+         font-size: clamp(14px,1.8vmin,18px); line-height: 1; padding: 0; cursor: pointer;
+         box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+  #inventory-close:hover { background: #fff; }
+  #inventory-modal .inv-body { flex: 1; display: flex; min-height: 0; }
+  #inventory-modal .inv-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .inv-tabs { flex: none; display: flex; gap: 1.2%; padding: 1.6% 2% 0; background: var(--inv-tan); }
+  .inv-tab { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+         padding: 1.1% 4px; border: none; border-radius: 12px 12px 0 0; cursor: pointer;
+         background: var(--inv-tan-dark); color: var(--inv-brown-text); font-weight: 700;
+         font-size: clamp(9px,1.05vmin,12px); }
+  .inv-tab img { width: clamp(20px,2.6vmin,28px); height: clamp(20px,2.6vmin,28px); object-fit: contain; }
+  .inv-tab.active { background: var(--inv-cream); box-shadow: 0 -2px 6px rgba(0,0,0,0.08) inset; }
+  .inv-tab .inv-tab-glyph { width: clamp(20px,2.6vmin,28px); height: clamp(20px,2.6vmin,28px);
+         display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3px; }
+  .inv-tab .inv-tab-glyph span { background: var(--inv-brown-text); border-radius: 3px; }
+  .inv-grid { flex: 1; display: grid; grid-template-columns: repeat(6, 1fr); grid-template-rows: repeat(4, 1fr);
+         gap: 1%; padding: 2.2%; background: var(--inv-cream); align-content: stretch; }
+  .inv-slot { position: relative; border-radius: 12px; border: none; padding: 0; cursor: pointer;
+         background: var(--inv-cream-light); box-shadow: inset 0 0 0 2px var(--inv-cell-border); }
+  .inv-slot.empty { cursor: default; background: rgba(224,207,168,0.25);
+         box-shadow: inset 0 0 0 2px rgba(224,207,168,0.6); }
+  .inv-slot img { width: 66%; height: 66%; object-fit: contain; position: absolute; left: 50%; top: 46%;
+         transform: translate(-50%,-50%); filter: drop-shadow(0 2px 3px rgba(0,0,0,0.3)); }
+  .inv-slot .inv-qty { position: absolute; right: 6%; bottom: 5%; font-weight: 800;
+         font-size: clamp(9px,1.15vmin,13px); color: var(--inv-brown-text); }
+  .inv-slot .inv-dot { position: absolute; right: 8%; top: 6%; width: 12%; aspect-ratio: 1; border-radius: 50%;
+         background: #7FC96A; box-shadow: 0 0 0 2px var(--inv-cream-light); }
+  .inv-slot.selected { box-shadow: inset 0 0 0 3px #ffd678, 0 0 0 3px rgba(255,214,120,0.5); background: #FFF7E0; }
+  /* rareté/équipé : classes génériques, une seule fois, jamais par objet */
+  .inv-slot.rarity-rare { box-shadow: inset 0 0 0 2px #5B9BD9; }
+  .inv-slot.rarity-epic { box-shadow: inset 0 0 0 2px #A970D9; }
+  .inv-slot.rarity-legendary { box-shadow: inset 0 0 0 2px #E0A030, 0 0 8px 1px rgba(224,160,48,0.5); }
+  .inv-slot.equipped { box-shadow: inset 0 0 0 3px #D9B96A; }
+  .inv-slot.equipped::after { content: ''; position: absolute; left: 6%; bottom: 5%; width: 30%; height: 4px;
+         border-radius: 2px; background: linear-gradient(90deg, #7FC96A, #A9E091); }
+  .inv-detail { flex: none; width: 30%; background: var(--inv-cream-light); border-left: 2px solid var(--inv-tan-dark);
+         padding: 4% 3.5%; display: flex; flex-direction: column; align-items: center; text-align: center; box-sizing: border-box; }
+  .inv-detail .inv-detail-empty-hint { margin: auto; opacity: .45; font-size: clamp(11px,1.4vmin,14px); font-weight: 700; }
+  .inv-detail img { width: clamp(70px,10vmin,110px); height: clamp(70px,10vmin,110px); object-fit: contain;
+         filter: drop-shadow(0 4px 6px rgba(0,0,0,0.3)); margin-bottom: 4%; }
+  .inv-detail h3 { margin: 0 0 6px; font-size: clamp(15px,1.9vmin,20px); color: var(--inv-green-text); }
+  .inv-detail .inv-detail-cat { font-size: clamp(9px,1.1vmin,12px); font-weight: 800; color: #fff;
+         text-transform: uppercase; letter-spacing: .04em; background: var(--inv-green-badge);
+         padding: 3px 12px; border-radius: 999px; margin-bottom: 10px; }
+  .inv-detail p { font-size: clamp(11px,1.35vmin,14px); line-height: 1.45; margin: 0 0 12px; opacity: .9; }
+  .inv-detail .inv-stats { align-self: stretch; display: flex; flex-direction: column; gap: 6px; }
+  .inv-detail .inv-stat { display: flex; align-items: center; gap: 8px; font-weight: 700;
+         font-size: clamp(11px,1.4vmin,14px); }
+  .inv-detail .inv-stat img { width: clamp(16px,2vmin,20px); height: clamp(16px,2vmin,20px); margin: 0; filter: none; }
+  .inv-detail .inv-actions { display: flex; flex-direction: column; gap: 8px; align-self: stretch; margin-top: auto; padding-top: 14px; }
+  .inv-btn { border: none; border-radius: 12px; padding: 10px; font-weight: 800; cursor: pointer;
+         font-size: clamp(12px,1.5vmin,15px); }
+  .inv-btn-equip { background: linear-gradient(180deg, #83B85F, #5F9640); color: #fff;
+         box-shadow: 0 3px 0 #4c7a33; }
+  .inv-btn-equip.is-equipped { background: linear-gradient(180deg, #6a6a6a, #4a4a4a); box-shadow: 0 3px 0 #333; }
+  .inv-btn-details { background: var(--inv-tan); color: var(--inv-brown-text); border: 1px solid var(--inv-tan-dark);
+         box-shadow: 0 3px 0 #B9A472; }
+  .inv-footer { flex: none; height: 9%; box-sizing: border-box; display: flex; align-items: center;
+         justify-content: space-between; padding: 0 2.2%; background: var(--inv-cream); border-top: 2px solid var(--inv-tan-dark); }
+  .inv-footer-cap { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: clamp(12px,1.5vmin,15px); }
+  .inv-footer-cap img { width: clamp(18px,2.3vmin,24px); height: clamp(18px,2.3vmin,24px); }
+  .inv-footer-plus { width: clamp(20px,2.5vmin,26px); height: clamp(20px,2.5vmin,26px); border-radius: 50%;
+         border: none; background: var(--inv-tan-dark); color: var(--inv-brown-text); font-weight: 800; cursor: default; }
   .inv-footer-currency { display: flex; gap: 20px; }
-  .inv-footer-currency .res { display: flex; align-items: center; gap: 6px; font-weight: 800; color: var(--el-brown-dark);
-         font-size: clamp(13px,1.7vmin,16px); }
-  .inv-footer-currency .res img { width: clamp(22px,2.7vmin,30px); height: clamp(22px,2.7vmin,30px); }
+  .inv-footer-currency .res { display: flex; align-items: center; gap: 6px; font-weight: 800;
+         font-size: clamp(13px,1.65vmin,17px); }
+  .inv-footer-currency .res img { width: clamp(23px,2.9vmin,30px); height: clamp(23px,2.9vmin,30px); }
 
   /* ---- niveau + XP (bas-gauche) : texte + belle barre verte sur fond noir,
      étoile carrée à droite. ---- */
@@ -362,21 +508,26 @@
 </div>
 <div id="inventory-overlay">
   <div id="inventory-modal">
-    <button id="inventory-close" type="button" aria-label="Fermer"></button>
-    <div class="inv-grid" id="inv-grid"></div>
-    <div class="inv-detail" id="inv-detail">
-      <div id="inv-detail-empty"></div>
-      <div id="inv-detail-filled" style="display:none">
-        <h4 id="inv-detail-name"></h4>
-        <div class="cat" id="inv-detail-cat"></div>
-        <p id="inv-detail-desc"></p>
+    <div class="inv-header">
+      <div class="inv-header-icon"><img src="/ui/generated/icon-backpack.png" alt="" /></div>
+      <h2>Inventaire</h2>
+      <button id="inventory-close" type="button" aria-label="Fermer">✕</button>
+    </div>
+    <div class="inv-body">
+      <div class="inv-main">
+        <div class="inv-tabs" id="inv-tabs"></div>
+        <div class="inv-grid" id="inv-grid"></div>
+      </div>
+      <div class="inv-detail" id="inv-detail">
+        <div class="inv-detail-empty-hint" id="inv-detail-empty">Sélectionne un objet</div>
       </div>
     </div>
     <div class="inv-footer">
-      <div class="inv-footer-count"><img src="/ui/icons/icon-pouch.png" alt="" /><span id="inv-item-count">0</span></div>
+      <div class="inv-footer-cap"><img src="/ui/icons/icon-pouch.png" alt="" /><span id="inv-cap">32 / 60</span>
+        <button class="inv-footer-plus" type="button" disabled>+</button></div>
       <div class="inv-footer-currency">
-        <div class="res"><img src="/ui/icons/res-coin.png" alt="" /><span id="inv-footer-coins">0</span></div>
-        <div class="res"><img src="/ui/icons/res-star.png" alt="" /><span id="inv-footer-stars">0</span></div>
+        <div class="res"><img src="/ui/icons/res-coin.png" alt="" /><span id="inv-footer-coins">1250</span></div>
+        <div class="res"><img src="/ui/icons/icon-gem.png" alt="" /><span id="inv-footer-gems">45</span></div>
       </div>
     </div>
   </div>
@@ -412,6 +563,10 @@
     <img src="/ui/icons/res-star.png" alt="" />
     <span id="star-count">0</span>
   </div>
+  <div class="res">
+    <img src="/ui/generated/item-leaf.png" alt="" />
+    <span id="seed-count">0</span>
+  </div>
 </div>
 <div id="interact-hint">Appuie sur E pour parler</div>
 <div id="name-tooltip"></div>
@@ -426,12 +581,37 @@
   <button class="help-btn" type="button">Besoin d'aide ?</button>
 </div>
 <div id="pieces-panel"><img class="pouch" src="/ui/icons/icon-pouch.png" alt="" /></div>
+<div id="numbers-panel" class="hud-mission-panel"><div class="obj"></div><div class="hint"></div></div>
+<div id="words-panel" class="hud-mission-panel"><div class="obj"></div><div class="hint"></div></div>
+<div id="compass-panel" class="hud-mission-panel"><div class="obj"></div><div class="hint"></div></div>
+<div id="sort-panel" class="hud-mission-panel"><div class="obj"></div><div class="hint"></div></div>
+<div id="match-panel" class="hud-mission-panel"><div class="obj"></div><div class="hint"></div></div>
+<div id="choice-dialogue-box">
+  <div class="name"></div>
+  <div class="text"></div>
+  <div class="choices"></div>
+</div>
 <div id="end"><div class="card">
   <div class="trophy-wrap"><div class="trophy-glow"></div><img class="trophy" src="/ui/icons/xp-star.png" alt="" /></div>
   <h2>Bravo, pont traversé !</h2>
   <div class="rule"></div>
   <div class="item-row" id="end-item-row"><img src="/ui/icons/icon-lantern.png" alt="" /><span>Lanterne d'explorateur obtenue !</span></div>
-  <small>Recharge la page pour rejouer</small>
+  <small id="end-next-hint">L'aventure continue — suis la flèche !</small>
+  <button id="end-continue-btn" type="button">Continuer l'aventure</button>
+</div></div>
+<div id="battle-overlay"><div class="card">
+  <div id="battle-name"></div>
+  <div id="battle-hp-track"><div id="battle-hp-fill"></div></div>
+  <div id="battle-question"></div>
+  <div id="battle-choices"></div>
+  <div id="battle-lives"></div>
+</div></div>
+<div id="level-chest-overlay"><div class="card">
+  <div class="chest-icon">🎁</div>
+  <h2>Niveau <span id="chest-level-num"></span> !</h2>
+  <div class="rule"></div>
+  <div id="chest-loot" class="chest-loot"></div>
+  <button id="chest-open-btn" type="button">Ouvrir le coffre</button>
 </div></div>
 <div id="portal-fade" class="show"></div>
 <div id="pause-overlay"><div class="card">⏸ Jeu en pause<br><small>Clique pour reprendre</small></div></div>
@@ -490,7 +670,7 @@ const starCountEl = document.getElementById('star-count');
 const actionBarEl = document.getElementById('action-bar');
 const pauseOverlayEl = document.getElementById('pause-overlay');
 
-const progress = { level: 1, xp: 0, xpNext: 40, coins: 0, stars: 0 };
+const progress = { level: 1, xp: 0, xpNext: 40, coins: 0, stars: 0, seeds: 0 };
 let stage = 'meet-elda'; // meet-elda -> bridge -> done
 let paused = false;
 
@@ -500,6 +680,29 @@ function updateProgressPanel() {
   xpFillEl.style.width = `${Math.min(100, (progress.xp / progress.xpNext) * 100)}%`;
   coinCountEl.textContent = progress.coins;
   starCountEl.textContent = progress.stars;
+  seedCountEl.textContent = progress.seeds;
+}
+// -------- graines : monnaie unique dédiée à l'apprentissage (répondre =
+// gagner), avec une petite loterie intégrée (retour de Camille : « pas
+// complexe » — une seule monnaie, une seule fonction, pas de système de
+// familier séparé pour l'instant). --------
+const seedCountEl = document.getElementById('seed-count');
+function addSeeds(base) {
+  let amount = base, rare = false;
+  if (Math.random() < 0.12) { amount += 8 + Math.floor(Math.random() * 8); rare = true; }
+  progress.seeds += amount;
+  updateProgressPanel();
+  if (rare) { report(`✨ Graine rare trouvée ! +${amount} graines`); setTimeout(() => report(), 2400); }
+  else if (base > 0) { report(`+${amount} graine${amount > 1 ? 's' : ''}`); setTimeout(() => report(), 900); }
+  return { amount, rare };
+}
+const seedsGrantedFor = new Set();
+function pollSeedGrants() {
+  [
+    ['sam', samState.solved], ['compass', compassState.solved], ['words', wordsChallenge.state.solved],
+    ['sort', sortState.solved], ['match', matchState.solved], ['astra', numbersChallenge.state.solved],
+    ['battle', battleState.defeated],
+  ].forEach(([id, done]) => { if (done && !seedsGrantedFor.has(id)) { seedsGrantedFor.add(id); addSeeds(6); } });
 }
 const xpPanelEl = document.getElementById('xp-panel');
 // contour doré transitoire encadrant le bloc XP + pulsation de l'étoile
@@ -518,7 +721,7 @@ function addReward(xpGain, coinGain) {
     progress.xpNext = Math.round(progress.xpNext * 1.25);
   }
   updateProgressPanel();
-  if (progress.level > levelBefore) flashLevelUp();
+  if (progress.level > levelBefore) { flashLevelUp(); queueLevelChest(levelBefore, progress.level); }
 }
 // pourcentage affiché par la barre CLAIRE (fantôme) pour un total d'XP
 // "montré" en prévision `shownXp` (pas encore réellement crédité à
@@ -579,7 +782,7 @@ function flyStarsToXpBar(fromEl, count, totalXp) {
           }
           xpFillEl.classList.add('xp-fill-catchup');
           updateProgressPanel();
-          if (progress.level > levelBefore) flashLevelUp();
+          if (progress.level > levelBefore) { flashLevelUp(); queueLevelChest(levelBefore, progress.level); }
           setTimeout(() => {
             xpFillEl.classList.remove('xp-fill-catchup');
             xpFillGhostEl.style.width = xpFillEl.style.width;
@@ -597,80 +800,238 @@ function updateQuestBox() {
   else if (stage === 'bridge') {
     text = bridgeSolved ? 'Le pont est réparé — traverse-le !' : 'Répare le pont : ramasse des morceaux de planche et assemble-les';
     prog = `Rempli : ${placedQuarters}/4`;
-  } else { text = 'Pont traversé — bravo !'; prog = 'Rempli : 4/4'; }
+  } else {
+    const step = currentMainQuestStep();
+    text = step ? step.label : 'Toutes les quêtes principales terminées — bravo !';
+    prog = step ? `Étape ${mainQuestIndex + 1}/${MAIN_QUEST_STEPS.length}` : '';
+  }
   questObjectiveEl.textContent = text;
   questProgressEl.textContent = prog;
   positionQuickAccessBar();
 }
 updateProgressPanel();
 
-// -------- barre de raccourcis verticale + fenêtre d'inventaire. Structure
-// calquée sur la planche (en-tête + onglets + grille + panneau de détail +
-// pied de page). Grille peuplée UNIQUEMENT des ressources réellement
-// trackées par le jeu (progress.coins/progress.stars) — pas d'objets RPG
-// fictifs. Seul le bouton sac à dos de la barre est actif ; les 3 autres et
-// les 5 onglets hors « Tous » sont de vrais `disabled` (aucun système
-// équipement/consommables/quêtes n'existe encore). Déclaré AVANT le premier
-// appel à positionQuestBox() (qui invoque positionQuickAccessBar) pour
-// éviter une référence à une const pas encore initialisée.
+// -------- barre de raccourcis verticale + menu inventaire. Reproduction
+// fidèle de art/board/image.png section 3 (demande explicite de Camille).
+// Catalogue mocké (INV_ITEMS) + rareté/équipé pilotés par données — voir
+// RARITY_CLASS, aucune couleur codée en dur par objet. Icônes = placeholders
+// (cercles colorés) tant que la génération de la série finale n'est pas
+// confirmée par Camille (~18 icônes manquantes, cf. art/reviews/current-plan.md) ;
+// item.icon === null déclenche le rendu placeholder dans renderGrid().
+// Déclaré AVANT le premier appel à positionQuestBox() (qui invoque
+// positionQuickAccessBar) pour éviter une référence à une const pas encore
+// initialisée.
 const quickAccessBarEl = document.getElementById('quick-access-bar');
 const inventoryToggleEl = document.getElementById('btn-inventory');
 const inventoryOverlayEl = document.getElementById('inventory-overlay');
-const invFooterCoinsEl = document.getElementById('inv-footer-coins');
-const invFooterStarsEl = document.getElementById('inv-footer-stars');
-const invItemCountEl = document.getElementById('inv-item-count');
+const invTabsEl = document.getElementById('inv-tabs');
 const invGridEl = document.getElementById('inv-grid');
-const invDetailEmptyEl = document.getElementById('inv-detail-empty');
-const invDetailFilledEl = document.getElementById('inv-detail-filled');
-const invDetailNameEl = document.getElementById('inv-detail-name');
-const invDetailCatEl = document.getElementById('inv-detail-cat');
-const invDetailDescEl = document.getElementById('inv-detail-desc');
-const INV_TOTAL_SLOTS = 24;
-const INV_ITEMS = [
-  { id: 'coins', icon: '/ui/icons/res-coin.png', name: 'Pièces', cat: 'Ressources',
-    desc: "Monnaie gagnée en explorant et en aidant les habitants.", qty: () => progress.coins },
-  { id: 'stars', icon: '/ui/icons/res-star.png', name: 'Étoiles', cat: 'Ressources',
-    desc: "Récompense des quêtes et des défis réussis.", qty: () => progress.stars },
+const invDetailEl = document.getElementById('inv-detail');
+const INV_GRID_SLOTS = 24;
+const INV_TABS = [
+  { id: 'all', label: 'Tous', glyph: 'grid' },
+  { id: 'equipment', label: 'Équipement', icon: '/ui/generated/item-helmet.png' },
+  { id: 'consumables', label: 'Consommables', icon: '/ui/generated/item-potion-red.png' },
+  { id: 'resources', label: 'Ressources', icon: '/ui/generated/item-crystal-blue.png' },
+  { id: 'quests', label: 'Quêtes', icon: '/ui/generated/item-scroll.png' },
+  { id: 'other', label: 'Autres', icon: '/ui/generated/item-pouch.png' },
 ];
-// Cases pièces/étoiles : zones cliquables INVISIBLES (les icônes, points
-// verts et pointillés sont déjà peints dans l'image de fond générée) — pas
-// de rendu DOM par-dessus, juste la détection de clic + l'état sélectionné.
-for (const item of INV_ITEMS) {
-  const slot = document.createElement('button');
-  slot.type = 'button';
-  slot.className = 'inv-slot';
-  slot.addEventListener('click', () => selectInvItem(item));
-  invGridEl.appendChild(slot);
+const INV_ITEMS = [
+  { id: 'sword', name: 'Épée courte', category: 'equipment', slot: 'Arme', icon: '/ui/generated/item-sword.png', qty: 1, isNew: true,
+    desc: 'Une épée simple et bien équilibrée.', stats: [{ icon: null, label: 'Attaque +3' }] },
+  { id: 'helmet', name: 'Casque de novice', category: 'equipment', slot: 'Tête', icon: '/ui/generated/item-helmet.png', qty: 1, isNew: true,
+    desc: 'Un casque simple qui offre une petite protection.', stats: [{ icon: null, label: 'Défense +2' }, { icon: null, label: 'Agilité +1' }] },
+  { id: 'tunic', name: 'Tunique en cuir', category: 'equipment', slot: 'Torse', icon: '/ui/generated/item-tunic.png', qty: 1, isNew: true,
+    desc: 'Une tunique légère, agréable à porter.', stats: [{ icon: null, label: 'Défense +1' }] },
+  { id: 'boots', name: 'Bottes de marche', category: 'equipment', slot: 'Pieds', icon: '/ui/generated/item-boots.png', qty: 1, isNew: true,
+    desc: 'Idéales pour explorer sans se fatiguer.', stats: [{ icon: null, label: 'Agilité +2' }] },
+  { id: 'shield', name: 'Bouclier rond', category: 'equipment', slot: 'Main', icon: '/ui/generated/item-shield.png', qty: 1, isNew: true,
+    desc: 'Un bouclier robuste pour parer les coups.', stats: [{ icon: null, label: 'Défense +3' }] },
+  { id: 'ring', name: 'Anneau simple', category: 'equipment', slot: 'Doigt', icon: '/ui/generated/item-ring.png', qty: 1,
+    desc: 'Un anneau discret, sans effet particulier.', stats: [] },
+  { id: 'potion-red', name: 'Potion de vie', category: 'consumables', icon: '/ui/generated/item-potion-red.png', qty: 5, isNew: true,
+    desc: 'Restaure un peu de vie quand on en a besoin.', stats: [] },
+  { id: 'potion-blue', name: 'Potion de magie', category: 'consumables', icon: '/ui/generated/item-potion-blue.png', qty: 3, isNew: true,
+    desc: 'Restaure un peu de magie.', stats: [] },
+  { id: 'bread', name: 'Pain', category: 'consumables', icon: '/ui/generated/item-bread.png', qty: 2, isNew: true,
+    desc: 'Un pain frais, simple et nourrissant.', stats: [] },
+  { id: 'apple', name: 'Pomme', category: 'consumables', icon: '/ui/generated/item-apple.png', qty: 7, isNew: true,
+    desc: 'Une pomme croquante cueillie dans le verger.', stats: [] },
+  { id: 'mushroom', name: 'Champignon', category: 'consumables', icon: '/ui/generated/item-mushroom.png', qty: 4, isNew: true,
+    desc: 'Un champignon des bois, bon pour les potions.', stats: [] },
+  { id: 'flower', name: 'Fleur jaune', category: 'consumables', icon: '/ui/generated/item-flower.png', qty: 1,
+    desc: 'Une petite fleur des champs.', stats: [] },
+  { id: 'wood', name: 'Bois', category: 'resources', icon: '/ui/generated/item-wood.png', qty: 19, isNew: true,
+    desc: 'Des bûches récoltées pour construire et réparer.', stats: [] },
+  { id: 'stone', name: 'Pierre', category: 'resources', icon: '/ui/generated/item-stone.png', qty: 26, isNew: true,
+    desc: 'De la pierre solide, utile pour bâtir.', stats: [] },
+  { id: 'leaf', name: 'Feuille', category: 'resources', icon: '/ui/generated/item-leaf.png', qty: 12, isNew: true,
+    desc: 'Une feuille récoltée dans la prairie.', stats: [] },
+  { id: 'crystal-blue', name: 'Cristal bleu', category: 'resources', icon: '/ui/generated/item-crystal-blue.png', qty: 8, isNew: true,
+    desc: 'Un cristal froid, légèrement lumineux.', stats: [] },
+  { id: 'crystal-purple', name: 'Cristal violet', category: 'resources', icon: '/ui/generated/item-crystal-purple.png', qty: 3, isNew: true,
+    desc: 'Un cristal rare, précieux pour les échanges.', stats: [], rarity: 'rare' },
+  { id: 'coin', name: 'Pièce d’or', category: 'resources', icon: '/ui/icons/res-coin.png', qty: 25,
+    desc: 'Monnaie gagnée en explorant et en aidant les habitants.', stats: [] },
+];
+const RARITY_CLASS = { rare: 'rarity-rare', epic: 'rarity-epic', legendary: 'rarity-legendary' };
+
+// -------- coffre de niveau (façon GW2) : chaque niveau ouvre un coffre,
+// son contenu s'ajoute à l'inventaire existant (INV_ITEMS). Retour de
+// Camille : « le moteur c'est le level up, à chaque niveau un coffre
+// s'ajoute à l'inventaire ». Consommables/ressources uniquement pour
+// l'instant (l'équipement est déjà toutes possédé dans le catalogue actuel
+// — un vrai système d'équipement "à débloquer" est un chantier de données
+// à part, pas fait ce soir). --------
+const CHEST_LOOT_POOL = ['potion-red', 'potion-blue', 'crystal-blue', 'mushroom', 'apple', 'wood', 'stone', 'leaf'];
+function chestLootForLevels(fromLevel, toLevel) {
+  const loot = [{ id: 'coin', qty: 0 }];
+  for (let lvl = fromLevel + 1; lvl <= toLevel; lvl++) {
+    loot[0].qty += 8 + lvl * 4;
+    const pick = CHEST_LOOT_POOL[Math.floor(Math.random() * CHEST_LOOT_POOL.length)];
+    const existing = loot.find(l => l.id === pick);
+    const qty = 1 + Math.floor(Math.random() * 2);
+    if (existing) existing.qty += qty; else loot.push({ id: pick, qty });
+    if (lvl % 3 === 0) {
+      const rarePick = 'crystal-purple';
+      const rareExisting = loot.find(l => l.id === rarePick);
+      if (rareExisting) rareExisting.qty += 1; else loot.push({ id: rarePick, qty: 1 });
+    }
+  }
+  return loot;
 }
-function selectInvItem(item) {
-  invGridEl.querySelectorAll('.inv-slot.selected').forEach(el => el.classList.remove('selected'));
-  const idx = INV_ITEMS.indexOf(item);
-  invGridEl.children[idx].classList.add('selected');
-  invDetailEmptyEl.style.display = 'none';
-  invDetailFilledEl.style.display = 'flex';
-  invDetailNameEl.textContent = item.name;
-  invDetailCatEl.textContent = item.cat;
-  invDetailDescEl.textContent = `${item.desc} (${item.qty()})`;
+function grantLoot(loot) {
+  loot.forEach(({ id, qty }) => {
+    if (id === 'coin') { progress.coins += qty; return; }
+    const item = INV_ITEMS.find(it => it.id === id);
+    if (item) { item.qty += qty; item.isNew = true; }
+  });
+  updateProgressPanel();
 }
-function positionQuickAccessBar() {
-  // collée sous #quest-box (dont la hauteur varie avec la longueur de
-  // l'objectif affiché) : même mécanique de recalcul que positionQuestBox.
-  quickAccessBarEl.style.top = `${questBoxEl.getBoundingClientRect().bottom + 10}px`;
+const chestOverlayEl = document.getElementById('level-chest-overlay');
+const chestIconEl = chestOverlayEl.querySelector('.chest-icon');
+const chestLevelNumEl = document.getElementById('chest-level-num');
+const chestLootEl = document.getElementById('chest-loot');
+const chestOpenBtn = document.getElementById('chest-open-btn');
+const pendingChests = [];
+let chestOpen = false;
+function iconForLoot(id) {
+  if (id === 'coin') return '/ui/icons/res-coin.png';
+  return INV_ITEMS.find(it => it.id === id)?.icon ?? '/ui/icons/res-coin.png';
+}
+function nameForLoot(id) {
+  if (id === 'coin') return 'Pièces d’or';
+  return INV_ITEMS.find(it => it.id === id)?.name ?? id;
+}
+function showNextChest() {
+  if (chestOpen || pendingChests.length === 0) return;
+  chestOpen = true;
+  const { level, loot } = pendingChests.shift();
+  chestLevelNumEl.textContent = level;
+  chestIconEl.classList.remove('opened');
+  chestLootEl.classList.remove('show');
+  chestLootEl.innerHTML = '';
+  chestOpenBtn.textContent = 'Ouvrir le coffre';
+  chestOpenBtn.disabled = false;
+  chestOverlayEl.classList.add('show');
+  paused = true; // réutilise le flag de pause (pas setPaused() : on ne veut pas l'overlay "Jeu en pause" par-dessus)
+  chestOpenBtn.onclick = () => {
+    if (chestOpenBtn.textContent !== 'Ouvrir le coffre') { closeChest(); return; }
+    chestIconEl.classList.add('opened');
+    grantLoot(loot);
+    chestLootEl.innerHTML = loot.map(l => `<div class="loot-row"><img src="${iconForLoot(l.id)}" alt="" /><span>${nameForLoot(l.id)} ×${l.qty}</span></div>`).join('');
+    chestLootEl.classList.add('show');
+    chestOpenBtn.textContent = 'Continuer';
+  };
+}
+function closeChest() {
+  chestOverlayEl.classList.remove('show');
+  chestOpen = false;
+  if (pendingChests.length === 0) { paused = false; clock.getDelta(); }
+  showNextChest();
+}
+function queueLevelChest(fromLevel, toLevel) {
+  pendingChests.push({ level: toLevel, loot: chestLootForLevels(fromLevel, toLevel) });
+  showNextChest();
+}
+
+let invActiveTab = 'all';
+let invSelectedId = 'helmet';
+
+function renderTabs() {
+  invTabsEl.innerHTML = '';
+  for (const tab of INV_TABS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'inv-tab' + (tab.id === invActiveTab ? ' active' : '');
+    const glyph = tab.id === 'all'
+      ? '<span class="inv-tab-glyph"><span></span><span></span><span></span><span></span></span>'
+      : `<img src="${tab.icon}" alt="" />`;
+    btn.innerHTML = `${glyph}<span>${tab.label}</span>`;
+    btn.addEventListener('click', () => { invActiveTab = tab.id; renderTabs(); renderGrid(); });
+    invTabsEl.appendChild(btn);
+  }
+}
+
+function slotContent(item) {
+  if (item.icon) return `<img src="${item.icon}" alt="" />`;
+  return `<div style="position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);width:56%;aspect-ratio:1;
+          border-radius:50%;background:${item.color};box-shadow:inset 0 -4px 8px rgba(0,0,0,0.25),0 2px 3px rgba(0,0,0,0.3)"></div>`;
+}
+function renderGrid() {
+  invGridEl.innerHTML = '';
+  const items = INV_ITEMS.filter(it => invActiveTab === 'all' || it.category === invActiveTab);
+  for (let i = 0; i < INV_GRID_SLOTS; i++) {
+    const item = items[i];
+    const slot = document.createElement('div');
+    if (!item) { slot.className = 'inv-slot empty'; invGridEl.appendChild(slot); continue; }
+    slot.className = 'inv-slot' + (RARITY_CLASS[item.rarity] ? ' ' + RARITY_CLASS[item.rarity] : '')
+      + (item.equipped ? ' equipped' : '') + (item.id === invSelectedId ? ' selected' : '');
+    slot.dataset.id = item.id;
+    slot.innerHTML = slotContent(item) + `<span class="inv-qty">${item.qty}</span>`
+      + (item.isNew ? '<span class="inv-dot"></span>' : '');
+    slot.addEventListener('click', () => { invSelectedId = item.id; renderGrid(); renderDetail(); });
+    invGridEl.appendChild(slot);
+  }
+}
+function renderDetail() {
+  const item = INV_ITEMS.find(it => it.id === invSelectedId);
+  if (!item) { invDetailEl.innerHTML = '<div class="inv-detail-empty-hint" id="inv-detail-empty">Sélectionne un objet</div>'; return; }
+  const catLabel = INV_TABS.find(t => t.id === item.category)?.label ?? item.category;
+  invDetailEl.innerHTML = `
+    ${slotContent(item).replace('position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);', '')}
+    <h3>${item.name}</h3>
+    <div class="inv-detail-cat">${catLabel}${item.slot ? ' • ' + item.slot : ''}</div>
+    <p>${item.desc}</p>
+    <div class="inv-stats">${item.stats.map(s => `<div class="inv-stat">• ${s.label}</div>`).join('')}</div>
+    <div class="inv-actions">
+      <button class="inv-btn inv-btn-equip${item.equipped ? ' is-equipped' : ''}" id="inv-btn-equip"
+        ${item.category === 'equipment' ? '' : 'disabled style="opacity:.5;cursor:default"'}>${item.equipped ? 'Déséquiper' : 'Équiper'}</button>
+      <button class="inv-btn inv-btn-details" type="button">Détails</button>
+    </div>`;
+  if (item.category === 'equipment') {
+    document.getElementById('inv-btn-equip').addEventListener('click', () => {
+      for (const it of INV_ITEMS) if (it.slot === item.slot) it.equipped = false;
+      item.equipped = !item.equipped;
+      renderGrid(); renderDetail();
+    });
+  }
 }
 function updateInventoryPanel() {
-  invFooterCoinsEl.textContent = progress.coins;
-  invFooterStarsEl.textContent = progress.stars;
-  invItemCountEl.textContent = String(INV_ITEMS.length);
-  if (invDetailFilledEl.style.display === 'flex') {
-    const selected = INV_ITEMS.find(i => i.name === invDetailNameEl.textContent);
-    if (selected) invDetailDescEl.textContent = `${selected.desc} (${selected.qty()})`;
-  }
+  document.getElementById('inv-footer-coins').textContent = 1250;
+  document.getElementById('inv-footer-gems').textContent = 45;
+  renderTabs(); renderGrid(); renderDetail();
 }
 function openInventory() { updateInventoryPanel(); inventoryOverlayEl.classList.add('show'); }
 function closeInventory() { inventoryOverlayEl.classList.remove('show'); }
 inventoryToggleEl.addEventListener('click', openInventory);
 document.getElementById('inventory-close').addEventListener('click', closeInventory);
 inventoryOverlayEl.addEventListener('click', e => { if (e.target === inventoryOverlayEl) closeInventory(); });
+function positionQuickAccessBar() {
+  // collée sous #quest-box (dont la hauteur varie avec la longueur de
+  // l'objectif affiché) : même mécanique de recalcul que positionQuestBox.
+  quickAccessBarEl.style.top = `${questBoxEl.getBoundingClientRect().bottom + 10}px`;
+}
 
 function positionQuestBox() {
   // colle exactement sous #hud (bord partagé, -2px = épaisseur de bordure)
@@ -2222,7 +2583,10 @@ function advanceDialogue() {
 boxEl.addEventListener('pointerdown', e => { e.stopPropagation(); advanceDialogue(); });
 addEventListener('keydown', e => {
   if (dialogue.open && (e.key === ' ' || e.key === 'Enter')) { advanceDialogue(); return; }
-  if (!dialogue.open && (e.key === 'e' || e.key === 'E') && dialogue.canTalk) openDialogue(linesForNpc(dialogue.talkTarget));
+  if (!dialogue.open && (e.key === 'e' || e.key === 'E') && dialogue.canTalk) {
+    if (dialogue.talkTarget === 'sam') { openSamQuiz(); return; }
+    openDialogue(linesForNpc(dialogue.talkTarget));
+  }
 });
 
 // -------- le pont des fractions (à l'est de la prairie) --------
@@ -2275,6 +2639,32 @@ function makeFractionSprite(text) {
   const tex = new THREE.CanvasTexture(c);
   const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
   sprite.scale.set(1.15, 0.72, 1);
+  return sprite;
+}
+
+// -------- variante largeur dynamique de makeFractionSprite, pour les
+// libellés plus longs que "3/4" (noms de panier, phrases de fonction) — le
+// canvas fixe 128px tronquait "MINÉRAL"/"Planter un clou" (défaut bloquant
+// constaté en revue, corrigé ici sans toucher makeFractionSprite, déjà
+// utilisée ailleurs pour les fractions du pont). --------
+function makeWideLabelSprite(text, fontPx = 32) {
+  const measure = document.createElement('canvas').getContext('2d');
+  measure.font = `bold ${fontPx}px "Segoe UI"`;
+  const textW = measure.measureText(text).width;
+  const w = Math.max(130, Math.round(textW + 56)), h = 80;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgba(61,42,24,0.92)';
+  ctx.beginPath(); ctx.roundRect(4, 4, w - 8, h - 8, 16); ctx.fill();
+  ctx.strokeStyle = '#ffd39b'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.roundRect(4, 4, w - 8, h - 8, 16); ctx.stroke();
+  ctx.fillStyle = '#fff6de'; ctx.font = `bold ${fontPx}px "Segoe UI"`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, w / 2, h / 2 + 1);
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false }));
+  const scaleH = 0.72;
+  sprite.scale.set(scaleH * (w / h), scaleH, 1);
   return sprite;
 }
 
@@ -2471,6 +2861,13 @@ const PLANET_DISCOVERY = {
     { id: 'misty-swamp', name: 'le Marais Brumeux', ...zoneCenterFlat(ZONES[2].bearingDeg, 55), range: 20 },
     { id: 'blossom-orchard', name: 'les Vergers Fleuris', ...zoneCenterFlat(ZONES[3].bearingDeg, 55), range: 20 },
     { id: 'frost-tundra', name: 'la Toundra Givrée', ...zoneCenterFlat(ZONES[4].bearingDeg, 55), range: 20 },
+    { id: 'numbers-quiz', name: 'le Défi des Grands Nombres', x: 20, z: -15, range: 5 },
+    { id: 'words-quiz', name: 'le Défi des Mots', x: -18, z: -12, range: 5 },
+    { id: 'sam-npc', name: 'la Halte de Sam', x: -8, z: -20, range: 5 },
+    { id: 'compass-quiz', name: 'la Rose des Vents', x: 2, z: -24, range: 6 },
+    { id: 'sort-quiz', name: 'la Clairière des Sciences', x: 30, z: 14, range: 8 },
+    { id: 'match-quiz', name: 'l’Atelier des Paires', x: -10, z: 18, range: 5 },
+    { id: 'creature', name: 'le Repaire du Golem Grincheux', x: 8, z: -14, range: 5 },
   ],
   npcIds: ['elda', 'bram', 'nima'],
 };
@@ -3392,6 +3789,1047 @@ function makeCollectiblePiece(def) {
 }
 const collectPieces = MISSION_PONT_ELDA.pieces.map(makeCollectiblePiece);
 
+// -------- moteur générique CUEILLETTE : zone à explorer, cristaux
+// corrects/incorrects, chrono déclenché au 1er ramassage + tolérance
+// d'erreurs limitée avant échec (retour direct de Camille sur la 1ère
+// version sans enjeu : « si ça prend 30s, aucun intérêt »). Activités
+// optionnelles, ne touchent pas à `stage`/updateQuestBox(). Instancié pour
+// Maths (nombres) et Français (nature des mots) — voir
+// docs/prompt-planete1-20h.md. --------
+const cueilletteChallenges = [];
+let pendingCueillettePickup = null; // { challenge, group } — un seul ramassage en cours à la fois
+function createCueilletteChallenge(cfg) {
+  // cfg: { zone:{x,z,r}, color, pickReward, finishReward, doneText,
+  //        pickCorrectMsg, pickWrongMsg, loreOnEnter, panelEl,
+  //        rounds: [{ instruction, timeLimitSeconds, maxErrors,
+  //                    content:[{label,correct}] }] } — manches à difficulté
+  // croissante (voir art/scenarios/ + scripts/generate-quest-scenario.mjs) :
+  // un échec (temps écoulé ou trop d'erreurs) renvoie à la manche 1, un vrai
+  // enjeu sur toute la série, pas juste la dernière manche.
+  const state = { roundIndex: 0, found: 0, errors: 0, solved: false, running: false, timeLeft: 0, timerId: null, loreShown: false, wasActive: false };
+  const orbs = [];
+  function currentRound() { return cfg.rounds[state.roundIndex]; }
+  function targetForRound() { return currentRound().content.filter(c => c.correct).length; }
+  function spawnOrbs() {
+    orbs.forEach(o => scene.remove(o));
+    orbs.length = 0;
+    currentRound().content.forEach((def, i, arr) => {
+      const a = (i / arr.length) * Math.PI * 2;
+      const x = cfg.zone.x + Math.cos(a) * cfg.zone.r, z = cfg.zone.z + Math.sin(a) * cfg.zone.r;
+      const group = new THREE.Group();
+      const crystal = toon(new THREE.IcosahedronGeometry(0.3, 0), cfg.color, { outlineScale: 1.08, flat: false });
+      group.add(crystal);
+      const label = makeFractionSprite(def.label);
+      label.position.set(0, 0.62, 0); group.add(label);
+      group.position.set(x, 0.4, z);
+      group.userData = { correct: def.correct, picked: false, board: crystal, flat: { x, z } };
+      crystal.userData.haloTarget = group;
+      group.userData.glowMeshes = [addGlowOutline(crystal, 1.14)];
+      scene.add(group);
+      orbs.push(group);
+    });
+  }
+  function updatePanel() {
+    const objEl = cfg.panelEl.querySelector('.obj'), hintEl = cfg.panelEl.querySelector('.hint');
+    if (state.solved) { objEl.innerHTML = cfg.doneText; hintEl.classList.remove('show'); return; }
+    const round = currentRound();
+    const timeTxt = state.running ? ` — ⏱ ${state.timeLeft}s` : '';
+    const roundTxt = cfg.rounds.length > 1 ? ` (manche ${state.roundIndex + 1}/${cfg.rounds.length})` : '';
+    objEl.innerHTML = `${round.instruction} — <b>${state.found}/${targetForRound()}</b>${timeTxt}${roundTxt}`;
+    hintEl.textContent = `Attention : encore ${round.maxErrors - state.errors} erreur(s) possible(s) avant de recommencer.`;
+    hintEl.classList.toggle('show', state.errors > 0 && !state.solved);
+  }
+  function resetToStart() {
+    if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+    state.roundIndex = 0; state.found = 0; state.errors = 0; state.running = false;
+    spawnOrbs();
+    updatePanel();
+    report('Raté — retour à la manche 1 !');
+    setTimeout(() => report(), 1400);
+  }
+  function startTimer() {
+    state.running = true;
+    state.timeLeft = currentRound().timeLimitSeconds;
+    state.timerId = setInterval(() => {
+      state.timeLeft--;
+      updatePanel();
+      if (state.timeLeft <= 0) { clearInterval(state.timerId); state.timerId = null; resetToStart(); }
+    }, 1000);
+  }
+  function advanceRound(pos) {
+    if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+    if (state.roundIndex + 1 >= cfg.rounds.length) {
+      state.solved = true;
+      addReward(cfg.finishReward.xp, cfg.finishReward.coins);
+      burst(pos, 0xffe08a, { count: 30, life: 0.8, spread: 3.4 });
+      report(cfg.doneText); setTimeout(() => report(), 2200);
+      updatePanel();
+      cfg.onSolved?.(pos);
+      return;
+    }
+    state.roundIndex++; state.found = 0; state.errors = 0; state.running = false;
+    burst(pos, 0xffd27a, { count: 20, life: 0.6, spread: 2.8 });
+    report('Manche réussie — la suivante est plus difficile !'); setTimeout(() => report(), 1400);
+    spawnOrbs();
+    updatePanel();
+  }
+  function collect(group) {
+    const pos = sphereFrame(group.userData.flat.x, group.userData.flat.z).position.clone().add(new THREE.Vector3(0, 0.4, 0));
+    if (!state.running && !state.solved) startTimer();
+    if (group.userData.correct) {
+      group.userData.picked = true; group.visible = false;
+      state.found++;
+      addReward(cfg.pickReward.xp, cfg.pickReward.coins);
+      addSeeds(1);
+      burst(pos, 0xffd27a, { count: 16, life: 0.5 });
+      report(cfg.pickCorrectMsg); setTimeout(() => report(), 1000);
+      playPickupAnim();
+      if (state.found === targetForRound()) { advanceRound(pos); return; }
+    } else {
+      state.errors++;
+      burst(pos, 0xe25b4a, { count: 12, life: 0.45 });
+      report(cfg.pickWrongMsg); setTimeout(() => report(), 1000);
+      playPickupAnim();
+      if (state.errors >= currentRound().maxErrors) { resetToStart(); return; }
+    }
+    updatePanel();
+  }
+  spawnOrbs();
+  updatePanel();
+  const api = { cfg, state, orbs, collect, updatePanel };
+  cueilletteChallenges.push(api);
+  return api;
+}
+function handleCueilletteOrbClick(challenge, group) {
+  if (busy || group.userData.picked) return;
+  pendingCueillettePickup = { challenge, group };
+  const flat = group.userData.flat;
+  moveTarget.set(flat.x, 0, flat.z);
+  moving = true;
+  spawnClickRing(flat.x, flat.z);
+}
+
+const NUMBERS_ZONE = { x: 20, z: -15, r: 2.6 };
+// -------- univers de la quête Maths : « l'Observatoire d'Astra » — pilote
+// pour valider l'ambition « un scénario + un univers graphique par quête »
+// (pas juste une couleur de cristal), avant de répliquer sur les 6 autres
+// quêtes. Sol distinct, obélisque + lanternes à runes, lore au 1er passage.
+// La mécanique CUEILLETTE elle-même est inchangée. --------
+function makeStarRune() {
+  const c = document.createElement('canvas'); c.width = 96; c.height = 96;
+  const ctx = c.getContext('2d');
+  ctx.strokeStyle = '#ffcc55'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= 5; i++) {
+    const a = ((i * 2) / 5) * Math.PI * 2 - Math.PI / 2;
+    const x = 48 + Math.cos(a) * 34, y = 48 + Math.sin(a) * 34;
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.stroke();
+  const tex = new THREE.CanvasTexture(c);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, blending: THREE.AdditiveBlending }));
+  sprite.scale.set(0.7, 0.7, 1);
+  return sprite;
+}
+function makeObservatoryGround(cx, cz) {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(4.2, 4.4, 0.08, 28), 0xc9a877, { outline: false, flat: false });
+  g.add(base);
+  const inlay = toon(new THREE.TorusGeometry(3.2, 0.13, 8, 28), 0x9fc4e8, { outline: false, flat: false });
+  inlay.rotation.x = -Math.PI / 2; inlay.position.y = 0.05;
+  g.add(inlay);
+  g.position.set(cx, 0.01, cz);
+  return g;
+}
+scene.add(makeObservatoryGround(NUMBERS_ZONE.x, NUMBERS_ZONE.z));
+function makeObelisk() {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(0.4, 0.5, 0.3, 8), 0x8a6b4a, { outlineScale: 1.05, flat: false });
+  g.add(base);
+  const shaft = toon(new THREE.CylinderGeometry(0.16, 0.24, 1.8, 6), 0x9a7a56, { outlineScale: 1.05, flat: false });
+  shaft.position.y = 1.05; g.add(shaft);
+  const rune = makeStarRune();
+  rune.position.set(0, 1.5, 0.26);
+  g.add(rune);
+  const glow = new THREE.PointLight(0xffcc66, 0.8, 4, 2);
+  glow.position.y = 1.5; g.add(glow);
+  return g;
+}
+const observatoryObelisk = makeObelisk();
+observatoryObelisk.position.set(NUMBERS_ZONE.x, 0, NUMBERS_ZONE.z);
+scene.add(observatoryObelisk);
+addObstacle(NUMBERS_ZONE.x, NUMBERS_ZONE.z, 0.5);
+
+// éclats d'étoiles ambiants autour de l'obélisque (même recette que
+// totemSparkles) + mousse/galets sur la pierre pour casser l'uniformité du
+// disque — enrichissement demandé par Camille (le rendu procédural doit se
+// rapprocher davantage de la planche, sans sortir du 100% géométrie). ---
+const astraSparkles = [];
+for (let i = 0; i < 12; i++) {
+  const sp = emissive(new THREE.SphereGeometry(0.04, 6, 5), 0xffd97a, 1.7);
+  const a = Math.random() * Math.PI * 2, r = 0.6 + Math.random() * 2.6;
+  sp.userData.phase = Math.random() * Math.PI * 2; sp.userData.angle = a; sp.userData.radius = r;
+  sp.userData.speed = 0.25 + Math.random() * 0.35;
+  scene.add(sp); astraSparkles.push(sp);
+}
+for (let i = 0; i < 10; i++) {
+  const a = Math.random() * Math.PI * 2, r = 1.4 + Math.random() * 2.6;
+  const moss = toon(new THREE.CircleGeometry(0.16 + Math.random() * 0.12, 8), 0x6fa85a, { outline: false, flat: false });
+  moss.rotation.x = -Math.PI / 2;
+  moss.position.set(NUMBERS_ZONE.x + Math.cos(a) * r, 0.09, NUMBERS_ZONE.z + Math.sin(a) * r);
+  scene.add(moss);
+}
+for (let i = 0; i < 6; i++) {
+  const a = Math.random() * Math.PI * 2, r = 1.2 + Math.random() * 2.8;
+  const pebble = toon(new THREE.IcosahedronGeometry(0.09 + Math.random() * 0.05, 0), rockPalette[i % rockPalette.length], { outlineScale: 1.08 });
+  pebble.position.set(NUMBERS_ZONE.x + Math.cos(a) * r, 0.06, NUMBERS_ZONE.z + Math.sin(a) * r);
+  scene.add(pebble);
+}
+function makeStarLantern() {
+  const g = new THREE.Group();
+  const post = toon(new THREE.CylinderGeometry(0.05, 0.06, 1.1, 6), 0x6b4f38, { outlineScale: 1.08 });
+  post.position.y = 0.55; g.add(post);
+  const orb = emissive(new THREE.SphereGeometry(0.1, 8, 6), 0x4fc9c9, 1.6);
+  orb.position.y = 1.15; g.add(orb);
+  return g;
+}
+
+// -------- Rituel des lanternes (mémoire façon Simon) : vrai mini-jeu de
+// compétence, joué AVANT la cueillette des nombres — répond au retour
+// « il faut un vrai mini-jeu, pas juste cliquer ici puis là ». 3 manches,
+// séquence de lanternes à mémoriser puis reproduire, tirée au hasard à
+// chaque tentative (rejouabilité). Phase bloquante : la cueillette
+// n'apparaît qu'une fois le rituel réussi (voir `astraPhase`/`gate`). --------
+const astraLanterns = [];
+[0, 90, 180, 270].forEach((deg, i) => {
+  const a = (deg * Math.PI) / 180;
+  const lantern = makeStarLantern();
+  const x = NUMBERS_ZONE.x + Math.cos(a) * 3.6, z = NUMBERS_ZONE.z + Math.sin(a) * 3.6;
+  lantern.position.set(x, 0, z);
+  scene.add(lantern);
+  const orb = lantern.children[1];
+  orb.userData.haloTarget = lantern;
+  astraLanterns.push({ index: i, group: lantern, orb, baseColor: 0x4fc9c9, flat: { x, z } });
+});
+
+let astraPhase = 'ritual'; // 'ritual' -> 'harvest' -> 'done'
+let astraQuestStartTime = null;
+const RITUAL_SEQUENCE_LENGTHS = [2, 3, 4];
+const ritualState = { started: false, roundIndex: 0, sequence: [], playerIndex: 0, showingSequence: false };
+const ritualPanelEl = document.getElementById('numbers-panel'); // réutilisé (jamais affiché en même temps que la cueillette, cf. astraPhase)
+function flashLantern(i, hex, duration) {
+  const l = astraLanterns[i];
+  l.orb.material.color.setHex(hex); l.orb.material.emissive.setHex(hex);
+  l.orb.material.emissiveIntensity = 2.4;
+  l.group.scale.setScalar(1.35);
+  setTimeout(() => {
+    l.orb.material.color.setHex(l.baseColor); l.orb.material.emissive.setHex(l.baseColor);
+    l.orb.material.emissiveIntensity = 1.6;
+    l.group.scale.setScalar(1);
+  }, duration);
+}
+function updateRitualPanel() {
+  if (astraPhase !== 'ritual') return;
+  const objEl = ritualPanelEl.querySelector('.obj'), hintEl = ritualPanelEl.querySelector('.hint');
+  hintEl.classList.remove('show');
+  if (ritualState.showingSequence) {
+    objEl.innerHTML = `Observe le Rituel des Lanternes... (manche ${ritualState.roundIndex + 1}/${RITUAL_SEQUENCE_LENGTHS.length})`;
+  } else {
+    objEl.innerHTML = `Reproduis la séquence en cliquant les lanternes — <b>${ritualState.playerIndex}/${ritualState.sequence.length}</b> (manche ${ritualState.roundIndex + 1}/${RITUAL_SEQUENCE_LENGTHS.length})`;
+  }
+}
+function startRitualRound() {
+  const len = RITUAL_SEQUENCE_LENGTHS[ritualState.roundIndex];
+  ritualState.sequence = Array.from({ length: len }, () => Math.floor(Math.random() * astraLanterns.length));
+  ritualState.playerIndex = 0;
+  ritualState.showingSequence = true;
+  updateRitualPanel();
+  let t = 500;
+  ritualState.sequence.forEach(idx => {
+    setTimeout(() => flashLantern(idx, 0xffe08a, 500), t);
+    t += 750;
+  });
+  setTimeout(() => { ritualState.showingSequence = false; updateRitualPanel(); }, t);
+}
+function resetRitual() {
+  ritualState.roundIndex = 0;
+  report('Raté — le rituel recommence !'); setTimeout(() => report(), 1400);
+  setTimeout(startRitualRound, 1200);
+}
+function handleLanternClick(i) {
+  if (astraPhase !== 'ritual' || ritualState.showingSequence) return;
+  if (i === ritualState.sequence[ritualState.playerIndex]) {
+    flashLantern(i, 0x9adf8f, 350);
+    ritualState.playerIndex++;
+    updateRitualPanel();
+    if (ritualState.playerIndex === ritualState.sequence.length) {
+      ritualState.roundIndex++;
+      if (ritualState.roundIndex >= RITUAL_SEQUENCE_LENGTHS.length) {
+        astraPhase = 'harvest';
+        report('Les lanternes s’éveillent — la cueillette des éclats peut commencer !');
+        setTimeout(() => report(), 2400);
+      } else {
+        report('Séquence retrouvée !'); setTimeout(() => report(), 900);
+        setTimeout(startRitualRound, 1100);
+      }
+    }
+  } else {
+    flashLantern(i, 0xe25b4a, 400);
+    resetRitual();
+  }
+}
+function updateRitualZoneProximity() {
+  const near = Math.hypot(heroLogical.x - NUMBERS_ZONE.x, heroLogical.z - NUMBERS_ZONE.z) < NUMBERS_ZONE.r + 3;
+  if (astraPhase === 'ritual') {
+    ritualPanelEl.classList.toggle('show', near);
+    if (near && astraQuestStartTime === null) astraQuestStartTime = elapsed;
+    if (near && !ritualState.started) { ritualState.started = true; startRitualRound(); }
+  }
+}
+
+// Scénario généré (art/scenarios/maths-nombres-entiers.json) : 3 manches à
+// difficulté croissante (plage plus étroite + moins de temps/erreurs).
+// Contenu tiré au sort à chaque chargement de page (rejouabilité — retour
+// de Camille : « le joueur doit avoir envie de rejouer cette quête »).
+function randInt(min, max) { return Math.floor(min + Math.random() * (max - min + 1)); }
+function formatFR(n) { return n.toLocaleString('fr-FR'); }
+function genHarvestRound(min, max, correctCount, wrongCount, trapSpread, timeLimitSeconds, maxErrors) {
+  const content = [];
+  for (let i = 0; i < correctCount; i++) content.push({ label: formatFR(randInt(min, max)), correct: true });
+  for (let i = 0; i < wrongCount; i++) {
+    let v;
+    do { v = randInt(Math.max(0, min - trapSpread), max + trapSpread); } while (v >= min && v <= max);
+    content.push({ label: formatFR(v), correct: false });
+  }
+  return { min, max, timeLimitSeconds, maxErrors, content };
+}
+const HARVEST_ROUNDS_RAW = [
+  genHarvestRound(40000, 60000, 3, 3, 25000, 25, 2),
+  genHarvestRound(45000, 55000, 4, 4, 12000, 20, 1),
+  genHarvestRound(48000, 52000, 4, 4, 6000, 18, 1),
+];
+const HARVEST_INSTRUCTIONS = [
+  r => `Retrouve les éclats compris entre <b>${formatFR(r.min)}</b> et <b>${formatFR(r.max)}</b>`,
+  r => `Astra affine sa mesure — retrouve les éclats compris entre <b>${formatFR(r.min)}</b> et <b>${formatFR(r.max)}</b>`,
+  r => `Dernière mesure d’Astra, la plus précise — retrouve les éclats compris entre <b>${formatFR(r.min)}</b> et <b>${formatFR(r.max)}</b>`,
+];
+const numbersChallenge = createCueilletteChallenge({
+  zone: NUMBERS_ZONE, color: 0xb090d9,
+  loreOnEnter: 'Ici se dressait l’Observatoire d’Astra, le Vieux Compteur — il ne reste que ses éclats de nombres, éparpillés dans l’herbe.',
+  pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 30, coins: 10 },
+  pickCorrectMsg: '+1 ! Cet éclat est bien dans la plage d’Astra.',
+  pickWrongMsg: 'Hors plage — regarde bien le nombre.',
+  doneText: 'L’Observatoire d’Astra s’illumine à nouveau — tu as retrouvé tous ses éclats !',
+  panelEl: document.getElementById('numbers-panel'),
+  gate: () => astraPhase === 'harvest',
+  onSolved: () => {
+    astraPhase = 'done';
+    const totalTime = Math.max(1, Math.round(elapsed - astraQuestStartTime));
+    const key = 'eluminia-astra-best-time';
+    const prevBest = Number(localStorage.getItem(key)) || null;
+    const isNewBest = !prevBest || totalTime < prevBest;
+    if (isNewBest) localStorage.setItem(key, String(totalTime));
+    setTimeout(() => {
+      report(isNewBest ? `Nouveau record : ${totalTime}s !` : `Ton temps : ${totalTime}s (record : ${prevBest}s)`);
+      setTimeout(() => report(), 3200);
+    }, 2400);
+  },
+  rounds: HARVEST_ROUNDS_RAW.map((r, i) => ({
+    instruction: HARVEST_INSTRUCTIONS[i](r),
+    timeLimitSeconds: r.timeLimitSeconds, maxErrors: r.maxErrors, content: r.content,
+  })),
+});
+
+const WORDS_ZONE = { x: -18, z: -12, r: 2.6 };
+const wordsChallenge = createCueilletteChallenge({
+  zone: WORDS_ZONE, color: 0xb9835a,
+  pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 15, coins: 5 },
+  pickCorrectMsg: '+1 ! C’est bien un nom.',
+  pickWrongMsg: 'Ce n’est pas un nom — regarde encore.',
+  doneText: 'Défi des mots réussi !',
+  panelEl: document.getElementById('words-panel'),
+  rounds: [
+    {
+      instruction: 'Ramasse tous les <b>NOMS</b> (pas les verbes ni les adjectifs)',
+      timeLimitSeconds: 25, maxErrors: 2,
+      content: [
+        { label: 'chat', correct: true }, { label: 'maison', correct: true },
+        { label: 'crayon', correct: true }, { label: 'rivière', correct: true },
+        { label: 'manger', correct: false }, { label: 'beau', correct: false },
+        { label: 'vite', correct: false }, { label: 'joli', correct: false },
+      ],
+    },
+  ],
+});
+
+// -------- Anglais — Salutations (mécanique DIALOGUE à choix) : PNJ Sam,
+// question en anglais + 3 réponses en français dont une seule bonne. Enjeu :
+// 1 erreur max sur la série de 4, sinon on recommence du début (retour
+// direct de Camille : « si ça prend 30s, aucun intérêt »). --------
+const SAM_ZONE = { x: -8, z: -20 };
+const sam = makeChibi({ cloak: 0xe0a23a, skin: 0xf5c99b, hood: 0x3a6b4a, tail: null });
+sam.group.position.set(SAM_ZONE.x, 0, SAM_ZONE.z);
+sam.group.rotation.y = Math.PI * 0.6;
+scene.add(sam.group);
+glowNpc(sam);
+const samMarker = makeNpcMarker();
+sam.group.add(samMarker);
+addObstacle(SAM_ZONE.x, SAM_ZONE.z, 0.4);
+const samHitbox = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 8), new THREE.MeshBasicMaterial());
+samHitbox.visible = false; samHitbox.position.y = 1.1;
+samHitbox.userData.haloTarget = sam.group;
+samHitbox.userData.name = 'Sam';
+sam.group.add(samHitbox);
+npcs.push({ id: 'sam', group: sam.group, marker: samMarker, lines: null, range: 2.2 });
+
+const SAM_QUIZ = {
+  maxErrors: 1,
+  rounds: [
+    { en: '“Hello! What is your name?”', choices: ['Bonjour ! Comment tu t’appelles ?', 'Au revoir !', 'Quel âge as-tu ?'], correct: 0 },
+    { en: '“Good morning!”', choices: ['Bonne nuit !', 'Bonjour (le matin) !', 'À bientôt !'], correct: 1 },
+    { en: '“How are you?”', choices: ['Où habites-tu ?', 'Quel est ton nom ?', 'Comment vas-tu ?'], correct: 2 },
+    { en: '“Goodbye!”', choices: ['Au revoir !', 'Merci !', 'S’il te plaît !'], correct: 0 },
+  ],
+  pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 15, coins: 5 },
+};
+const samState = { round: 0, errors: 0, solved: false };
+const choiceBoxEl = document.getElementById('choice-dialogue-box');
+const choiceNameEl = choiceBoxEl.querySelector('.name');
+const choiceTextEl = choiceBoxEl.querySelector('.text');
+const choicesEl = choiceBoxEl.querySelector('.choices');
+function openSamQuiz() {
+  samState.round = 0; samState.errors = 0;
+  busy = true; moving = false;
+  showSamRound();
+}
+function showSamRound() {
+  if (samState.round >= SAM_QUIZ.rounds.length) { finishSamQuiz(); return; }
+  const r = SAM_QUIZ.rounds[samState.round];
+  choiceNameEl.textContent = 'Sam';
+  choiceTextEl.textContent = r.en;
+  choicesEl.innerHTML = '';
+  r.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'choice-btn'; btn.textContent = c;
+    btn.addEventListener('click', () => answerSam(i, r, btn));
+    choicesEl.appendChild(btn);
+  });
+  choiceBoxEl.classList.add('show');
+}
+function answerSam(i, r, btn) {
+  const buttons = [...choicesEl.querySelectorAll('.choice-btn')];
+  buttons.forEach(b => { b.disabled = true; });
+  if (i === r.correct) {
+    btn.classList.add('correct');
+    addReward(SAM_QUIZ.pickReward.xp, SAM_QUIZ.pickReward.coins);
+    setTimeout(() => { samState.round++; showSamRound(); }, 700);
+  } else {
+    btn.classList.add('wrong');
+    buttons[r.correct].classList.add('correct');
+    samState.errors++;
+    if (samState.errors > SAM_QUIZ.maxErrors) {
+      setTimeout(() => {
+        report('Raté — on recommence !'); setTimeout(() => report(), 1400);
+        samState.round = 0; samState.errors = 0; showSamRound();
+      }, 900);
+    } else {
+      setTimeout(() => { samState.round++; showSamRound(); }, 900);
+    }
+  }
+}
+function finishSamQuiz() {
+  samState.solved = true;
+  choiceBoxEl.classList.remove('show');
+  busy = false;
+  addReward(SAM_QUIZ.finishReward.xp, SAM_QUIZ.finishReward.coins);
+  burst(sphereFrame(SAM_ZONE.x, SAM_ZONE.z).position.clone().add(new THREE.Vector3(0, 1, 0)), 0xffe08a, { count: 30, life: 0.8, spread: 3.4 });
+  report('Bien joué, tu parles anglais comme Sam !');
+  setTimeout(() => report(), 2200);
+}
+
+// -------- Géographie — Points cardinaux (mécanique CARTE) : rose des vents
+// au centre, 4 pancartes cardinales autour (légende à lire). Consigne
+// « Va vers le NORD » etc., chronométrée à partir du 2e round. Enjeu :
+// chrono + 1 erreur max avant redémarrage complet de la série de 4. --------
+const COMPASS_ZONE = { x: 2, z: -24, r: 3.2 };
+function makeCompassRose() {
+  const g = new THREE.Group();
+  const disc = toon(new THREE.CylinderGeometry(1.3, 1.4, 0.1, 20), 0xe8d9b0, { outlineScale: 1.04, flat: false });
+  g.add(disc);
+  const needle = toon(new THREE.ConeGeometry(0.16, 0.85, 6), 0xb23b2a, { outline: false });
+  needle.rotation.x = Math.PI; needle.position.set(0, 0.16, -0.35); g.add(needle);
+  return g;
+}
+const compassRose = makeCompassRose();
+compassRose.position.set(COMPASS_ZONE.x, 0.1, COMPASS_ZONE.z);
+scene.add(compassRose);
+addObstacle(COMPASS_ZONE.x, COMPASS_ZONE.z, 1.3);
+
+const COMPASS_DIRS = [
+  { id: 'N', label: 'NORD', dx: 0, dz: -1 },
+  { id: 'S', label: 'SUD', dx: 0, dz: 1 },
+  { id: 'E', label: 'EST', dx: 1, dz: 0 },
+  { id: 'O', label: 'OUEST', dx: -1, dz: 0 },
+];
+function makeCompassMarker(dir) {
+  const group = new THREE.Group();
+  const crystal = toon(new THREE.IcosahedronGeometry(0.32, 0), 0x4fa88a, { outlineScale: 1.08, flat: false });
+  group.add(crystal);
+  const label = makeFractionSprite(dir.label);
+  label.position.set(0, 0.62, 0); group.add(label);
+  const x = COMPASS_ZONE.x + dir.dx * COMPASS_ZONE.r, z = COMPASS_ZONE.z + dir.dz * COMPASS_ZONE.r;
+  group.position.set(x, 0.4, z);
+  group.userData = { id: dir.id, board: crystal, flat: { x, z } };
+  crystal.userData.haloTarget = group;
+  group.userData.glowMeshes = [addGlowOutline(crystal, 1.14)];
+  scene.add(group);
+  return group;
+}
+const compassMarkers = COMPASS_DIRS.map(makeCompassMarker);
+function labelForDir(id) { return COMPASS_DIRS.find(d => d.id === id).label; }
+
+const COMPASS_QUIZ = {
+  rounds: ['N', 'O', 'S', 'E'], timeLimit: 8, maxErrors: 1,
+  pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 15, coins: 5 },
+};
+const compassState = { round: 0, errors: 0, solved: false, running: false, answering: false, timeLeft: 0, timerId: null };
+const compassPanelEl = document.getElementById('compass-panel');
+function updateCompassPanel() {
+  const objEl = compassPanelEl.querySelector('.obj'), hintEl = compassPanelEl.querySelector('.hint');
+  if (compassState.solved) { objEl.innerHTML = 'Défi des points cardinaux réussi !'; hintEl.classList.remove('show'); return; }
+  const dir = COMPASS_QUIZ.rounds[compassState.round];
+  const timeTxt = compassState.running ? ` — ⏱ ${compassState.timeLeft}s` : '';
+  objEl.innerHTML = `Clique la pancarte du <b>${labelForDir(dir)}</b>${timeTxt} (manche ${compassState.round + 1}/${COMPASS_QUIZ.rounds.length})`;
+  hintEl.textContent = `Attention : encore ${COMPASS_QUIZ.maxErrors - compassState.errors} erreur(s) possible(s) avant de recommencer.`;
+  hintEl.classList.toggle('show', compassState.errors > 0);
+}
+function startCompassTimer() {
+  if (compassState.timerId) clearInterval(compassState.timerId);
+  compassState.running = true; compassState.timeLeft = COMPASS_QUIZ.timeLimit;
+  updateCompassPanel();
+  compassState.timerId = setInterval(() => {
+    compassState.timeLeft--;
+    updateCompassPanel();
+    if (compassState.timeLeft <= 0) { clearInterval(compassState.timerId); compassState.timerId = null; handleCompassAnswer(null); }
+  }, 1000);
+}
+function resetCompassChallenge() {
+  compassState.round = 0; compassState.errors = 0; compassState.running = false; compassState.answering = false;
+  updateCompassPanel();
+  report('Raté — nouvel essai !'); setTimeout(() => report(), 1400);
+}
+function handleCompassAnswer(id) {
+  if (compassState.answering || compassState.solved) return;
+  compassState.answering = true;
+  if (compassState.timerId) { clearInterval(compassState.timerId); compassState.timerId = null; }
+  compassState.running = false;
+  const expected = COMPASS_QUIZ.rounds[compassState.round];
+  const marker = compassMarkers.find(m => m.userData.id === id);
+  const pos = (marker ? sphereFrame(marker.userData.flat.x, marker.userData.flat.z) : sphereFrame(COMPASS_ZONE.x, COMPASS_ZONE.z))
+    .position.clone().add(new THREE.Vector3(0, 0.4, 0));
+  if (id === expected) {
+    addReward(COMPASS_QUIZ.pickReward.xp, COMPASS_QUIZ.pickReward.coins);
+    burst(pos, 0xffd27a, { count: 16, life: 0.5 });
+    report('Bonne direction !'); setTimeout(() => report(), 900);
+    compassState.round++;
+    if (compassState.round >= COMPASS_QUIZ.rounds.length) {
+      compassState.solved = true;
+      addReward(COMPASS_QUIZ.finishReward.xp, COMPASS_QUIZ.finishReward.coins);
+      burst(pos, 0xffe08a, { count: 30, life: 0.8, spread: 3.4 });
+      report('Défi des points cardinaux réussi !'); setTimeout(() => report(), 2200);
+      updateCompassPanel();
+      return;
+    }
+    updateCompassPanel();
+    setTimeout(() => { compassState.answering = false; startCompassTimer(); }, 900);
+  } else {
+    compassState.errors++;
+    burst(pos, 0xe25b4a, { count: 12, life: 0.45 });
+    report('Mauvaise direction !'); setTimeout(() => report(), 900);
+    if (compassState.errors > COMPASS_QUIZ.maxErrors) { setTimeout(resetCompassChallenge, 900); return; }
+    updateCompassPanel();
+    setTimeout(() => { compassState.answering = false; startCompassTimer(); }, 900);
+  }
+}
+updateCompassPanel();
+
+// -------- Sciences — Classification du vivant (mécanique TRI) : 3 paniers
+// (Animal/Végétal/Minéral), 6 objets à porter un par un jusqu'au bon panier.
+// Enjeu : chrono déclenché au 1er ramassage + 2 erreurs max avant
+// redémarrage complet. --------
+const SORT_ZONE = { x: 30, z: 14 };
+const SORT_CATEGORIES = [
+  { id: 'animal', label: 'ANIMAL', color: 0xe0855a, dx: -3.2, dz: -2.2 },
+  { id: 'plante', label: 'VÉGÉTAL', color: 0x6fb562, dx: 3.2, dz: -2.2 },
+  { id: 'mineral', label: 'MINÉRAL', color: 0x9a978c, dx: 0, dz: 3.4 },
+];
+function makeSortBasket(cat) {
+  const g = new THREE.Group();
+  const bowl = toon(new THREE.CylinderGeometry(0.85, 0.65, 0.4, 14), cat.color, { outlineScale: 1.05, flat: false });
+  g.add(bowl);
+  const label = makeWideLabelSprite(cat.label);
+  label.position.set(0, 0.85, 0); g.add(label);
+  const x = SORT_ZONE.x + cat.dx, z = SORT_ZONE.z + cat.dz;
+  g.position.set(x, 0.2, z);
+  g.userData = { id: cat.id, flat: { x, z }, board: bowl };
+  bowl.userData.haloTarget = g;
+  g.userData.glowMeshes = [addGlowOutline(bowl, 1.08)];
+  scene.add(g);
+  return g;
+}
+const sortBaskets = SORT_CATEGORIES.map(makeSortBasket);
+addObstacle(SORT_ZONE.x, SORT_ZONE.z, 1.4);
+
+const SORT_ITEMS = [
+  { label: 'Renard', cat: 'animal' }, { label: 'Hibou', cat: 'animal' },
+  { label: 'Chêne', cat: 'plante' }, { label: 'Fougère', cat: 'plante' },
+  { label: 'Silex', cat: 'mineral' }, { label: 'Granit', cat: 'mineral' },
+];
+function makeSortItem(def, i, arr) {
+  const a = (i / arr.length) * Math.PI * 2, r = 4.4;
+  const x = SORT_ZONE.x + Math.cos(a) * r, z = SORT_ZONE.z + 6 + Math.sin(a) * r;
+  const group = new THREE.Group();
+  const crystal = toon(new THREE.IcosahedronGeometry(0.28, 0), 0x8a9a5a, { outlineScale: 1.08, flat: false });
+  group.add(crystal);
+  const label = makeWideLabelSprite(def.label, 28);
+  label.position.set(0, 0.58, 0); group.add(label);
+  group.position.set(x, 0.35, z);
+  group.userData = { cat: def.cat, board: crystal, flat: { x, z }, home: { x, z }, sorted: false, labelText: def.label };
+  crystal.userData.haloTarget = group;
+  group.userData.glowMeshes = [addGlowOutline(crystal, 1.14)];
+  scene.add(group);
+  return group;
+}
+const sortItems = SORT_ITEMS.map(makeSortItem);
+
+const SORT_QUIZ = { targetCount: SORT_ITEMS.length, timeLimit: 35, maxErrors: 2, pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 15, coins: 5 } };
+const sortState = { sortedCount: 0, errors: 0, solved: false, running: false, timeLeft: 0, timerId: null, held: null };
+let pendingSortTarget = null; // { type: 'item'|'basket', ref }
+const sortPanelEl = document.getElementById('sort-panel');
+function updateSortPanel() {
+  const objEl = sortPanelEl.querySelector('.obj'), hintEl = sortPanelEl.querySelector('.hint');
+  if (sortState.solved) { objEl.innerHTML = 'Défi de classification réussi !'; hintEl.classList.remove('show'); return; }
+  const timeTxt = sortState.running ? ` — ⏱ ${sortState.timeLeft}s` : '';
+  const heldTxt = sortState.held ? ` — tu portes <b>${sortState.held.userData.labelText}</b>` : '';
+  objEl.innerHTML = `Range chaque être vivant dans son panier${timeTxt} — <b>${sortState.sortedCount}/${SORT_QUIZ.targetCount}</b>${heldTxt}`;
+  hintEl.textContent = `Attention : encore ${SORT_QUIZ.maxErrors - sortState.errors} erreur(s) possible(s) avant de recommencer.`;
+  hintEl.classList.toggle('show', sortState.errors > 0);
+}
+function startSortTimer() {
+  sortState.running = true; sortState.timeLeft = SORT_QUIZ.timeLimit;
+  sortState.timerId = setInterval(() => {
+    sortState.timeLeft--;
+    updateSortPanel();
+    if (sortState.timeLeft <= 0) { clearInterval(sortState.timerId); resetSortChallenge(); }
+  }, 1000);
+}
+function resetSortChallenge() {
+  if (sortState.timerId) { clearInterval(sortState.timerId); sortState.timerId = null; }
+  sortState.sortedCount = 0; sortState.errors = 0; sortState.running = false; sortState.held = null;
+  pendingSortTarget = null;
+  sortItems.forEach(it => { it.userData.sorted = false; it.visible = true; it.position.set(it.userData.home.x, 0.35, it.userData.home.z); it.userData.flat = { ...it.userData.home }; });
+  updateSortPanel();
+  report('Raté — nouvel essai !'); setTimeout(() => report(), 1400);
+}
+function handleSortItemClick(item) {
+  if (busy || item.userData.sorted || sortState.held || sortState.solved) return;
+  pendingSortTarget = { type: 'item', ref: item };
+  moveTarget.set(item.userData.flat.x, 0, item.userData.flat.z);
+  moving = true;
+  spawnClickRing(item.userData.flat.x, item.userData.flat.z);
+}
+function handleSortBasketClick(basket) {
+  if (busy || !sortState.held || sortState.solved) return;
+  pendingSortTarget = { type: 'basket', ref: basket };
+  moveTarget.set(basket.userData.flat.x, 0, basket.userData.flat.z);
+  moving = true;
+  spawnClickRing(basket.userData.flat.x, basket.userData.flat.z);
+}
+function resolveSortArrival() {
+  if (!pendingSortTarget) return;
+  const { type, ref } = pendingSortTarget;
+  const d = Math.hypot(heroLogical.x - ref.userData.flat.x, heroLogical.z - ref.userData.flat.z);
+  if (d >= 0.8) return;
+  pendingSortTarget = null;
+  if (type === 'item') {
+    if (!sortState.running && !sortState.solved) startSortTimer();
+    sortState.held = ref; ref.visible = false;
+    report(`Tu portes : ${ref.userData.labelText}`); setTimeout(() => report(), 1200);
+    updateSortPanel();
+    return;
+  }
+  // type === 'basket'
+  const held = sortState.held;
+  const pos = sphereFrame(ref.userData.flat.x, ref.userData.flat.z).position.clone().add(new THREE.Vector3(0, 0.4, 0));
+  if (held.userData.cat === ref.userData.id) {
+    held.userData.sorted = true;
+    sortState.held = null;
+    sortState.sortedCount++;
+    addReward(SORT_QUIZ.pickReward.xp, SORT_QUIZ.pickReward.coins);
+    burst(pos, 0xffd27a, { count: 16, life: 0.5 });
+    report('Bien rangé !'); setTimeout(() => report(), 900);
+    if (sortState.sortedCount === SORT_QUIZ.targetCount) {
+      sortState.solved = true;
+      if (sortState.timerId) { clearInterval(sortState.timerId); sortState.timerId = null; }
+      addReward(SORT_QUIZ.finishReward.xp, SORT_QUIZ.finishReward.coins);
+      burst(pos, 0xffe08a, { count: 30, life: 0.8, spread: 3.4 });
+      report('Défi de classification réussi !'); setTimeout(() => report(), 2200);
+    }
+  } else {
+    sortState.errors++;
+    sortState.held = null;
+    held.visible = true; held.position.set(held.userData.home.x, 0.35, held.userData.home.z); held.userData.flat = { ...held.userData.home };
+    burst(pos, 0xe25b4a, { count: 12, life: 0.45 });
+    report('Mauvais panier — regarde encore.'); setTimeout(() => report(), 900);
+    if (sortState.errors >= SORT_QUIZ.maxErrors) { resetSortChallenge(); return; }
+  }
+  updateSortPanel();
+}
+updateSortPanel();
+
+// -------- Technologie — Objet technique et sa fonction (mécanique
+// APPARIEMENT) : 4 paires objet/fonction mélangées (les 2 cartes d'une
+// même paire ne sont jamais voisines), clic pour sélectionner, clic sur sa
+// paire pour valider. Enjeu : chrono + 2 erreurs max avant redémarrage. --------
+const MATCH_ZONE = { x: -10, z: 18, r: 2.8 };
+const MATCH_CARDS_DEF = [
+  { text: 'Marteau', pairId: 'p1' }, { text: 'Tournevis', pairId: 'p2' },
+  { text: 'Loupe', pairId: 'p3' }, { text: 'Ciseaux', pairId: 'p4' },
+  { text: 'Planter un clou', pairId: 'p1' }, { text: 'Visser une vis', pairId: 'p2' },
+  { text: 'Observer un détail', pairId: 'p3' }, { text: 'Couper du papier', pairId: 'p4' },
+];
+function makeMatchCard(def, i, arr) {
+  const a = (i / arr.length) * Math.PI * 2;
+  const x = MATCH_ZONE.x + Math.cos(a) * MATCH_ZONE.r, z = MATCH_ZONE.z + Math.sin(a) * MATCH_ZONE.r;
+  const group = new THREE.Group();
+  const crystal = toon(new THREE.IcosahedronGeometry(0.3, 0), 0x8a94a8, { outlineScale: 1.08, flat: false });
+  group.add(crystal);
+  const label = makeWideLabelSprite(def.text, 26);
+  label.position.set(0, 0.62, 0); group.add(label);
+  group.position.set(x, 0.4, z);
+  group.userData = { pairId: def.pairId, labelText: def.text, board: crystal, matched: false, flat: { x, z } };
+  crystal.userData.haloTarget = group;
+  group.userData.glowMeshes = [addGlowOutline(crystal, 1.14)];
+  scene.add(group);
+  return group;
+}
+const matchCards = MATCH_CARDS_DEF.map(makeMatchCard);
+addObstacle(MATCH_ZONE.x, MATCH_ZONE.z, 1.4);
+
+const MATCH_QUIZ = { totalPairs: MATCH_CARDS_DEF.length / 2, timeLimit: 30, maxErrors: 2, pickReward: { xp: 3, coins: 0 }, finishReward: { xp: 15, coins: 5 } };
+const matchState = { matchedCount: 0, errors: 0, solved: false, running: false, timeLeft: 0, timerId: null, selected: null };
+const matchPanelEl = document.getElementById('match-panel');
+function updateMatchPanel() {
+  const objEl = matchPanelEl.querySelector('.obj'), hintEl = matchPanelEl.querySelector('.hint');
+  if (matchState.solved) { objEl.innerHTML = 'Défi des paires réussi !'; hintEl.classList.remove('show'); return; }
+  const timeTxt = matchState.running ? ` — ⏱ ${matchState.timeLeft}s` : '';
+  const selTxt = matchState.selected ? ` — tu as choisi <b>${matchState.selected.userData.labelText}</b>, trouve sa paire` : '';
+  objEl.innerHTML = `Associe chaque objet à sa fonction${timeTxt} — <b>${matchState.matchedCount}/${MATCH_QUIZ.totalPairs}</b>${selTxt}`;
+  hintEl.textContent = `Attention : encore ${MATCH_QUIZ.maxErrors - matchState.errors} erreur(s) possible(s) avant de recommencer.`;
+  hintEl.classList.toggle('show', matchState.errors > 0);
+}
+function startMatchTimer() {
+  matchState.running = true; matchState.timeLeft = MATCH_QUIZ.timeLimit;
+  matchState.timerId = setInterval(() => {
+    matchState.timeLeft--;
+    updateMatchPanel();
+    if (matchState.timeLeft <= 0) { clearInterval(matchState.timerId); resetMatchChallenge(); }
+  }, 1000);
+}
+function resetMatchChallenge() {
+  if (matchState.timerId) { clearInterval(matchState.timerId); matchState.timerId = null; }
+  matchState.matchedCount = 0; matchState.errors = 0; matchState.running = false; matchState.selected = null;
+  matchCards.forEach(c => { c.userData.matched = false; c.visible = true; });
+  updateMatchPanel();
+  report('Raté — nouvel essai !'); setTimeout(() => report(), 1400);
+}
+function handleMatchCardClick(card) {
+  if (busy || card.userData.matched || matchState.solved) return;
+  if (!matchState.running) startMatchTimer();
+  if (!matchState.selected) { matchState.selected = card; updateMatchPanel(); return; }
+  if (matchState.selected === card) return;
+  const a = matchState.selected, b = card;
+  matchState.selected = null;
+  const pos = sphereFrame(b.userData.flat.x, b.userData.flat.z).position.clone().add(new THREE.Vector3(0, 0.4, 0));
+  if (a.userData.pairId === b.userData.pairId) {
+    a.userData.matched = true; b.userData.matched = true;
+    a.visible = false; b.visible = false;
+    matchState.matchedCount++;
+    addReward(MATCH_QUIZ.pickReward.xp, MATCH_QUIZ.pickReward.coins);
+    burst(pos, 0xffd27a, { count: 16, life: 0.5 });
+    report('Bonne paire !'); setTimeout(() => report(), 900);
+    if (matchState.matchedCount === MATCH_QUIZ.totalPairs) {
+      matchState.solved = true;
+      if (matchState.timerId) { clearInterval(matchState.timerId); matchState.timerId = null; }
+      addReward(MATCH_QUIZ.finishReward.xp, MATCH_QUIZ.finishReward.coins);
+      burst(pos, 0xffe08a, { count: 30, life: 0.8, spread: 3.4 });
+      report('Défi des paires réussi !'); setTimeout(() => report(), 2200);
+    }
+  } else {
+    matchState.errors++;
+    burst(pos, 0xe25b4a, { count: 12, life: 0.45 });
+    report('Ce n’est pas la bonne paire.'); setTimeout(() => report(), 900);
+    if (matchState.errors >= MATCH_QUIZ.maxErrors) { resetMatchChallenge(); return; }
+  }
+  updateMatchPanel();
+}
+updateMatchPanel();
+
+// -------- habillage léger par quête : un accent visuel propre à chaque
+// zone (identité par matière), en plus de la couleur des cristaux déjà
+// différenciée par zone. Décor pur, aucune interaction. --------
+function makeNumberBlock(digit, color) {
+  const g = new THREE.Group();
+  const cube = toon(new THREE.BoxGeometry(0.5, 0.5, 0.5), color, { outlineScale: 1.06, flat: false });
+  g.add(cube);
+  const face = makeFractionSprite(digit);
+  face.scale.set(0.4, 0.26, 1);
+  face.position.set(0, 0, 0.27);
+  g.add(face);
+  return g;
+}
+[{ digit: '7', x: NUMBERS_ZONE.x - 3.6, z: NUMBERS_ZONE.z - 1 }, { digit: '4', x: NUMBERS_ZONE.x - 3.9, z: NUMBERS_ZONE.z + 1.4 }]
+  .forEach(def => { const b = makeNumberBlock(def.digit, 0x4a6fd6); b.position.set(def.x, 0.28, def.z); scene.add(b); });
+
+function makeBookStack(colors) {
+  const g = new THREE.Group();
+  colors.forEach((c, i) => {
+    const book = toon(new THREE.BoxGeometry(0.52 - i * 0.05, 0.1, 0.38 - i * 0.03), c, { outlineScale: 1.06, flat: false });
+    book.position.set((i % 2) * 0.04 - 0.02, 0.06 + i * 0.11, 0);
+    book.rotation.y = (i % 2 === 0 ? 1 : -1) * 0.08;
+    g.add(book);
+  });
+  return g;
+}
+const wordsBooks = makeBookStack([0xb9835a, 0x6fb562, 0xc9a24a]);
+wordsBooks.position.set(WORDS_ZONE.x - 3.4, 0, WORDS_ZONE.z - 1.6);
+scene.add(wordsBooks);
+
+function makeSignpostFlag(color) {
+  const g = new THREE.Group();
+  const post = toon(new THREE.CylinderGeometry(0.045, 0.055, 1.3, 6), 0x8a5a3a, { outlineScale: 1.1 });
+  post.position.y = 0.65; g.add(post);
+  const flag = toon(new THREE.ConeGeometry(0.26, 0.4, 3), color, { outline: false, flat: false });
+  flag.rotation.z = -Math.PI / 2; flag.position.set(0.2, 1.05, 0);
+  g.add(flag);
+  return g;
+}
+const samFlag = makeSignpostFlag(0xc0433a);
+samFlag.position.set(SAM_ZONE.x + 1.1, 0, SAM_ZONE.z - 0.6);
+scene.add(samFlag);
+
+const sortBush = makeBush();
+sortBush.position.set(SORT_ZONE.x + 3.6, 0, SORT_ZONE.z - 3.4);
+scene.add(sortBush);
+const sortRock = toon(new THREE.IcosahedronGeometry(0.32, 0), rockPalette[1], { outlineScale: 1.08 });
+sortRock.position.set(SORT_ZONE.x - 0.6, 0.16, SORT_ZONE.z + 4.6);
+scene.add(sortRock);
+
+function makeGearProp(color) {
+  const g = new THREE.Group();
+  const base = toon(new THREE.CylinderGeometry(0.3, 0.3, 0.1, 10), color, { outlineScale: 1.06, flat: false });
+  g.add(base);
+  for (let i = 0; i < 8; i++) {
+    const tooth = toon(new THREE.BoxGeometry(0.1, 0.1, 0.08), color, { outline: false });
+    const a = (i / 8) * Math.PI * 2;
+    tooth.position.set(Math.cos(a) * 0.32, 0.02, Math.sin(a) * 0.32);
+    tooth.rotation.y = a;
+    g.add(tooth);
+  }
+  return g;
+}
+[{ x: MATCH_ZONE.x - 3.2, z: MATCH_ZONE.z + 1.4, r: 0 }, { x: MATCH_ZONE.x - 2.6, z: MATCH_ZONE.z - 1.6, r: 0.4 }]
+  .forEach(def => { const gear = makeGearProp(0x8a94a8); gear.position.set(def.x, 0.4, def.z); gear.rotation.x = Math.PI / 2 + def.r; scene.add(gear); });
+
+// -------- Quête principale étendue : après le pont, enchaîne les 6 quêtes
+// éducatives dans un ordre qui alterne les matières (jamais 2 quêtes de la
+// même matière d'affilée — retour de Camille : « il faut varier le
+// plaisir »). Maths apparaît en tête (le pont, déjà) et en fin (Astra),
+// séparées par les 5 autres. Chaque étape est déjà une quête autonome
+// (découverte libre) ; ce fil ne fait qu'indiquer laquelle faire ensuite,
+// sans bloquer les autres. --------
+const MAIN_QUEST_STEPS = [
+  { id: 'sam', label: 'Rends visite à Sam pour ses salutations en anglais', zone: SAM_ZONE, isDone: () => samState.solved },
+  { id: 'compass', label: 'Résous le défi des points cardinaux', zone: COMPASS_ZONE, isDone: () => compassState.solved },
+  { id: 'words', label: 'Trouve les noms dans l’herbe', zone: WORDS_ZONE, isDone: () => wordsChallenge.state.solved },
+  { id: 'sort', label: 'Classe les êtres vivants dans leurs paniers', zone: SORT_ZONE, isDone: () => sortState.solved },
+  { id: 'match', label: 'Associe les objets à leur fonction', zone: MATCH_ZONE, isDone: () => matchState.solved },
+  { id: 'astra', label: 'Réveille l’Observatoire d’Astra', zone: NUMBERS_ZONE, isDone: () => numbersChallenge.state.solved },
+];
+let mainQuestIndex = 0;
+function currentMainQuestStep() { return MAIN_QUEST_STEPS[mainQuestIndex] ?? null; }
+function advanceMainQuestIfDone() {
+  if (stage !== 'done') return;
+  const step = currentMainQuestStep();
+  if (step && step.isDone()) {
+    mainQuestIndex++;
+    const next = currentMainQuestStep();
+    report(next ? `Étape suivante : ${next.label}` : 'Toutes les quêtes principales terminées !');
+    setTimeout(() => report(), 2600);
+    updateQuestBox();
+  }
+}
+
+// -------- flèche boussole 3D au-dessus du héros : indique la direction de
+// l'étape active (Elda -> pont -> les 6 quêtes), visible quelle que soit
+// l'orientation de la caméra. Revenu à cette version après un essai en HUD
+// 2D jugé buggé (pivot décentré, sens parfois inversé) et moins « cool »
+// selon Camille. --------
+function makeCompassArrow() {
+  const g = new THREE.Group();
+  const shaft = toon(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 6), 0x4a9a56, { outlineScale: 1.15, flat: false });
+  shaft.rotation.x = -Math.PI / 2; // axe (par défaut +Y) -> pointe vers -Z (convention lookAt de Three.js)
+  g.add(shaft);
+  const head = toon(new THREE.ConeGeometry(0.24, 0.5, 7), 0x8fe08a, { outlineScale: 1.15, flat: false });
+  head.rotation.x = -Math.PI / 2;
+  head.position.z = -0.48; // pointe (apex) plus loin vers -Z que le manche
+  g.add(head);
+  g.userData.glowMeshes = [addGlowOutline(head, 1.3, 0xc9ffbc), addGlowOutline(shaft, 1.3, 0xc9ffbc)];
+  g.userData.glowMeshes.forEach(m => { m.visible = true; });
+  return g;
+}
+const compassArrow = makeCompassArrow();
+compassArrow.visible = false;
+scene.add(compassArrow);
+function compassTargetFlat() {
+  if (stage === 'meet-elda') return elda.group.userData.flat ?? null;
+  if (stage === 'bridge') return { x: GAP_X, z: 0 };
+  const step = currentMainQuestStep();
+  return step ? step.zone : null;
+}
+// Oriente la flèche avec Object3D.lookAt (Three.js calcule lui-même la
+// rotation exacte vers la cible, plus fiable que dériver l'angle à la
+// main — deux tentatives précédentes avec un calcul manuel de theta se
+// sont trompées de signe malgré une vérification par capture.
+function updateCompassArrow() {
+  const target = compassTargetFlat();
+  if (!target) { compassArrow.visible = false; return; }
+  const dx = target.x - heroLogical.x, dz = target.z - heroLogical.z;
+  if (Math.hypot(dx, dz) < 1) { compassArrow.visible = false; return; } // déjà sur place
+  compassArrow.visible = true;
+  const bob = 3.1 + Math.sin(elapsed * 2.2) * 0.12;
+  compassArrow.position.copy(hero.group.position);
+  compassArrow.position.y += bob;
+  const targetWorld = sphereFrame(target.x, target.z, bob).position;
+  compassArrow.lookAt(targetWorld);
+  compassArrow.rotateY(Math.PI); // correction 180° mesurée empiriquement (getCompassDebug) : lookAt() pointait la flèche à l'opposé de la cible
+}
+
+// -------- Prototype de combat : répondre = attaquer, façon Prodigy —
+// retour direct de Camille : « pas fun, je veux des mobs, un vrai enjeu ».
+// UN seul adversaire pour valider la boucle avant de généraliser. Défaite
+// = pas de sanction dure (jeu pour enfants) : le joueur peut réessayer
+// tout de suite. Victoire = la créature se calme (pas de mise à mort). --------
+const CREATURE_ZONE = { x: 8, z: -14 };
+function makeCreature() {
+  const g = new THREE.Group();
+  const body = toon(new THREE.IcosahedronGeometry(0.9, 1), 0x8a6fd6, { outlineScale: 1.06, flat: false });
+  g.add(body);
+  const browL = toon(new THREE.BoxGeometry(0.22, 0.06, 0.06), 0x3d2f52, { outline: false, flat: false });
+  browL.position.set(-0.3, 0.32, 0.78); browL.rotation.z = 0.35; g.add(browL);
+  const browR = browL.clone(); browR.position.x = 0.3; browR.rotation.z = -0.35; g.add(browR);
+  const eyeL = toon(new THREE.SphereGeometry(0.11, 8, 6), 0x2c2436, { outline: false, flat: false });
+  eyeL.position.set(-0.3, 0.12, 0.8); g.add(eyeL);
+  const eyeR = eyeL.clone(); eyeR.position.x = 0.3; g.add(eyeR);
+  g.userData = { body, eyeL, eyeR, browL, browR, baseColor: 0x8a6fd6, calmColor: 0x8fe0a0 };
+  return g;
+}
+const creature = makeCreature();
+creature.position.set(CREATURE_ZONE.x, 0.95, CREATURE_ZONE.z);
+scene.add(creature);
+addObstacle(CREATURE_ZONE.x, CREATURE_ZONE.z, 1.0);
+const creatureHitbox = new THREE.Mesh(new THREE.SphereGeometry(1.3, 8, 6), new THREE.MeshBasicMaterial());
+creatureHitbox.visible = false;
+creatureHitbox.userData.haloTarget = creature;
+creatureHitbox.userData.name = 'Golem Grincheux';
+creature.add(creatureHitbox);
+creature.userData.glowMeshes = [addGlowOutline(creature.userData.body, 1.1, 0xffb0a6)];
+
+const BATTLE_QUESTIONS = [
+  { q: 'Combien font 7 × 6 ?', choices: ['42', '36', '48', '54'], correct: 0 },
+  { q: 'Combien font 9 × 4 ?', choices: ['32', '40', '36', '28'], correct: 2 },
+  { q: 'Combien font 8 × 7 ?', choices: ['54', '56', '64', '48'], correct: 1 },
+  { q: 'Combien font 6 × 9 ?', choices: ['56', '48', '54', '63'], correct: 2 },
+  { q: 'Combien font 7 × 8 ?', choices: ['54', '56', '64', '49'], correct: 1 },
+];
+function shuffled(arr) { return arr.map(v => [Math.random(), v]).sort((a, b) => a[0] - b[0]).map(([, v]) => v); }
+const battleState = { active: false, hp: 4, maxHp: 4, lives: 3, order: [], qIndex: 0, defeated: false };
+const battleOverlayEl = document.getElementById('battle-overlay');
+const battleNameEl = document.getElementById('battle-name');
+const battleHpFillEl = document.getElementById('battle-hp-fill');
+const battleQuestionEl = document.getElementById('battle-question');
+const battleChoicesEl = document.getElementById('battle-choices');
+const battleLivesEl = document.getElementById('battle-lives');
+function updateBattleHUD() {
+  battleNameEl.textContent = `Golem Grincheux — ${battleState.hp}/${battleState.maxHp}`;
+  battleHpFillEl.style.width = `${(battleState.hp / battleState.maxHp) * 100}%`;
+  battleLivesEl.textContent = '❤'.repeat(Math.max(0, battleState.lives)) + '🖤'.repeat(3 - Math.max(0, battleState.lives));
+}
+function pulseCreature(hit) {
+  const s = hit ? 0.8 : 1.2;
+  creature.scale.setScalar(s);
+  setTimeout(() => creature.scale.setScalar(1), 160);
+  creature.userData.glowMeshes[0].visible = true;
+  setTimeout(() => { creature.userData.glowMeshes[0].visible = false; }, 220);
+}
+function showBattleQuestion() {
+  updateBattleHUD();
+  const q = battleState.order[battleState.qIndex % battleState.order.length];
+  battleQuestionEl.textContent = q.q;
+  battleChoicesEl.innerHTML = '';
+  q.choices.forEach((c, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button'; btn.textContent = c;
+    btn.addEventListener('click', () => answerBattle(i, q, btn));
+    battleChoicesEl.appendChild(btn);
+  });
+}
+function answerBattle(i, q, btn) {
+  [...battleChoicesEl.children].forEach(b => { b.disabled = true; });
+  const pos = creature.position.clone().add(new THREE.Vector3(0, 0.4, 0));
+  if (i === q.correct) {
+    btn.classList.add('correct');
+    battleState.hp--;
+    addSeeds(1);
+    pulseCreature(true);
+    burst(pos, 0xffd27a, { count: 14, life: 0.45 });
+    if (battleState.hp <= 0) { setTimeout(winBattle, 500); return; }
+  } else {
+    btn.classList.add('wrong');
+    [...battleChoicesEl.children][q.correct].classList.add('correct');
+    battleState.lives--;
+    pulseCreature(false);
+    burst(pos, 0xe25b4a, { count: 10, life: 0.4 });
+    if (battleState.lives <= 0) { setTimeout(loseBattle, 700); return; }
+  }
+  battleState.qIndex++;
+  setTimeout(showBattleQuestion, 900);
+}
+function startBattle() {
+  if (battleState.defeated || battleState.active) return;
+  battleState.active = true; battleState.hp = battleState.maxHp; battleState.lives = 3; battleState.qIndex = 0;
+  battleState.order = shuffled(BATTLE_QUESTIONS);
+  busy = true; moving = false;
+  battleOverlayEl.classList.add('show');
+  showBattleQuestion();
+}
+function winBattle() {
+  battleState.active = false; battleState.defeated = true;
+  battleOverlayEl.classList.remove('show'); busy = false;
+  creature.userData.body.material.color.setHex(creature.userData.calmColor);
+  creature.userData.browL.rotation.z = -0.1; creature.userData.browR.rotation.z = 0.1;
+  addReward(25, 8);
+  burst(creature.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xffe08a, { count: 28, life: 0.8, spread: 3.2 });
+  report('Le Golem Grincheux se calme et devient ton ami !');
+  setTimeout(() => report(), 2400);
+}
+function loseBattle() {
+  battleState.active = false;
+  battleOverlayEl.classList.remove('show'); busy = false;
+  report('Le Golem t’a repoussé — reviens quand tu veux réessayer !');
+  setTimeout(() => report(), 2000);
+}
+
 // -------- survol : halo lumineux + curseur --------
 const eldaHitbox = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 2.2, 8), new THREE.MeshBasicMaterial());
 eldaHitbox.visible = false; eldaHitbox.position.y = 1.1;
@@ -3422,8 +4860,15 @@ function setHoveredGroup(group) {
 }
 
 function hoverTargets() {
-  const list = [eldaHitbox, lessonHitbox, bramHitbox, nimaHitbox];
+  const list = [eldaHitbox, lessonHitbox, bramHitbox, nimaHitbox, samHitbox];
+  if (!battleState.defeated) list.push(creatureHitbox);
   collectPieces.forEach(p => { if (!p.userData.picked) list.push(p.userData.board); });
+  cueilletteChallenges.forEach(ch => ch.orbs.forEach(o => { if (!o.userData.picked) list.push(o.userData.board); }));
+  compassMarkers.forEach(m => list.push(m.userData.board));
+  if (astraPhase === 'ritual' && !ritualState.showingSequence) astraLanterns.forEach(l => list.push(l.orb));
+  sortItems.forEach(it => { if (!it.userData.sorted && it.visible) list.push(it.userData.board); });
+  if (sortState.held) sortBaskets.forEach(b => list.push(b.userData.board));
+  matchCards.forEach(c => { if (!c.userData.matched) list.push(c.userData.board); });
   return list;
 }
 
@@ -3442,6 +4887,10 @@ function spawnClickRing(x, z) {
 }
 
 const endEl = document.getElementById('end');
+document.getElementById('end-continue-btn').addEventListener('click', () => {
+  endEl.style.display = 'none';
+  busy = false;
+});
 const bridgePanelEl = document.getElementById('bridge-panel');
 const bridgeObjEl = bridgePanelEl.querySelector('.obj');
 const bridgeHintEl = bridgePanelEl.querySelector('.hint');
@@ -3642,12 +5091,56 @@ renderer.domElement.addEventListener('pointerdown', e => {
     const group = collectPieces.find(p => p.userData.board === pieceHit.object);
     if (group) { handlePieceClick(group); return; }
   }
+  for (const ch of cueilletteChallenges) {
+    const boards = ch.orbs.filter(o => !o.userData.picked).map(o => o.userData.board);
+    const orbHit = ray.intersectObjects(boards)[0];
+    if (orbHit) {
+      const group = ch.orbs.find(o => o.userData.board === orbHit.object);
+      if (group) { handleCueilletteOrbClick(ch, group); return; }
+    }
+  }
+  const compassHit = ray.intersectObjects(compassMarkers.map(m => m.userData.board))[0];
+  if (compassHit) {
+    const marker = compassMarkers.find(m => m.userData.board === compassHit.object);
+    if (marker && !compassState.solved) { handleCompassAnswer(marker.userData.id); return; }
+  }
+  if (astraPhase === 'ritual' && !ritualState.showingSequence) {
+    const lanternHit = ray.intersectObjects(astraLanterns.map(l => l.orb))[0];
+    if (lanternHit) {
+      const l = astraLanterns.find(l2 => l2.orb === lanternHit.object);
+      if (l) { handleLanternClick(l.index); return; }
+    }
+  }
+  const sortItemBoards = sortItems.filter(it => !it.userData.sorted && it.visible).map(it => it.userData.board);
+  const sortItemHit = ray.intersectObjects(sortItemBoards)[0];
+  if (sortItemHit) {
+    const item = sortItems.find(it => it.userData.board === sortItemHit.object);
+    if (item) { handleSortItemClick(item); return; }
+  }
+  if (sortState.held) {
+    const basketHit = ray.intersectObjects(sortBaskets.map(b => b.userData.board))[0];
+    if (basketHit) {
+      const basket = sortBaskets.find(b => b.userData.board === basketHit.object);
+      if (basket) { handleSortBasketClick(basket); return; }
+    }
+  }
+  if (!battleState.defeated) {
+    const creatureHit = ray.intersectObject(creatureHitbox)[0];
+    if (creatureHit) { startBattle(); return; }
+  }
+  const matchHit = ray.intersectObjects(matchCards.filter(c => !c.userData.matched).map(c => c.userData.board))[0];
+  if (matchHit) {
+    const card = matchCards.find(c => c.userData.board === matchHit.object);
+    if (card) { handleMatchCardClick(card); return; }
+  }
   const hit = ray.intersectObject(ground)[0];
   if (hit) {
     const logical = unprojectFromSphere(hit.point);
     moveTarget.set(logical.x, 0, logical.z);
     moving = true;
     pendingPickup = null;
+    pendingCueillettePickup = null;
+    pendingSortTarget = null;
     spawnClickRing(logical.x, logical.z);
   }
 });
@@ -3724,7 +5217,6 @@ window.__spikeDebug = {
   gotoElda: () => { const f = elda.group.userData.flat; moveTarget.set(f.x, 0, f.z); moving = true; },
   openDialogue: () => openDialogue(ELDA_LINES),
   openInventory: () => openInventory(),
-  selectInvItem: id => { const it = INV_ITEMS.find(i => i.id === id); if (it) selectInvItem(it); },
   setStage: v => { stage = v; },
   getStage: () => stage,
   getMarkers: () => npcs.map(n => ({ id: n.id, visible: n.marker.visible })),
@@ -3741,6 +5233,58 @@ window.__spikeDebug = {
   getBridgeState: () => ({ placedQuarters, bridgeSolved, bridgeFailCount, heldPieces: { ...heldPieces } }),
   pickupPiece: frac => { const p = collectPieces.find(pl => pl.userData.fraction === frac && !pl.userData.picked); if (p) { heroLogical.set(p.userData.flat.x, 0.25, p.userData.flat.z); collectPiece(p); } },
   placePieceDebug: value => placePiece(value),
+  getCueilletteState: () => Object.fromEntries(cueilletteChallenges.map(ch => [ch.cfg.panelEl.id, { ...ch.state }])),
+  getRitualState: () => ({ astraPhase, ...ritualState }),
+  giveXp: n => addReward(n, 0),
+  getMainQuestState: () => ({ stage, mainQuestIndex, step: currentMainQuestStep()?.id ?? null, compassVisible: compassArrow.visible }),
+  getCompassDebug: () => {
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(compassArrow.quaternion);
+    const target = compassTargetFlat();
+    return {
+      heroLogical: { x: heroLogical.x, z: heroLogical.z },
+      target,
+      expectedBearingDeg: target ? Math.atan2(target.z - heroLogical.z, target.x - heroLogical.x) * 180 / Math.PI : null,
+      actualForwardDeg: Math.atan2(fwd.z, fwd.x) * 180 / Math.PI,
+      visible: compassArrow.visible,
+    };
+  },
+  eldaFlat: () => elda.group.userData.flat,
+  gotoCreature: () => { heroLogical.set(CREATURE_ZONE.x + 2, 0.25, CREATURE_ZONE.z); moveTarget.copy(heroLogical); moving = false; },
+  getBattleState: () => ({ ...battleState, order: undefined, currentCorrectIndex: battleState.order[battleState.qIndex % battleState.order.length]?.correct }),
+  forceWinBattle: () => { battleState.hp = 0; if (!battleState.active) { battleState.active = true; } winBattle(); },
+  debugStartBattle: () => startBattle(),
+  debugAnswerBattle: (index) => {
+    const q = battleState.order[battleState.qIndex % battleState.order.length];
+    const btn = [...document.getElementById('battle-choices').children][index];
+    answerBattle(index, q, btn);
+  },
+  getPositionsDebug: () => {
+    const target = compassTargetFlat();
+    const heroPos = hero.group.position;
+    const sfHero = sphereFrame(heroLogical.x, heroLogical.z, 3).position;
+    const sfTarget = target ? sphereFrame(target.x, target.z, 3).position : null;
+    return {
+      heroGroupPos: { x: heroPos.x, y: heroPos.y, z: heroPos.z },
+      sphereFrameHero: { x: sfHero.x, y: sfHero.y, z: sfHero.z },
+      sphereFrameTarget: sfTarget ? { x: sfTarget.x, y: sfTarget.y, z: sfTarget.z } : null,
+      compassArrowPos: { x: compassArrow.position.x, y: compassArrow.position.y, z: compassArrow.position.z },
+    };
+  },
+  forceStageDone: () => { stage = 'done'; updateQuestBox(); },
+  forceSolveMainStep: () => {
+    const step = currentMainQuestStep(); if (!step) return null;
+    ({ sam: () => samState.solved = true, compass: () => compassState.solved = true,
+       words: () => wordsChallenge.state.solved = true, sort: () => sortState.solved = true,
+       match: () => matchState.solved = true, astra: () => numbersChallenge.state.solved = true,
+    })[step.id]?.();
+    return step.id;
+  },
+  getChestState: () => ({ chestOpen, pendingCount: pendingChests.length, invItems: INV_ITEMS.map(it => ({ id: it.id, qty: it.qty })) }),
+  skipRitual: () => { astraPhase = 'harvest'; astraQuestStartTime = elapsed; report(); },
+  getHeroState: () => ({ x: heroLogical.x, z: heroLogical.z, moving, busy }),
+  gotoZone: (x, z) => { heroLogical.set(x, 0.25, z); moveTarget.copy(heroLogical); moving = false; },
+  gotoNumbers: () => { heroLogical.set(NUMBERS_ZONE.x, 0.25, NUMBERS_ZONE.z); moveTarget.copy(heroLogical); moving = false; },
+  gotoWords: () => { heroLogical.set(WORDS_ZONE.x, 0.25, WORDS_ZONE.z); moveTarget.copy(heroLogical); moving = false; },
   getHeroPos: () => ({ x: heroLogical.x, z: heroLogical.z, moving }),
   goto: (x, z) => { moveTarget.set(x, 0, z); moving = true; },
   // téléportation directe (diagnostic uniquement) : contourne la marche à
@@ -3889,8 +5433,42 @@ function loop() {
   lessonHalves.forEach((m, i) => { m.position.x = (i === 0 ? -1 : 1) * (0.4 + 0.15 * lessonSpread); });
   lessonQuarters.forEach((m, i) => { m.position.x = LESSON_QUARTER_BASE[i] * (1 + 0.28 * lessonSpread); });
 
-  const nearBridge = heroLogical.x > BRIDGE_MIN_X - 2 || moveTarget.x > BRIDGE_MIN_X - 2;
+  const nearBridge = (heroLogical.x > BRIDGE_MIN_X - 2 && Math.abs(heroLogical.z) < 12) || (moveTarget.x > BRIDGE_MIN_X - 2 && Math.abs(moveTarget.z) < 12);
   bridgePanelEl.classList.toggle('show', nearBridge && !bridgeSolved);
+  // culling par zone : les cristaux/pancartes portent des étiquettes sans
+  // test de profondeur (toujours au premier plan, cf. makeFractionSprite) —
+  // sans ce filtre elles restent visibles depuis n'importe où sur la carte
+  // (défaut bloquant constaté en revue) et grillent la surprise de la
+  // découverte. On ne les révèle que dans le rayon de leur propre zone.
+  cueilletteChallenges.forEach(ch => {
+    const near = Math.hypot(heroLogical.x - ch.cfg.zone.x, heroLogical.z - ch.cfg.zone.z) < ch.cfg.zone.r + 3;
+    const active = near && (ch.cfg.gate ? ch.cfg.gate() : true);
+    if (active && !ch.state.wasActive) ch.updatePanel();
+    ch.state.wasActive = active;
+    ch.cfg.panelEl.classList.toggle('show', active && !ch.state.solved);
+    ch.orbs.forEach(o => { if (!o.userData.picked) o.visible = active; });
+    if (near && ch.cfg.loreOnEnter && !ch.state.loreShown) {
+      ch.state.loreShown = true;
+      report(ch.cfg.loreOnEnter);
+      setTimeout(() => report(), 3400);
+    }
+  });
+  if (typeof updateRitualZoneProximity === 'function') updateRitualZoneProximity();
+  const nearCompass = Math.hypot(heroLogical.x - COMPASS_ZONE.x, heroLogical.z - COMPASS_ZONE.z) < COMPASS_ZONE.r + 3;
+  compassPanelEl.classList.toggle('show', nearCompass && !compassState.solved);
+  compassRose.visible = nearCompass;
+  compassMarkers.forEach(m => { m.visible = nearCompass; });
+  const nearSort = Math.hypot(heroLogical.x - SORT_ZONE.x, heroLogical.z - SORT_ZONE.z) < 12;
+  sortPanelEl.classList.toggle('show', nearSort && !sortState.solved);
+  sortBaskets.forEach(b => { b.visible = nearSort; });
+  sortItems.forEach(it => { if (!it.userData.sorted && sortState.held !== it) it.visible = nearSort; });
+  resolveSortArrival();
+  const nearMatch = Math.hypot(heroLogical.x - MATCH_ZONE.x, heroLogical.z - MATCH_ZONE.z) < MATCH_ZONE.r + 3;
+  matchPanelEl.classList.toggle('show', nearMatch && !matchState.solved);
+  matchCards.forEach(c => { if (!c.userData.matched) c.visible = nearMatch; });
+  advanceMainQuestIfDone();
+  updateCompassArrow();
+  pollSeedGrants();
   if (bridgeSolved && !bridgeRewardGiven && heroLogical.x > GAP_X + GAP_HALF + 2) {
     bridgeRewardGiven = true;
     busy = true;
@@ -3899,7 +5477,6 @@ function loop() {
     setTimeout(() => {
       endEl.style.display = 'flex';
       document.getElementById('end-item-row').style.display = 'flex';
-      busy = false;
       setTimeout(() => { flyStarsToXpBar(document.querySelector('#end .card'), MISSION_PONT_ELDA.finishReward.starCount, MISSION_PONT_ELDA.finishReward.xp); }, 450);
     }, 200);
   }
@@ -3946,6 +5523,11 @@ function loop() {
       heroFacing = Math.atan2(d.x, d.z);
       walking = true;
     } else { moving = false; }
+  }
+  if (pendingCueillettePickup && !pendingCueillettePickup.group.userData.picked) {
+    const { challenge, group } = pendingCueillettePickup;
+    const dnp = Math.hypot(heroLogical.x - group.userData.flat.x, heroLogical.z - group.userData.flat.z);
+    if (dnp < 0.7) { challenge.collect(group); pendingCueillettePickup = null; }
   }
   if (pendingPickup && !pendingPickup.userData.picked) {
     const dp = Math.hypot(heroLogical.x - pendingPickup.userData.flat.x, heroLogical.z - pendingPickup.userData.flat.z);
@@ -4018,6 +5600,14 @@ function loop() {
       totem.position.x + Math.cos(a) * sp.userData.radius,
       0.7 + Math.sin(elapsed * 1.5 + sp.userData.phase) * 0.5,
       totem.position.z + Math.sin(a) * sp.userData.radius,
+    );
+  });
+  astraSparkles.forEach(sp => {
+    const a = sp.userData.angle + elapsed * sp.userData.speed;
+    sp.position.set(
+      NUMBERS_ZONE.x + Math.cos(a) * sp.userData.radius,
+      0.6 + Math.sin(elapsed * 1.3 + sp.userData.phase) * 0.45,
+      NUMBERS_ZONE.z + Math.sin(a) * sp.userData.radius,
     );
   });
 

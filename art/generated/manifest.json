@@ -4,22 +4,223 @@
       "file": "public/ui/generated/icon-location.png",
       "prompt": "A small game UI icon representing \"a discovered location on a map\" — a classic teardrop-shaped map pin/location marker with a small circle at its center, warm golden-amber color with a soft highlight, thick dark rounded outline matching a cute toon/chibi fantasy game icon style. Centered, simple silhouette, readable at small size, isolated on transparent background.",
       "engine": "openai",
-      "references": ["public/ui/icons/icon-star.png", "public/ui/icons/icon-book.png"],
-      "usedIn": ["public/spike3d-village.html — panneau de découverte, compteur \"Lieux découverts\""]
+      "references": [
+        "public/ui/icons/icon-star.png",
+        "public/ui/icons/icon-book.png"
+      ],
+      "usedIn": [
+        "public/spike3d-village.html — panneau de découverte, compteur \"Lieux découverts\""
+      ]
     },
     {
       "file": "public/ui/generated/icon-npc.png",
       "prompt": "A small game UI icon representing \"a character you have met/talked to\" — a friendly rounded speech/chat bubble with two small dots inside it (representing conversation), warm coral/pink color with a soft highlight, thick dark rounded outline matching a cute toon/chibi fantasy game icon style. Centered, simple silhouette, readable at small size, isolated on transparent background.",
       "engine": "openai",
-      "references": ["public/ui/icons/icon-star.png", "public/ui/icons/icon-book.png"],
-      "usedIn": ["public/spike3d-village.html — panneau de découverte, compteur \"PNJ rencontrés\""]
+      "references": [
+        "public/ui/icons/icon-star.png",
+        "public/ui/icons/icon-book.png"
+      ],
+      "usedIn": [
+        "public/spike3d-village.html — panneau de découverte, compteur \"PNJ rencontrés\""
+      ]
     },
     {
       "file": "public/ui/generated/res-coin.png",
       "prompt": "Flat game icon asset: a round gold coin with an embossed 5-pointed star, thick beveled rim, cel-shaded / toon style, one soft highlight, one hard-edged AO shadow directly under the coin. Fully opaque coin silhouette on 100% transparent background, no glow/halo/vignette.",
       "engine": "openai",
       "references": [],
-      "usedIn": ["public/spike3d-village.html — icône ressource \"Pièces\" (HUD, XP bar, menu inventaire)"]
+      "usedIn": [
+        "public/spike3d-village.html — icône ressource \"Pièces\" (HUD, XP bar, menu inventaire)"
+      ]
+    },
+    {
+      "file": "public/ui/generated/item-*.png (19 fichiers)",
+      "prompt": "Game UI icon: [objet], cel-shaded / toon style, warm painted rendering with one soft highlight and a hard-edged AO shadow directly under it, thin dark outline. Output ONLY the object as fully opaque pixels; every pixel outside its silhouette must be 100% transparent alpha with a hard edge, max 2px anti-aliasing. No background, no glow, no halo, no vignette, no ground plane, no card, no frame.",
+      "engine": "openai",
+      "references": [],
+      "usedIn": [
+        "public/spike3d-village.html — menu inventaire (catalogue mocké + onglets), reproduction de art/board/image.png section 3 : item-sword, item-helmet, item-tunic, item-boots, item-shield, item-ring, item-potion-red, item-potion-blue, item-bread, item-apple, item-mushroom, item-flower, item-wood, item-stone, item-leaf, item-crystal-blue, item-crystal-purple, item-scroll, item-pouch"
+      ]
+    },
+    {
+      "file": "public/ui/generated/board-quest-maths-astra-observatory.png",
+      "prompt": "A concept art board for a small magical clearing called \"Astra's Observatory\" in a cheerful fantasy village world. A circular ancient stone platform inlaid with a glowing pale starry-blue mosaic ring, set in a green grassy clearing surrounded by trees. At its center, a weathered stone obelisk carved with a glowing five-pointed star rune. Around the circle's edge, four short lantern posts each topped with a small glowing blue orb, marking the boundary like stars. Scattered above the platform, small floating glowing crystal shards each showing a painted number on them, like gems drifting gently in the air — remnants left by a reclusive gnome astronomer named Astra, \"the Old Counter\", who once catalogued the stars by number before disappearing. Mood: quiet, magical, nostalgic, warm and inviting — not dark or scary, this is for a children's educational game. Compose it as a game concept art board: show the full clearing as one wide scene, plus 2-3 of the key objects (the obelisk, a lantern post, a floating number-crystal) shown larger and isolated nearby on the same sheet, like reference callouts.",
+      "engine": "openai",
+      "references": [
+        "public/ui/interface.png"
+      ],
+      "usedIn": [
+        "public/spike3d-village.html — planche de référence (univers/scénario) pour la zone du défi des grands nombres, pas intégrée telle quelle (monde 3D procédural) : sert de cible de fidélité pour les couleurs/props procéduraux (obélisque, lanternes, cristaux)"
+      ]
+    },
+    {
+      "file": "public/ui/generated/concept-arena-crystal.png",
+      "prompt": "A small rectangular multiplayer arcade game arena inside a magical crystal cavern, viewed from a slightly elevated 3/4 isometric angle looking down. Glowing purple, cyan and pink crystal formations line the border, a few softly lit floating rocks hover above the edges, smooth polished dark stone floor with glowing crystalline veins running through it. Toon-shaded, cel-shaded stylized 3D mobile game art, painted outlines, vibrant saturated colors, dramatic rim lighting and soft glow effects, premium high-production-value look. No characters, empty arena ready for gameplay, portrait orientation.",
+      "engine": "banana",
+      "references": [
+        "public/ui/interface.png"
+      ],
+      "usedIn": [
+        "public/spike3d-arena.html — piste de direction artistique (Camille a jugé le décor procédural actuel \"affreux en 2026\", 2026-08-04) ; PAS intégrée, sert de référence de choix de style avant retouche du code"
+      ]
+    },
+    {
+      "file": "public/ui/generated/concept-arena-candy.png",
+      "prompt": "A small rectangular multiplayer arcade game arena set in an enchanted candy orchard, viewed from a slightly elevated 3/4 isometric angle looking down. Candy-colored trees with lollipop-like fruit and striped mushroom decorations line the border, pastel colored grass floor with a soft glowing pattern. Toon-shaded, cel-shaded stylized 3D mobile game art, painted outlines, vibrant saturated candy colors, warm inviting lighting and soft glow effects, premium high-production-value look. No characters, empty arena ready for gameplay, portrait orientation.",
+      "engine": "banana",
+      "references": [
+        "public/ui/interface.png"
+      ],
+      "usedIn": [
+        "public/spike3d-arena.html — piste de direction artistique alternative, même contexte que concept-arena-crystal.png"
+      ]
+    },
+    {
+      "file": "public/ui/generated/concept-arena-cosmic.png",
+      "prompt": "A small rectangular multiplayer arcade game arena floating in a candy-colored cosmic void, viewed from a slightly elevated 3/4 isometric angle looking down. Starry sky background, glowing pastel planets and rings in the distance, neon-edged floor with a starfield pattern and glowing grid lines. Toon-shaded, cel-shaded stylized 3D mobile game art, painted outlines, vibrant saturated neon colors, dynamic lighting and glow effects, premium high-production-value look. No characters, empty arena ready for gameplay, portrait orientation.",
+      "engine": "banana",
+      "references": [
+        "public/ui/interface.png"
+      ],
+      "usedIn": [
+        "public/spike3d-arena.html — piste de direction artistique alternative, même contexte ; résultat le plus faible des 3 (rendu isolé façon icône/plateau flottant plutôt que scène immersive, palette moins fidèle au prompt \"néon cosmique\")"
+      ]
+    },
+    {
+      "file": "public/ui/generated/menu-bg-texture.png",
+      "prompt": "A vertical mobile game main-menu background for a friendly children's educational game, in the visual style of Brawl Stars: chibi cartoon aesthetic, thick clean dark ink outlines on shapes, bold saturated cel-shaded colors, glossy painterly highlights, playful stylized arena atmosphere. Deep violet-purple night sky gradient (from #3a2c60 near the top fading to #241c3a at the bottom), soft warm golden spotlight glow radiating from the upper-center, scattered small glowing stars and sparkle/confetti shapes in pink, cyan and gold floating throughout, a faint stylized silhouette of a small fantasy arena/colosseum shape near the bottom edge. No text, no characters, no logos, no watermark.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: SUPERSEDÉ par menu-bg-texture-v2.png (2026-08-05) — retour de Camille : motif \"château + confettis\" trop générique/conte de fées, pas assez \"arène de compétition\" façon Brawl Stars. Conservé pour historique, plus utilisé dans spike3d-menu.html."
+    },
+    {
+      "file": "public/ui/generated/menu-bg-texture-v2.png",
+      "prompt": "A vertical mobile game main-menu background for a magical educational arena game, capturing the confident, punchy energy of Brawl Stars' art style but with its own distinct fantasy-magic identity (not a copy of Brawl Stars content — no skulls, no weapons). Bold thick black outlines on every shape, smooth clean cel-shaded gradients with NO visible brush texture, high saturation, dynamic asymmetric composition. Deep violet-purple gradient backdrop. At the bottom, a glowing magical arena stage: a circular platform inlaid with a bright golden glowing rune/spell-circle pattern. Around the edges, a few large bold floating crystal shards (violet, cyan, pink) with sharp glossy highlight facets. One or two torn fabric pennant banners in gold near the top corners. No text, no characters, no logos.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: SUPERSEDÉ par menu-bg-texture-v3.png (2026-08-05) — revue visuelle : cristaux placés trop près des bords, rognés par background-size:cover sur viewport étroit (430px), palette cristaux incomplète après rognage (violet perdu). Conservé pour historique."
+    },
+    {
+      "file": "public/ui/generated/menu-bg-texture-v3.png",
+      "prompt": "Même concept que v2 (arène magique façon Brawl Stars, cercle runique doré, bannières, identité Eluminia) avec une règle de composition explicite : exactement 3 clusters de cristaux (violet, cyan, rose) larges et lisibles, tous maintenus dans les 75% centraux de la largeur du cadre, aucun élément important dans les 12% de marge de chaque côté — pour survivre au rognage CSS background-size:cover sur un écran de téléphone étroit.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — fond d'écran plein cadre (background du <body>). Itération 3 (2026-08-05) : corrige le rognage de v2 (cristaux/marges), 3 clusters violet/cyan/rose désormais bien visibles et centrés en capture réelle 430px."
+    },
+    {
+      "file": "public/ui/generated/play-btn-bg.png",
+      "prompt": "A chunky rounded rectangular button plate for a mobile game UI, in the visual style of Brawl Stars: thick dark ink outline all around, bold saturated bright green gradient fill (lighter green #8fe08a at top to #6fb562 at bottom), a glossy diagonal highlight streak across the upper third, a darker green (#3f8a52) beveled 3D edge/ledge along the bottom suggesting a pressable button, subtle painterly cel-shaded texture rather than a flat vector gradient. No text, no letters, no icons, no logo.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — #play-btn, .gift-claim-btn.ready, #egg-open-btn, .familiar-active-btn.active (lots 1 et 4). public/spike3d-arena.html — #start-overlay button, #round-end button (lot 5, 2026-08-05) : même asset réutilisé sur les 2 fichiers, aucune nouvelle génération. Version conservée face à play-btn-bg-v2.png (plus générique)."
+    },
+    {
+      "file": "public/ui/generated/play-btn-bg-v2.png",
+      "prompt": "A chunky rounded rectangular button plate for a mobile game UI, capturing the clean confident polish of Brawl Stars' UI art style. Thick, perfectly even dark ink outline all around. Bold saturated bright green fill using smooth flat cel-shading gradient bands with NO visible brush/painterly texture. A single crisp glossy highlight shape across the upper portion. A darker green beveled 3D edge/ledge along the bottom. No text, no letters, no icons, no logo.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: NON ADOPTÉ (2026-08-05) — tentative de \"nettoyer\" le rendu peint de play-btn-bg.png en retirant la texture au pinceau, résultat trop lisse/générique (\"bouton web glacé\"), a perdu le caractère peint du v1. play-btn-bg.png (v1) reste la version utilisée."
+    },
+    {
+      "file": "public/ui/generated/badge-circle-bg.png",
+      "prompt": "A circular UI badge/button frame plate for a mobile game, matching the established painted cel-shaded art style (thick black outline, smooth clean gradient bands, glossy highlight, no visible brush texture). Dark violet-navy fill with a warm gold metallic rim/ring border, soft glossy highlight arc across the upper portion. Completely empty flat center (icon/emoji placed on top separately). Perfectly circular.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — #gifts-btn, #avatar-btn, #familiar-btn (les 3 badges circulaires du coin haut d'écran), background-image commun rogné en cercle par border-radius:50%. Différenciation gardée via un anneau de lueur colorée en box-shadow (or/cyan/or) plutôt que 3 assets séparés — lot 2 (2026-08-05)."
+    },
+    {
+      "file": "public/ui/generated/collection-btn-bg.png",
+      "prompt": "A chunky rounded rectangular button plate for a mobile game UI, matching the established painted cel-shaded art style — same family as the green Jouer button but in purple as a secondary action button. Bold saturated purple gradient fill (#a58ee8 to #8a6fd6), glossy diagonal highlight streak, darker purple (#6a4bc4) beveled 3D edge along the bottom. No text, no letters, no icons, no logo.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — #collection-btn (lot 2). public/spike3d-arena.html — #round-end-collection-btn, #round-end-home-btn (lot 5, 2026-08-05) : même asset réutilisé, aucune nouvelle génération."
+    },
+    {
+      "file": "public/ui/generated/panel-texture.png",
+      "prompt": "A seamless-tiling warm parchment/stone tablet texture background for a mobile game UI panel, matching the established painted cel-shaded art style, smooth, no visible brush strokes. Warm cream to light tan gradient with a very subtle soft mottled stone/parchment pattern, low contrast, must stay light and readable since UI text and cards sit on top. No border, no frame, no vignette, no text, no icons.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — #gifts-card, #wardrobe-card, #familiar-card, #collection-card, #menu-level (lot 3). public/spike3d-arena.html — #start-overlay .card, #round-end .card (lot 5, 2026-08-05) : même texture réutilisée sur les 2 fichiers, aucune nouvelle génération."
+    },
+    {
+      "file": "public/ui/generated/btn-neutral-bg.png",
+      "prompt": "A chunky rounded rectangular button plate for a mobile game UI, matching the established painted cel-shaded art style — same family as the green/purple buttons, in a warm neutral brown/wood tone for secondary actions like \"close\". Bold warm brown gradient fill, glossy diagonal highlight streak, darker brown beveled 3D edge along the bottom. No text, no letters, no icons, no logo.",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: public/spike3d-menu.html — les 4 boutons \"Fermer\" (gifts/wardrobe/familiar/collection-close-btn) et #egg-feed-btn. Lot 4 (2026-08-05). play-btn-bg.png (vert, déjà généré) réutilisé sans nouvelle génération pour .gift-claim-btn.ready, #egg-open-btn, .familiar-active-btn.active — même famille visuelle, pas de gaspillage."
+    },
+    {
+      "file": "public/ui/generated/style-board-candy-arcade.png",
+      "prompt": "Palette + boutons/badge/barre glossy toy-plastic, jaune/orange/magenta/bleu ciel/violet, contour marine epais",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "Planche de direction A - CANDY ARCADE - en attente de choix de Camille (refonte direction artistique post-lot5)"
+    },
+    {
+      "file": "public/ui/generated/style-board-fantasy-pop.png",
+      "prompt": "Palette + boutons/badge/barre glossy toy-plastic, or/corail/magenta/turquoise/violet + etincelles, contour marine epais",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "Planche de direction B - FANTASY POP - en attente de choix de Camille (refonte direction artistique post-lot5)"
+    },
+    {
+      "file": "public/ui/generated/style-board-sunset-arena.png",
+      "prompt": "Palette + boutons/badge/barre glossy toy-plastic, rouge corail/orange/or/rose/violet degrade coucher de soleil, contour marine epais",
+      "engine": "banana",
+      "references": [],
+      "usedIn": "Planche de direction C - SUNSET ARENA - en attente de choix de Camille (refonte direction artistique post-lot5)"
+    },
+    {
+      "file": "public/ui/style-guide-fantasypop.png",
+      "prompt": "Fournie par Camille (upload) - planche UI complete de reference (palette, boutons, barres, badges, popups)",
+      "engine": "fournie-par-camille",
+      "references": [],
+      "usedIn": "Nouvelle bible graphique de reference pour la direction Fantasy Pop - remplace interface.png pour les generations post-lot5"
+    },
+    {
+      "file": "public/ui/generated/btn-primary-fp.png",
+      "prompt": "Bouton pilule glossy or/orange, contour marine epais, reflet haut",
+      "engine": "banana",
+      "references": [
+        "public/ui/style-guide-fantasypop.png"
+      ],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: spike3d-menu.html #play-btn, .gift-claim-btn.ready, #egg-open-btn, .familiar-active-btn actif ; spike3d-arena.html #start-overlay button, #round-end button (remplace play-btn-bg.png)"
+    },
+    {
+      "file": "public/ui/generated/btn-secondary-fp.png",
+      "prompt": "Bouton pilule glossy turquoise, contour marine epais, reflet haut",
+      "engine": "banana",
+      "references": [
+        "public/ui/style-guide-fantasypop.png"
+      ],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: spike3d-menu.html #collection-btn ; spike3d-arena.html #round-end-collection-btn/#round-end-home-btn (remplace collection-btn-bg.png)"
+    },
+    {
+      "file": "public/ui/generated/btn-neutral-fp.png",
+      "prompt": "Bouton carre arrondi glossy rouge, contour marine epais (fermeture)",
+      "engine": "banana",
+      "references": [
+        "public/ui/style-guide-fantasypop.png"
+      ],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: spike3d-menu.html tous les boutons Fermer (gifts/wardrobe/familiar/collection) (remplace btn-neutral-bg.png)"
+    },
+    {
+      "file": "public/ui/generated/badge-icon-fp.png",
+      "prompt": "Badge carre arrondi glossy indigo-marine plein, contour marine epais",
+      "engine": "banana",
+      "references": [
+        "public/ui/style-guide-fantasypop.png"
+      ],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: spike3d-menu.html #gifts-btn/#avatar-btn/#familiar-btn (remplace badge-circle-bg.png, border-radius 50%->22px)"
+    },
+    {
+      "file": "public/ui/generated/panel-popup-fp.png",
+      "prompt": "Texture panneau plate navy-purple avec vignette douce, sans bordure (bordure geree en CSS)",
+      "engine": "banana",
+      "references": [
+        "public/ui/style-guide-fantasypop.png"
+      ],
+      "usedIn": "SUPPRIME (2026-08-05, phase 4 harmonisation) - remplace par le design system CSS pur (public/ui/theme.css), plus aucune image pour les boutons/panneaux. Ancien usedIn: NON ADOPTE POUR LE MOMENT - genere mais pas encore applique aux cartes (gifts/wardrobe/familiar/collection/start-overlay/round-end restent en parchemin cream ce lot) - prochain lot si Camille valide"
     }
   ]
 }
