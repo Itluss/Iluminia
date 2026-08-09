@@ -2,10 +2,10 @@
 # À chaque push sur main, le site statique (index.html + public/*) est publié
 # sur https://iluminia.pages.dev — testable depuis n'importe quel appareil.
 #
-# Prérequis (une seule fois) : ajouter deux secrets au dépôt
+# Prérequis (une seule fois) : ajouter un secret au dépôt
 # (Settings → Secrets and variables → Actions → New repository secret) :
-#   - CLOUDFLARE_API_TOKEN  : token API avec la permission "Cloudflare Pages — Edit"
-#   - CLOUDFLARE_ACCOUNT_ID : identifiant du compte (dash.cloudflare.com → barre latérale)
+#   - CLOUDFLARE_API_TOKEN : token API avec la permission "Cloudflare Pages — Edit"
+# L'Account ID n'est pas sensible, il est défini en clair ci-dessous.
 name: Deploy to Cloudflare Pages
 
 on:
@@ -24,12 +24,12 @@ jobs:
       contents: read
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CLOUDFLARE_ACCOUNT_ID: "7322073f8200a19e1759e152d6e2e390"
     steps:
       - name: Vérifier les secrets Cloudflare
         run: |
-          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
-            echo "::error::Secrets CLOUDFLARE_API_TOKEN et/ou CLOUDFLARE_ACCOUNT_ID manquants. Ajoutez-les dans Settings → Secrets and variables → Actions, puis relancez le workflow."
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Secret CLOUDFLARE_API_TOKEN manquant. Ajoutez-le dans Settings → Secrets and variables → Actions, puis relancez le workflow."
             exit 1
           fi
 
