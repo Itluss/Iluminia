@@ -54,9 +54,17 @@ jobs:
           cp index.html _site/
           cp -r public/. _site/
 
-      # Idempotent : échoue silencieusement si le projet existe déjà.
+      # Idempotent : tolère « already exists », échoue bruyamment sinon.
       - name: Créer le projet Pages si nécessaire
-        run: npx --yes wrangler@4 pages project create iluminia-game --production-branch=main || true
+        run: |
+          set +e
+          OUT=$(npx --yes wrangler@4 pages project create iluminia-game --production-branch=main 2>&1)
+          STATUS=$?
+          echo "$OUT"
+          if [ $STATUS -ne 0 ] && ! echo "$OUT" | grep -qi "already exists"; then
+            echo "::error::Échec de la création du projet Pages — voir la sortie ci-dessus."
+            exit 1
+          fi
 
       - name: Déployer
         run: npx --yes wrangler@4 pages deploy _site --project-name=iluminia-game --branch=main
