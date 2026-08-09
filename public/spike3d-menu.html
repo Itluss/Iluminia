@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Eluminia — Menu</title>
+  <link rel="icon" href="data:," />
 <link rel="stylesheet" href="ui/theme.css" />
 <style>
   @font-face { font-family: system-ui; }
@@ -1090,12 +1091,12 @@
 <!-- -------- rendu du personnage 3D "Max" (2026-08-07) — premier essai,
      modèle statique (pas encore rigué/animé). Trois.js chargé UNIQUEMENT
      pour cette scène (menu.html était 100% DOM/CSS jusqu'ici) — même
-     version que les autres écrans (0.160.0, importmap unpkg). --------- -->
+     version que les autres écrans (0.160.0, importmap vendor local). --------- -->
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
   }
 }
 </script>

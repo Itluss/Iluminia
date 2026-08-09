@@ -4,6 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>Eluminia — Arène (prototype gameplay)</title>
+  <link rel="icon" href="data:," />
 <link rel="stylesheet" href="ui/theme.css" />
 <style>
   @font-face { font-family: system-ui; }
@@ -551,8 +552,8 @@
 <script type="importmap">
 {
   "imports": {
-    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    "three": "./vendor/three/build/three.module.js",
+    "three/addons/": "./vendor/three/examples/jsm/"
   }
 }
 </script>
@@ -955,13 +956,16 @@ function makeGroundTexture() {
   // veines lumineuses : chaque dalle relie ses 2 voisines les plus
   // proches, façon réseau de fissures qui courent au sol
   ctx.lineCap = 'round';
-  const veinColors = ['#6fd8ff', '#c98aff', '#8ef0c9', '#ff8ad6'];
+  // veines assagies (retour Camille 2026-08-09 : « l'arène est brouillon ») :
+  // 2 teintes au lieu de 4, alpha et lueur réduits — le sol redevient un
+  // fond, le gameplay (dragon, zones, joueurs) reprend le premier plan
+  const veinColors = ['#6fd8ff', '#c98aff'];
   seeds.forEach(s => {
     const others = seeds.filter(o => o !== s).sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y));
     others.slice(0, 2).forEach(n => {
       const color = veinColors[Math.floor(Math.random() * veinColors.length)];
-      ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 5;
-      ctx.lineWidth = 1.3; ctx.globalAlpha = 0.75;
+      ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 3;
+      ctx.lineWidth = 1.1; ctx.globalAlpha = 0.45;
       ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(n.x, n.y); ctx.stroke();
     });
   });
@@ -1013,7 +1017,7 @@ function makeCrystalCluster(scale) {
     shard.rotation.set((Math.random() - 0.5) * 0.3, Math.random() * Math.PI, (Math.random() - 0.5) * 0.3);
     g.add(shard);
   }
-  const glow = makeGlowSprite(crystalPalette[Math.floor(Math.random() * crystalPalette.length)], 2.2);
+  const glow = makeGlowSprite(crystalPalette[Math.floor(Math.random() * crystalPalette.length)], 1.6);
   glow.position.y = 0.9;
   g.add(glow);
   g.scale.setScalar(scale);
@@ -1033,8 +1037,10 @@ function perimeterPoint(t) {
   d -= topLen;
   return { x: -FULL_W, z: FULL_D - d };
 }
-for (let i = 0; i < 30; i++) {
-  const p = perimeterPoint((i + Math.random() * 0.6) / 30);
+// 30 → 16 clusters (2026-08-09) : le pourtour saturé participait au
+// « brouillon » — l'ambiance caverne tient avec moitié moins
+for (let i = 0; i < 16; i++) {
+  const p = perimeterPoint((i + Math.random() * 0.6) / 16);
   const outward = 1.0 + Math.random() * 1.6;
   const nx = Math.abs(p.x) > Math.abs(p.z) ? Math.sign(p.x) : 0;
   const nz = Math.abs(p.z) >= Math.abs(p.x) ? Math.sign(p.z) : 0;
@@ -1046,13 +1052,16 @@ for (let i = 0; i < 30; i++) {
 // rochers flottants au-dessus du pourtour, pour l'ambiance (purement
 // décoratif, hors de la zone jouable donc jamais dans le champ d'action)
 const floatingRocks = [];
-for (let i = 0; i < 7; i++) {
-  const p = perimeterPoint(i / 7 + 0.05);
+for (let i = 0; i < 5; i++) {
+  const p = perimeterPoint(i / 5 + 0.05);
   const outward = 3 + Math.random() * 2.5;
   const nx = Math.abs(p.x) > Math.abs(p.z) ? Math.sign(p.x) : 0;
   const nz = Math.abs(p.z) >= Math.abs(p.x) ? Math.sign(p.z) : 0;
   const r = 0.5 + Math.random() * 0.5;
   const rock = toon(new THREE.IcosahedronGeometry(r, 0), 0xc9a876, { outlineScale: 1.06 });
+  // pas d'ombre portée : un rocher flottant projetait une grande tache
+  // hexagonale « orpheline » sur l'arène (revue 2026-08-09)
+  rock.castShadow = false;
   const baseY = 2.4 + Math.random() * 2;
   rock.position.set(p.x + nx * outward, baseY, p.z + nz * outward);
   rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -2084,19 +2093,79 @@ let nextCrystalIn = nextCrystalDelay();
 // étendu avec un vrai frozenUntil + knockback, #question-banner (haut) ->
 // affichage de la question VISIBLE PAR TOUS (plus de barre du bas
 // interactive — ici on répond en marchant dans une zone, pas en cliquant). --------
+// -------- dragon Lumin V4 (retour Camille 2026-08-09 : « le dragon n'est
+// pas reconnaissable ») : vraie silhouette de dragon procédurale (corps
+// allongé, tête+museau, cornes, ailes membraneuses animées, queue à
+// pointe) en toon doré. L'ancienne sphère émissive (intensité 2,6)
+// bloomait en blob informe — l'identité lumineuse passe désormais par un
+// contour lumineux + glow sprite, la forme reste lisible. --------
 function makeLumin() {
   const g = new THREE.Group();
-  const body = emissive(new THREE.SphereGeometry(0.38, 16, 14), 0xffdc4a, 2.6);
-  addOutline(body, 1.1);
+  const GOLD = 0xffc94a, BELLY = 0xffe9a8, WING = 0xffab3c, HORN = 0xff8a3c;
+  // corps : ellipsoïde volontairement allongé vers l'avant (+z)
+  const body = toon(new THREE.SphereGeometry(0.32, 18, 14), GOLD, {});
+  body.scale.set(1, 0.85, 1.35);
   g.add(body);
-  const hornGeo = new THREE.ConeGeometry(0.1, 0.28, 6);
+  const belly = toon(new THREE.SphereGeometry(0.24, 14, 12), BELLY, { outline: false });
+  belly.scale.set(0.85, 0.7, 1.1);
+  belly.position.set(0, -0.08, 0.08);
+  g.add(belly);
+  // tête + museau, tournés vers +z (sens de rotation du spin au sol)
+  const head = toon(new THREE.SphereGeometry(0.19, 14, 12), GOLD, {});
+  head.position.set(0, 0.18, 0.40);
+  g.add(head);
+  const snout = toon(new THREE.SphereGeometry(0.11, 10, 8), BELLY, { outline: false });
+  snout.scale.set(0.9, 0.7, 1.15);
+  snout.position.set(0, 0.11, 0.56);
+  g.add(snout);
   [-1, 1].forEach(side => {
-    const horn = toon(hornGeo, 0xff8a3c, {});
-    horn.position.set(side * 0.16, 0.32, 0);
-    horn.rotation.z = side * 0.35;
+    const eye = toon(new THREE.SphereGeometry(0.035, 8, 6), 0x3d2f52, { outline: false });
+    eye.position.set(side * 0.105, 0.24, 0.52);
+    g.add(eye);
+    const horn = toon(new THREE.ConeGeometry(0.06, 0.22, 6), HORN, {});
+    horn.position.set(side * 0.09, 0.33, 0.32);
+    horn.rotation.set(-0.55, 0, side * 0.22);
     g.add(horn);
   });
-  g.userData.glow = addGlowOutline2(body, 1.8, 0xffe27a);
+  // ailes membraneuses : forme 2D posée à plat (lisible depuis la caméra
+  // haute), battement animé dans la boucle LUMIN (voir animate)
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 0);
+  wingShape.quadraticCurveTo(0.30, 0.18, 0.60, 0.10);
+  wingShape.quadraticCurveTo(0.45, -0.04, 0.38, -0.10);
+  wingShape.quadraticCurveTo(0.27, -0.15, 0.20, -0.14);
+  wingShape.quadraticCurveTo(0.10, -0.22, 0.02, -0.12);
+  wingShape.lineTo(0, 0);
+  const wingGeo = new THREE.ShapeGeometry(wingShape);
+  const wingMat = new THREE.MeshToonMaterial({ color: WING, gradientMap: warmGradient, side: THREE.DoubleSide });
+  g.userData.wings = [-1, 1].map(side => {
+    const pivot = new THREE.Group();
+    const membrane = new THREE.Mesh(wingGeo, wingMat);
+    membrane.rotation.x = -Math.PI / 2; // à plat, s'étend vers +x local
+    pivot.add(membrane);
+    pivot.position.set(side * 0.18, 0.16, 0.02);
+    if (side < 0) pivot.rotation.y = Math.PI; // aile miroir
+    pivot.rotation.z = 0.5;
+    g.add(pivot);
+    return pivot;
+  });
+  // queue : deux segments + pointe
+  const tail1 = toon(new THREE.SphereGeometry(0.12, 10, 8), GOLD, { outline: false });
+  tail1.position.set(0, 0.02, -0.44);
+  g.add(tail1);
+  const tail2 = toon(new THREE.SphereGeometry(0.08, 10, 8), GOLD, { outline: false });
+  tail2.position.set(0, 0.08, -0.60);
+  g.add(tail2);
+  const spike = toon(new THREE.ConeGeometry(0.07, 0.2, 6), HORN, {});
+  spike.position.set(0, 0.15, -0.72);
+  spike.rotation.x = -Math.PI / 2 - 0.45;
+  g.add(spike);
+  // identité lumineuse : contour lumineux discret SEULEMENT — le halo
+  // sprite additif noyait toute la silhouette en blob blanc (revue du
+  // 2026-08-09, défaut bloquant) ; la forme prime sur la lueur
+  g.userData.glow = addGlowOutline2(body, 1.12, 0xffe27a);
+  g.userData.glow.material.opacity = 0.3;
+  g.scale.setScalar(0.85);
   return g;
 }
 // -------- position de spawn V3 (spec §7) : tirée de DRAGON_SPAWN_POINTS
@@ -2147,8 +2216,13 @@ function updateOffscreenIndicator(key, worldX, worldZ, colorHex, glyph) {
   const dx = p.x - cx || 0.0001, dy = p.y - cy || 0.0001;
   const halfW = innerWidth / 2 - margin, halfH = innerHeight / 2 - margin;
   const scale = Math.min(Math.abs(halfW / dx), Math.abs(halfH / dy));
+  // -------- jamais SUR le bandeau de question (revue 2026-08-09 : badge
+  // « B » superposé au texte de la réponse) : quand le bandeau est affiché,
+  // les indicateurs du haut glissent juste en dessous --------
+  const bannerSafe = questionBannerEl.classList.contains('show')
+    ? questionBannerEl.getBoundingClientRect().bottom + 24 : margin;
   el.style.left = `${cx + dx * scale}px`;
-  el.style.top = `${cy + dy * scale}px`;
+  el.style.top = `${Math.max(bannerSafe, cy + dy * scale)}px`;
   const dist = Math.round(Math.hypot(worldX - player.position.x, worldZ - player.position.z));
   el.querySelector('.offscreen-dist').textContent = `${dist}m`;
 }
@@ -2264,9 +2338,19 @@ function makeZoneVisual(zone) {
   const g = new THREE.Group();
   const color = ZONE_COLORS[zone.letter];
   const disc = new THREE.Mesh(new THREE.CircleGeometry(LUMIN_CONFIG.zoneRadius, 28),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3 }));
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45 }));
   disc.rotation.x = -Math.PI / 2; disc.position.y = 0.03;
   g.add(disc);
+  // -------- colonne de lumière (retour Camille 2026-08-09 : « très dur de
+  // s'y repérer ») : balise verticale couleur de zone, visible à travers
+  // toute l'arène — effet localisé (règle visual-quality : jamais de voile
+  // global), additive et sans depthWrite pour ne rien masquer. --------
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.55, 7, 14, 1, true),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.26,
+      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+  beam.position.y = 3.5;
+  g.add(beam);
+  g.userData.beam = beam;
   const ring = new THREE.Mesh(new THREE.RingGeometry(LUMIN_CONFIG.zoneRadius - 0.12, LUMIN_CONFIG.zoneRadius + 0.05, 32),
     new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9, side: THREE.DoubleSide }));
   ring.rotation.x = -Math.PI / 2; ring.position.y = 0.04;
@@ -2279,6 +2363,7 @@ function makeZoneVisual(zone) {
   return g;
 }
 function eliminateZoneVisual(zone) {
+  if (zone.group.userData.beam) zone.group.userData.beam.visible = false;
   zone.disc.material.color.set(0x8a8a90);
   zone.disc.material.opacity = 0.18;
   zone.ring.material.color.set(0xb23b2a);
@@ -3797,6 +3882,13 @@ function animate() {
         luminAnnounceUntil = 0;
       }
       updateOffscreenIndicators();
+      // battement d'ailes du dragon (au sol comme porté) — pivots créés
+      // dans makeLumin(), symétriques (l'aile miroir est tournée de PI en y,
+      // le même rotation.z lève donc les deux pointes ensemble)
+      if (currentLumin && currentLumin.userData.wings) {
+        const flap = 0.5 + Math.sin(performance.now() * 0.012) * 0.4;
+        currentLumin.userData.wings.forEach(w => { w.rotation.z = flap; });
+      }
       if (luminState === 'AVAILABLE' && currentLumin) {
         currentLumin.rotation.y += dt * 2.4;
         currentLumin.position.y = 0.5 + Math.sin(performance.now() * 0.006) * 0.12;

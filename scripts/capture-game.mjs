@@ -17,7 +17,10 @@ const errors = [];
 let browser;
 
 try {
-  browser = await chromium.launch();
+  // PW_EXECUTABLE_PATH : chemin d'un Chromium préinstallé (sessions cloud où
+  // le téléchargement Playwright est indisponible) — sans effet en local.
+  browser = await chromium.launch(
+    process.env.PW_EXECUTABLE_PATH ? { executablePath: process.env.PW_EXECUTABLE_PATH } : {});
   const page = await browser.newPage({
     viewport: { width: VIEWPORT_W, height: VIEWPORT_H },
     deviceScaleFactor: 1,
@@ -41,6 +44,14 @@ try {
       }
     })
     .catch(() => {});
+
+  // PRE_CAPTURE_JS : script optionnel évalué dans la page avant la capture —
+  // permet de mettre en scène un état de jeu précis via les hooks de debug
+  // (__spikeDebug/__arenaDebug). Une expression async (IIFE) est attendue
+  // si des délais internes sont nécessaires.
+  if (process.env.PRE_CAPTURE_JS) {
+    await page.evaluate(process.env.PRE_CAPTURE_JS);
+  }
 
   // capturer la zone de jeu la plus précise disponible — MAIS seulement si
   // le canvas trouvé occupe (quasi) tout le viewport (cas des scènes
