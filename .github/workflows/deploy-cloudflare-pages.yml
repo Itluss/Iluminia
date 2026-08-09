@@ -33,6 +33,10 @@ jobs:
             exit 1
           fi
 
+      # Retire espaces et retours à la ligne accidentellement collés avec le token.
+      - name: Nettoyer le token
+        run: echo "CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v4
 
       # Reproduit ce que sert Vite en dev : public/* à la racine, plus l'index.
