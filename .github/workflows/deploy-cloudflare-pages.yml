@@ -1,6 +1,6 @@
 # Déploiement automatique sur Cloudflare Pages (compatible dépôt privé).
 # À chaque push sur main, le site statique (index.html + public/*) est publié
-# sur https://iluminia.pages.dev — testable depuis n'importe quel appareil.
+# sur https://iluminia-game.pages.dev — testable depuis n'importe quel appareil.
 #
 # Prérequis (une seule fois) : ajouter un secret au dépôt
 # (Settings → Secrets and variables → Actions → New repository secret) :
@@ -56,7 +56,7 @@ jobs:
 
       # Idempotent : échoue silencieusement si le projet existe déjà.
       - name: Créer le projet Pages si nécessaire
-        run: npx --yes wrangler@4 pages project create iluminia --production-branch=main || true
+        run: npx --yes wrangler@4 pages project create iluminia-game --production-branch=main || true
 
       - name: Déployer
-        run: npx --yes wrangler@4 pages deploy _site --project-name=iluminia --branch=main
+        run: npx --yes wrangler@4 pages deploy _site --project-name=iluminia-game --branch=main
