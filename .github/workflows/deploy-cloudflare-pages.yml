@@ -55,6 +55,8 @@ jobs:
           cp -r public/. _site/
 
       # Idempotent : tolère « already exists », échoue bruyamment sinon.
+      # En cas d'échec, teste d'autres noms pour distinguer un blocage du nom
+      # d'un blocage du compte.
       - name: Créer le projet Pages si nécessaire
         run: |
           set +e
@@ -62,6 +64,16 @@ jobs:
           STATUS=$?
           echo "$OUT"
           if [ $STATUS -ne 0 ] && ! echo "$OUT" | grep -qi "already exists"; then
+            echo "--- Diagnostic : essais avec d'autres noms ---"
+            for NAME in eluminia-proto atelier-lumin-7391; do
+              R=$(npx --yes wrangler@4 pages project create "$NAME" --production-branch=main 2>&1)
+              if [ $? -eq 0 ]; then
+                echo "OK  : $NAME accepté"
+                npx --yes wrangler@4 pages project delete "$NAME" --yes >/dev/null 2>&1
+              else
+                echo "KO  : $NAME → $(echo "$R" | grep -oE '\[code: [0-9]+\]|Subdomain is blocked|already exists' | head -1)"
+              fi
+            done
             echo "::error::Échec de la création du projet Pages — voir la sortie ci-dessus."
             exit 1
           fi
