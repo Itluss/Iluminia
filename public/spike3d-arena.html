@@ -769,7 +769,14 @@ const LUMIN_CONFIG = {
   roundRestartDelay: 1.5,   // ROUND_RESTART_DELAY (avant le countdown 3-2-1 du round suivant)
   countdownSeconds: 3,      // COUNTDOWN — 3 étapes (3,2,1,GO)
   shortAnswerMaxChars: 6,   // seuil MODE COURT (réponse affichée dans la zone) vs MODE LONG (A/B/C/D + bandeau)
+  // -------- combat autour du dragon (décision Camille 2026-08-09 :
+  // « 3 coups pour un porteur pleine vie ») --------
+  pushDamage: 34,           // 3 poussées K.O. une entité à 100 d'énergie
+  koRespawnSeconds: 3,      // K.O. temporaire en mode dragon, puis réapparition
+  stealImmunitySeconds: 1,  // anti ping-pong : vol refusé juste après une prise
+  respawnShieldSeconds: 1.5, // filet anti re-K.O. instantané à la réapparition
 };
+let luminStealImmuneUntil = 0;
 // -------- état — un seul dragon actif à la fois (currentLumin/luminOwnerId
 // globaux), mais la question est VISIBLE PAR TOUS (spec : pas de UI
 // individuelle en V2, contrairement au prototype V1). --------
@@ -1625,10 +1632,17 @@ const PET_ABILITY_HANDLERS = {
         spawnBurst(t.position.clone().add(new THREE.Vector3(0, 0.6, 0)), pet.color, 14);
         spawnFloatingText(t.position.clone().add(new THREE.Vector3(0, 1.2, 0)), `${t.userData.name} repoussé !`, '#3fb6e0');
         squashPunch(t);
+        // -------- la poussée blesse (décision Camille 2026-08-09 : « 3 coups
+        // pour un porteur pleine vie ») — c'est ce qui rend le K.O. du
+        // porteur possible autrement que par le drain passif. --------
+        if (LUMIN_MODE) damageLife(t, LUMIN_CONFIG.pushDamage);
         // -------- vol du Lumin (spec Camille 2026-08-07) : « touché par une
         // attaque offensive valide » — la poussée du Renard est la seule
-        // attaque offensive du prototype, donc LE déclencheur du vol. --------
-        if (LUMIN_MODE && t === luminOwnerId) stealLumin(caster);
+        // attaque offensive du prototype, donc LE déclencheur du vol.
+        // Si le coup met K.O., PAS de vol direct : le dragon tombe au sol
+        // sur place (garde-fou dans animate()) et redevient libre pour
+        // tout le monde — la mêlée autour du dragon tombé est voulue. --------
+        if (LUMIN_MODE && t === luminOwnerId && !t.userData.eliminated) stealLumin(caster);
       });
     },
   },
@@ -1882,6 +1896,17 @@ function eliminateEntity(entity) {
   spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xe25b4a, 40);
   spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.4, 0)), `${entity.userData.name} K.O. !`, '#e25b4a');
   entity.visible = false;
+  // -------- mode dragon : K.O. TEMPORAIRE (décision Camille 2026-08-09,
+  // remplace pour ce mode l'élimination définitive du 2026-08-05, qui
+  // reste la règle hors LUMIN_MODE) — pénalité de score conservée, puis
+  // réapparition différée loin du dragon. Le dragon éventuellement porté
+  // tombe sur place via le garde-fou existant dans animate(). --------
+  if (LUMIN_MODE) {
+    if (entity === player) { shakeCamera(0.3); addScore(KO_CONFIG.scorePenalty); }
+    else addBotScore(entity, KO_CONFIG.scorePenalty);
+    scheduleLuminRespawn(entity);
+    return;
+  }
   if (entity === player) {
     shakeCamera(0.3);
     addScore(KO_CONFIG.scorePenalty);
@@ -1897,6 +1922,35 @@ function eliminateEntity(entity) {
       endRound();
     }
   }
+}
+// -------- réapparition après K.O. (mode dragon) : au point de spawn le
+// plus éloigné du dragon (ou du centre s'il n'y a pas de dragon), énergie
+// pleine, court bouclier (réutilise shieldedUntil/isShielded — les dégâts
+// glissent dessus). Gardes anti-obsolescence : ne fait rien si la manche
+// est finie (running=false) ou si une nouvelle manche a déjà réinitialisé
+// l'entité (eliminated=false via startRound). --------
+function scheduleLuminRespawn(entity) {
+  setTimeout(() => {
+    if (!running || !entity.userData.eliminated) return;
+    const refX = currentLumin ? currentLumin.position.x : 0;
+    const refZ = currentLumin ? currentLumin.position.z : 0;
+    let best = null, bestDist = -Infinity;
+    dragonSpawnPoints().forEach(p => {
+      const d = Math.hypot(p.x - refX, p.z - refZ);
+      if (d > bestDist) { bestDist = d; best = p; }
+    });
+    entity.position.set(best.x, 0, best.z);
+    entity.userData.life = LIFE_MAX;
+    entity.userData.eliminated = false;
+    entity.visible = true;
+    entity.userData.shieldedUntil = performance.now() + LUMIN_CONFIG.respawnShieldSeconds * 1000;
+    entity.userData.wanderTarget = null;
+    entity.userData.luminTargetZone = null;
+    spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0x9fe3ff, 24);
+    spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
+      entity === player ? 'C\'est reparti !' : `${entity.userData.name} est de retour !`, '#9fe3ff');
+    if (entity === player) updateLifeBar();
+  }, LUMIN_CONFIG.koRespawnSeconds * 1000);
 }
 function isShielded(entity) { return performance.now() < (entity.userData.shieldedUntil || 0); }
 function damageLife(entity, amount) {
@@ -2286,6 +2340,7 @@ function setLuminHolder(entity) {
   if (luminOwnerId && luminOwnerId.userData.luminHalo) luminOwnerId.userData.luminHalo.visible = false;
   luminOwnerId = entity;
   luminState = 'CARRIED';
+  luminStealImmuneUntil = performance.now() + LUMIN_CONFIG.stealImmunitySeconds * 1000;
   if (currentLumin) {
     entity.add(currentLumin);
     currentLumin.position.set(0, entityHeadHeight(entity), 0);
@@ -2313,6 +2368,14 @@ function captureLumin(entity) {
 // forceLuminSteal(). « touché par une attaque offensive valide » (spec). --
 function stealLumin(newHolder) {
   if (luminState !== 'CARRIED' || !luminOwnerId || newHolder === luminOwnerId) return;
+  // -------- immunité au vol (2026-08-09) : dans la seconde qui suit une
+  // prise (capture OU vol), le dragon ne change pas de mains — anti
+  // ping-pong infini entre deux entités collées. Le K.O., lui, reste
+  // possible pendant cette fenêtre (les dégâts passent). --------
+  if (performance.now() < luminStealImmuneUntil) {
+    spawnFloatingText(luminOwnerId.position.clone().add(new THREE.Vector3(0, 1.4, 0)), 'Protégé !', '#9fe3ff');
+    return;
+  }
   const previous = luminOwnerId;
   setLuminHolder(newHolder);
   spawnBurst(newHolder.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 0xffdc4a, 18);
@@ -4112,6 +4175,11 @@ window.__arenaDebug = {
     zones: zones.map(z => ({ letter: z.letter, pos: z.pos, text: z.answer.text, correct: z.correct, eliminated: z.eliminated })),
     playerPos: { x: player.position.x, z: player.position.z },
     cameraTarget: { x: cameraTarget.x, z: cameraTarget.z },
+    // -------- diagnostic K.O./réapparition (2026-08-09) --------
+    playerEliminated: !!player.userData.eliminated,
+    playerVisible: player.visible,
+    playerLife: player.userData.life ?? LIFE_MAX,
+    luminWorldPos: currentLumin ? (() => { const v = new THREE.Vector3(); currentLumin.getWorldPosition(v); return { x: v.x, z: v.z }; })() : null,
   }),
   forceLuminSpawn: () => { if (luminState === 'NONE' && !currentLumin) spawnLumin(); },
   forceLuminCapture: (botName) => {
@@ -4121,6 +4189,12 @@ window.__arenaDebug = {
   forceLuminSteal: (botName) => {
     const entity = botName ? bots.find(b => b.userData.name === botName) : player;
     if (entity) stealLumin(entity);
+  },
+  // -------- K.O. immédiat (2026-08-09) : teste la boucle K.O./drop du
+  // dragon/réapparition sans marteler la poussée. --------
+  forceKO: (botName) => {
+    const entity = botName ? bots.find(b => b.userData.name === botName) : player;
+    if (entity) damageLife(entity, 9999);
   },
   // -------- téléporte le porteur actuel dans la zone correcte/une zone
   // fausse — simule « entrer dans la zone » sans avoir à viser en vrai,
