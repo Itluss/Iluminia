@@ -1,0 +1,71 @@
+# Déploiement automatique sur Netlify (compatible dépôt privé).
+# À chaque push sur main, le site statique (index.html + public/*) est publié
+# sur https://iluminia-game.netlify.app — testable depuis n'importe quel appareil.
+#
+# Prérequis (une seule fois) : ajouter un secret au dépôt
+# (Settings → Secrets and variables → Actions → New repository secret) :
+#   - NETLIFY_AUTH_TOKEN : Personal Access Token Netlify
+#     (app.netlify.com → User settings → Applications → New access token)
+name: Deploy to Netlify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: netlify
+  cancel-in-progress: true
+
+env:
+  SITE_NAME: iluminia-game
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    steps:
+      - name: Vérifier le secret Netlify
+        run: |
+          if [ -z "$NETLIFY_AUTH_TOKEN" ]; then
+            echo "::error::Secret NETLIFY_AUTH_TOKEN manquant. Ajoutez-le dans Settings → Secrets and variables → Actions, puis relancez le workflow."
+            exit 1
+          fi
+          # Tolère un copier-coller avec espaces ou texte autour du token.
+          CANDIDATE=$(printf '%s' "$NETLIFY_AUTH_TOKEN" | grep -oE '[A-Za-z0-9_-]{30,}' | head -1 || true)
+          echo "Diagnostic : secret brut ${#NETLIFY_AUTH_TOKEN} caractères ; token extrait ${#CANDIDATE} caractères"
+          if [ -z "$CANDIDATE" ]; then
+            echo "::error::Le secret NETLIFY_AUTH_TOKEN ne contient aucun token reconnaissable. Recréez le secret en collant uniquement le token."
+            exit 1
+          fi
+          echo "NETLIFY_AUTH_TOKEN=$CANDIDATE" >> "$GITHUB_ENV"
+
+      - uses: actions/checkout@v4
+
+      # Reproduit ce que sert Vite en dev : public/* à la racine, plus l'index.
+      - name: Assemble static site
+        run: |
+          mkdir -p _site
+          cp index.html _site/
+          cp -r public/. _site/
+
+      # Crée le site s'il n'existe pas encore, puis récupère son identifiant.
+      - name: Créer le site Netlify si nécessaire
+        run: |
+          SITE_ID=$(npx --yes netlify-cli@17 api listSites | jq -r --arg n "$SITE_NAME" '.[] | select(.name == $n) | .id' | head -1)
+          if [ -z "$SITE_ID" ]; then
+            echo "Site absent, création de $SITE_NAME…"
+            SITE_ID=$(npx --yes netlify-cli@17 api createSite --data "{\"name\":\"$SITE_NAME\"}" | jq -r '.id')
+          fi
+          if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ]; then
+            echo "::error::Impossible de créer ou retrouver le site Netlify $SITE_NAME (nom peut-être déjà pris par un autre compte : changer SITE_NAME en tête de workflow)."
+            exit 1
+          fi
+          echo "Site ID : $SITE_ID"
+          echo "NETLIFY_SITE_ID=$SITE_ID" >> "$GITHUB_ENV"
+
+      - name: Déployer
+        run: npx --yes netlify-cli@17 deploy --dir=_site --prod --message "Déploiement ${{ github.sha }}"
