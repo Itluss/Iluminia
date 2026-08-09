@@ -52,20 +52,15 @@ jobs:
           cp index.html _site/
           cp -r public/. _site/
 
-      # Crée le site s'il n'existe pas encore, puis récupère son identifiant.
-      - name: Créer le site Netlify si nécessaire
+      # Le site a été créé le 09/08/2026 (run #2) ; son identifiant est figé ici
+      # pour que chaque déploiement mette à jour le même site.
+      - name: Cibler le site Netlify
         run: |
-          SITE_ID=$(npx --yes netlify-cli@17 api listSites | jq -r --arg n "$SITE_NAME" '.[] | select(.name == $n) | .id' | head -1)
-          if [ -z "$SITE_ID" ]; then
-            echo "Site absent, création de $SITE_NAME…"
-            SITE_ID=$(npx --yes netlify-cli@17 api createSite --data "{\"name\":\"$SITE_NAME\"}" | jq -r '.id')
-          fi
-          if [ -z "$SITE_ID" ] || [ "$SITE_ID" = "null" ]; then
-            echo "::error::Impossible de créer ou retrouver le site Netlify $SITE_NAME (nom peut-être déjà pris par un autre compte : changer SITE_NAME en tête de workflow)."
-            exit 1
-          fi
-          echo "Site ID : $SITE_ID"
-          echo "NETLIFY_SITE_ID=$SITE_ID" >> "$GITHUB_ENV"
+          echo "NETLIFY_SITE_ID=29646476-347a-4686-8645-3c9cf2f95899" >> "$GITHUB_ENV"
+          # Tente d'appliquer le joli nom ($SITE_NAME.netlify.app) ; sans gravité si refusé.
+          npx --yes netlify-cli@17 api updateSite --data "{\"site_id\":\"29646476-347a-4686-8645-3c9cf2f95899\",\"body\":{\"name\":\"$SITE_NAME\"}}" >/dev/null 2>&1 \
+            && echo "Renommage en $SITE_NAME réussi" || echo "Renommage refusé — l'URL actuelle est conservée"
+          npx --yes netlify-cli@17 api getSite --data '{"site_id":"29646476-347a-4686-8645-3c9cf2f95899"}' | jq -r '"URL du site : " + .ssl_url'
 
       - name: Déployer
         run: npx --yes netlify-cli@17 deploy --dir=_site --prod --message "Déploiement ${{ github.sha }}"
