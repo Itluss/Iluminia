@@ -33,9 +33,17 @@ jobs:
             exit 1
           fi
 
-      # Retire espaces et retours à la ligne accidentellement collés avec le token.
+      # Extrait le token du secret même si du texte, des guillemets ou des espaces
+      # ont été collés avec, et affiche un diagnostic non sensible.
       - name: Nettoyer le token
-        run: echo "CLOUDFLARE_API_TOKEN=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | tr -d '[:space:]')" >> "$GITHUB_ENV"
+        run: |
+          CANDIDATE=$(printf '%s' "$CLOUDFLARE_API_TOKEN" | grep -oE '[A-Za-z0-9_-]{30,}' | head -1 || true)
+          echo "Diagnostic : secret brut ${#CLOUDFLARE_API_TOKEN} caractères ; token extrait ${#CANDIDATE} caractères ; préfixe '$(printf '%s' "$CANDIDATE" | cut -c1-4)…'"
+          if [ -z "$CANDIDATE" ]; then
+            echo "::error::Le secret CLOUDFLARE_API_TOKEN ne contient aucun token reconnaissable. Recréez le secret en collant uniquement le token."
+            exit 1
+          fi
+          echo "CLOUDFLARE_API_TOKEN=$CANDIDATE" >> "$GITHUB_ENV"
 
       - uses: actions/checkout@v4
 
