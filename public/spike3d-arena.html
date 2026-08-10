@@ -883,6 +883,7 @@ const LUMIN_CONFIG = {
   koRespawnSeconds: 3,      // K.O. temporaire en mode dragon, puis réapparition
   stealImmunitySeconds: 1,  // anti ping-pong : vol refusé juste après une prise
   respawnShieldSeconds: 1.5, // filet anti re-K.O. instantané à la réapparition
+  botAnswerAccuracy: 0.5,   // probabilité qu'un bot « réponde » juste (V4, 2026-08-10)
 };
 let luminStealImmuneUntil = 0;
 // -------- état — un seul dragon actif à la fois (currentLumin/luminOwnerId
@@ -4014,7 +4015,15 @@ function updateBot(botObj, dt) {
   if (LUMIN_MODE && luminState === 'CARRIED' && luminOwnerId === botObj) {
     if (!botObj.userData.luminTargetZone || botObj.userData.luminTargetZone.eliminated) {
       const options = zones.filter(z => !z.eliminated);
-      botObj.userData.luminTargetZone = options[Math.floor(Math.random() * options.length)];
+      // -------- « réponse » du bot (V4, développé le 2026-08-10) : il
+      // choisit la BONNE zone avec une probabilité botAnswerAccuracy,
+      // sinon une mauvaise au hasard — plus crédible qu'un tirage uniforme --------
+      const correctZone = options.find(z => z.correct);
+      const wrongZones = options.filter(z => !z.correct);
+      botObj.userData.luminTargetZone =
+        (correctZone && (Math.random() < LUMIN_CONFIG.botAnswerAccuracy || !wrongZones.length))
+          ? correctZone
+          : wrongZones[Math.floor(Math.random() * wrongZones.length)];
     }
     target = botObj.userData.luminTargetZone?.pos || null;
   } else if (LUMIN_MODE && luminState === 'AVAILABLE' && currentLumin) {
@@ -4469,8 +4478,15 @@ function animate() {
           // ne clique pas », le contact physique porteur+dragon/zone fait
           // foi). Une seule zone peut matcher par frame (rayons non
           // chevauchants aux 4 extrémités). --------
-          const hitZone = zones.find(z => !z.eliminated
-            && Math.hypot(z.pos.x - luminOwnerId.position.x, z.pos.z - luminOwnerId.position.z) < LUMIN_CONFIG.zoneRadius);
+          // -------- V4 §13 (correctif 2026-08-10) : seul le contact avec la
+          // zone CHOISIE valide — traverser une autre zone (ou n'importe
+          // laquelle sans avoir choisi) ne déclenche RIEN. Même règle pour
+          // les bots : leur « choix » est luminTargetZone. --------
+          const chosenLetter = luminOwnerId === player
+            ? selectedZoneLetter
+            : luminOwnerId.userData.luminTargetZone?.letter;
+          const hitZone = chosenLetter ? zones.find(z => z.letter === chosenLetter && !z.eliminated
+            && Math.hypot(z.pos.x - luminOwnerId.position.x, z.pos.z - luminOwnerId.position.z) < LUMIN_CONFIG.zoneRadius) : null;
           if (hitZone) {
             if (hitZone.correct) resolveCorrectZone(luminOwnerId);
             else resolveWrongZone(luminOwnerId, hitZone);
@@ -4738,7 +4754,12 @@ window.__arenaDebug = {
   forceLuminAnswer: (correct = true) => {
     if (!luminOwnerId || luminState !== 'CARRIED') return;
     const zone = correct ? zones.find(z => z.correct && !z.eliminated) : zones.find(z => !z.correct && !z.eliminated);
-    if (zone) luminOwnerId.position.set(zone.pos.x, 0, zone.pos.z);
+    if (!zone) return;
+    // V4 §13 : seule la zone CHOISIE valide — le hook « choisit » donc la
+    // zone avant d'y téléporter le porteur
+    if (luminOwnerId === player) selectedZoneLetter = zone.letter;
+    else luminOwnerId.userData.luminTargetZone = zone;
+    luminOwnerId.position.set(zone.pos.x, 0, zone.pos.z);
   },
   // -------- V3 (2026-08-08) : téléporte le JOUEUR loin du dragon actuel
   // (coin opposé de la map) — pour tester rapidement les indicateurs
