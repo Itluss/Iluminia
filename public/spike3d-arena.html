@@ -90,6 +90,12 @@
   .qa-row.selected { background: var(--chip-c, #fff); color: #101226;
          box-shadow: 0 0 14px var(--chip-c, #fff); }
   .qa-row.selected .qa-letter { border-color: #101226; color: #101226; }
+  /* marqueur de distance au bout des chevrons-boussole (planche 2026-08-10) */
+  #compass-dist { position: fixed; transform: translate(-50%, -50%);
+         background: rgba(10,14,26,0.88); border: 2px solid #fff;
+         border-radius: 10px; padding: 1px 8px; color: #fff;
+         font-size: 12px; font-weight: 800; z-index: 12;
+         pointer-events: none; display: none; }
   /* -------- brume (pouvoir aveuglant) : le texte devient illisible, pas
      juste "grisé" — retour de Camille sur l'identité du pouvoir « ne
      trouve plus les bonnes pastilles ». -------- */
@@ -520,6 +526,7 @@
   <div class="qb-head"><span class="qb-qmark">?</span><span id="qb-text"></span></div>
   <div id="qb-answers"></div>
 </div>
+<div id="compass-dist"></div>
 <div id="question-banner"><span id="question-text"></span><span class="qtimer" id="question-timer"></span></div>
 <!-- -------- barre du bas (planche ChatGPT fournie par Camille, 2026-08-07)
      — reproduction visuelle STRICTE de la référence : bandeau question +
@@ -2593,6 +2600,19 @@ function showLuminAnnouncement(text, seconds = 1.6) {
 // Max (2.6 -> 1.3, retour de Camille 2026-08-08) — même ratio ~0.67 au-
 // dessus de la tête. --------
 function entityHeadHeight(entity) { return entity.userData.maxMaterials ? 0.9 : 1.5; }
+// -------- pose de portage « dans les bras » (planche Camille 2026-08-10,
+// remplace le portage sur la tête où le dragon disparaissait DANS le crâne
+// du modèle Max — défaut relevé sur 3 revues d'affilée) : devant la
+// poitrine, tourné vers l'avant, légèrement réduit --------
+function luminCarryOffset(entity) {
+  // z avancé (0.45 → 0.72) : à l'angle iso, plus près du torse le dragon
+  // restait visuellement sous la silhouette du porteur (vu en capture)
+  return entity.userData.maxMaterials
+    ? new THREE.Vector3(0, 0.6, 0.72)
+    : new THREE.Vector3(0, 0.85, 0.7);
+}
+const LUMIN_CARRIED_SCALE = 0.62;
+const LUMIN_GROUND_SCALE = 0.85; // doit rester égal au scale posé par makeLumin()
 function spawnLumin() {
   const p = randomLuminPosition();
   luminMagnet = null;
@@ -2634,7 +2654,9 @@ function setLuminHolder(entity) {
   }
   if (currentLumin) {
     entity.add(currentLumin);
-    currentLumin.position.set(0, entityHeadHeight(entity), 0);
+    currentLumin.position.copy(luminCarryOffset(entity));
+    currentLumin.rotation.y = 0; // regarde devant, comme son porteur
+    currentLumin.scale.setScalar(LUMIN_CARRIED_SCALE);
   }
   ensureLuminHalo(entity).visible = true;
 }
@@ -2829,6 +2851,7 @@ function resolveWrongZone(entity, zone) {
   if (currentLumin) {
     if (currentLumin.parent) currentLumin.parent.remove(currentLumin);
     currentLumin.position.set(zone.pos.x, 0.5, zone.pos.z);
+    currentLumin.scale.setScalar(LUMIN_GROUND_SCALE); // retour à la taille au sol
     scene.add(currentLumin);
   }
   clearLuminHolder();
@@ -4296,8 +4319,19 @@ function animate() {
             c.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(performance.now() * 0.008 - i * 1.1));
           });
           arrow.visible = true;
+          // marqueur de distance au bout de la traînée (planche 2026-08-10)
+          const distEl = document.getElementById('compass-dist');
+          const tipX = player.position.x + Math.sin(ang) * 4.0;
+          const tipZ = player.position.z + Math.cos(ang) * 4.0;
+          const sp = screenPosOf(tipX, tipZ);
+          distEl.textContent = `${Math.round(Math.hypot(zoneSel.pos.x - player.position.x, zoneSel.pos.z - player.position.z))} m`;
+          distEl.style.borderColor = hexCss(col);
+          distEl.style.left = `${sp.x}px`;
+          distEl.style.top = `${sp.y}px`;
+          distEl.style.display = 'block';
         } else {
           arrow.visible = false;
+          document.getElementById('compass-dist').style.display = 'none';
         }
       }
       if (luminState === 'AVAILABLE' && currentLumin) {
@@ -4335,6 +4369,7 @@ function animate() {
           if (currentLumin) {
             luminOwnerId.remove(currentLumin);
             currentLumin.position.set(luminOwnerId.position.x, 0.5, luminOwnerId.position.z);
+            currentLumin.scale.setScalar(LUMIN_GROUND_SCALE); // retour à la taille au sol
             scene.add(currentLumin);
           }
           clearLuminHolder();

@@ -26,7 +26,8 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
   pleine énergie) → le dragon tombe **sur place**, libre pour tous.
 - **Immunité au vol : 1 s** après toute prise (anti ping-pong). Les
   dégâts passent quand même pendant cette fenêtre.
-- Le porteur est signalé par un **anneau doré** à ses pieds.
+- Le porteur est signalé par un **anneau doré** à ses pieds, et le dragon
+  est **visible devant lui** (pose « dans les bras », planche 2026-08-10).
 
 ## Énergie, dégâts, K.O.
 
@@ -62,7 +63,8 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 - Bloc de question (planche Camille 2026-08-10) : panneau sombre à
   droite, question + réponses EMPILÉES CLIQUABLES ; taper une réponse
   fait apparaître une traînée de chevrons-boussole (couleur de la zone)
-  qui guide vers la zone choisie. Le bandeau du haut ne sert plus qu'aux
+  qui guide vers la zone choisie, avec un **marqueur de distance** (« 23 m »)
+  au bout de la traînée. Le bandeau du haut ne sert plus qu'aux
   annonces. Tableau des scores supprimé (même décision).
 - Indicateurs de bord d'écran : 🐉 dragon et zones A/B/C/D hors champ,
   avec distance ; jamais par-dessus le bandeau.
@@ -73,6 +75,5 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 
 ## Chantiers connus / réglages ouverts
 
-- Dragon porté enfoui dans la tête du modèle Max (n°1 de la liste).
 - Équilibrage ouvert : 34 dégâts / K.O. 3 s / immunité 1 s / aimant 9 u.
 - Visuel dédié pour le bouclier de réapparition (invisible aujourd'hui).
