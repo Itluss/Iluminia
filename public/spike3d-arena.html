@@ -326,6 +326,15 @@
          box-shadow: 0 20px 40px rgba(0,0,0,0.5); }
   #start-overlay h2 { margin: 0 0 6px; color: var(--el-gold); font-size: clamp(16px,3dvmin,20px); }
   #start-overlay p { font-size: 12px; line-height: 1.35; margin: 0 0 8px; color: var(--el-text-muted); }
+  #start-overlay .howto { font-size: 12px; line-height: 1.5; margin: 0 0 10px;
+    color: var(--el-text-muted); text-align: left; display: inline-block; }
+  #start-overlay .howto b { color: var(--el-gold); }
+  /* jauge de vie : flash bref quand le joueur subit une vraie attaque
+     (retour Camille 2026-08-09 : « je ne sais jamais quand je suis
+     attaqué ») — localisé à la jauge, jamais de voile plein écran */
+  #life-bar-track.hit { animation: lifeHit 0.35s ease-out; }
+  @keyframes lifeHit { 0% { box-shadow: 0 0 18px 6px rgba(226,91,74,0.95); }
+    100% { box-shadow: none; } }
 
   /* -------- quiz "assoit tes connaissances" : après quelques manches
      d'arène, jamais pendant — retour de Camille : contrairement à
@@ -507,8 +516,16 @@
 
 <div id="start-overlay">
   <div class="card">
-    <h2>Arène d'Eluminia</h2>
-    <p>Attrape les bonnes réponses pour marquer des points et rester en énergie. Utilise tes pets pour gêner les autres. Si tu es en difficulté, essaie de récupérer un cristal d'énergie !</p>
+    <h2>Arène d'Eluminia — Chasse au dragon</h2>
+    <!-- règles réécrites pour le mode dragon (retour Camille 2026-08-09 :
+         l'ancien texte décrivait le gameplay pastilles supprimé) -->
+    <div class="howto">
+      <div>🐉 <b>Attrape le dragon</b> en marchant dessus.</div>
+      <div>🎯 <b>Amène-le dans la zone de la bonne réponse</b> pour marquer.</div>
+      <div>🦊 <b>Vole le dragon</b> : pousse son porteur (bouton Renard).</div>
+      <div>🐱 Le <b>Chat</b> attire vers toi un dragon libre proche.</div>
+      <div>⚔️ 3 poussées = K.O. (3 s) · ✨ étincelles = recharge · 💎 gemmes = énergie.</div>
+    </div>
     <div class="pet-pick-row" id="pet-pick-row"></div>
     <button id="start-btn" class="el-btn el-btn--primary" type="button"><svg class="el-icon"><use href="#icon-play"></use></svg>Jouer</button>
   </div>
@@ -806,7 +823,7 @@ let luminState = 'NONE'; // 'NONE' | 'AVAILABLE' | 'CARRIED' (= DRAGON_FREE / DR
 // -------- pédagogie du vol (retour Camille 2026-08-09 : « je ne comprends
 // pas comment voler le dragon ») : toast affiché UNE fois par manche quand
 // un adversaire prend le dragon --------
-let stealTipShownThisRound = false;
+let stealTipNextAt = 0;
 let stealTipTimer = 0;
 let currentLumin = null;
 let luminOwnerId = null; // référence à l'entité (player ou bot), pas juste un nom
@@ -1710,7 +1727,12 @@ const PET_ABILITY_HANDLERS = {
           const lost = Math.round(before - (t.userData.life ?? 0));
           if (lost > 0) {
             spawnFloatingText(t.position.clone().add(new THREE.Vector3(0, 1.9, 0)), `-${lost}`, '#ff6a5c');
-            if (t === player) shakeCamera(0.14);
+            // le joueur touché sait PAR QUI (retour Camille 2026-08-09)
+            if (t === player) {
+              shakeCamera(0.14);
+              spawnFloatingText(t.position.clone().add(new THREE.Vector3(0, 2.35, 0)),
+                `⚔️ ${caster.userData.name || 'Adversaire'} t'attaque !`, '#ffb35c');
+            }
           }
         }
         // -------- vol du Lumin (spec Camille 2026-08-07) : « touché par une
@@ -2063,9 +2085,37 @@ function scheduleLuminRespawn(entity) {
   }, LUMIN_CONFIG.koRespawnSeconds * 1000);
 }
 function isShielded(entity) { return performance.now() < (entity.userData.shieldedUntil || 0); }
+// -------- flash rouge du personnage touché par une VRAIE attaque (retour
+// Camille 2026-08-09 : « je ne sais jamais quand je suis attaqué ») —
+// teinte émissive brève sur les matériaux du modèle, localisée au
+// personnage (jamais de voile plein écran, règle absolue). Les contours/
+// halos (MeshBasicMaterial, sans emissive) sont naturellement épargnés. --------
+function flashEntity(entity) {
+  if (entity.userData.flashRestoreTimer) return;
+  const restore = [];
+  entity.traverse(o => {
+    if (o.isMesh && o.material && o.material.emissive) {
+      restore.push([o.material, o.material.emissive.getHex(), o.material.emissiveIntensity ?? 1]);
+      o.material.emissive.setHex(0xff3b2e);
+      o.material.emissiveIntensity = 0.85;
+    }
+  });
+  entity.userData.flashRestoreTimer = setTimeout(() => {
+    restore.forEach(([m, hex, inten]) => { m.emissive.setHex(hex); m.emissiveIntensity = inten; });
+    entity.userData.flashRestoreTimer = null;
+  }, 140);
+}
 function damageLife(entity, amount) {
   if (entity.userData.eliminated || isShielded(entity)) return;
   entity.userData.life = Math.max(0, (entity.userData.life ?? LIFE_MAX) - amount);
+  // seuil 5 : distingue une attaque du drain passif (1,5/s appliqué par frame)
+  if (amount >= 5) {
+    flashEntity(entity);
+    if (entity === player) {
+      lifeBarTrackEl.classList.remove('hit'); void lifeBarTrackEl.offsetWidth;
+      lifeBarTrackEl.classList.add('hit');
+    }
+  }
   if (entity === player) updateLifeBar();
   if (entity.userData.life <= 0) eliminateEntity(entity);
 }
@@ -2452,8 +2502,10 @@ function setLuminHolder(entity) {
   luminOwnerId = entity;
   luminState = 'CARRIED';
   luminStealImmuneUntil = performance.now() + LUMIN_CONFIG.stealImmunitySeconds * 1000;
-  if (entity !== player && !stealTipShownThisRound && !player.userData.eliminated) {
-    stealTipShownThisRound = true;
+  // ré-affichable toutes les 20 s (retour Camille 2026-08-09 : « je ne sais
+  // toujours pas comment voler le dragon » — une seule fois ne suffisait pas)
+  if (entity !== player && performance.now() > stealTipNextAt && !player.userData.eliminated) {
+    stealTipNextAt = performance.now() + 20000;
     const tip = document.getElementById('steal-tip');
     tip.classList.add('show');
     clearTimeout(stealTipTimer);
@@ -3305,7 +3357,7 @@ function startRound() {
   // les étincelles reprennent ensuite leur rôle de recharge --------
   petCharge[0] = 100; petCharge[1] = 100;
   updatePetButtons();
-  stealTipShownThisRound = false;
+  stealTipNextAt = 0;
   allEntities().forEach(e => { e.userData.life = LIFE_MAX; e.userData.eliminated = false; e.visible = true; e.userData.wanderTarget = null; e.userData.luminTargetZone = null; });
   updateLifeBar();
   bots.forEach((b, i) => {
