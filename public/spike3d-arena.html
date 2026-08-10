@@ -76,7 +76,7 @@
             coin des boutons) : sur téléphone paysage réel, tout tient. */
          max-height: calc(100dvh - max(8px, var(--safe-top) + 4px)
            - max(16px, var(--safe-bottom) + 12px)
-           - clamp(68px, 8vw, 94px) - clamp(52px, 6.5vw, 74px) - 22px);
+           - clamp(58px, 7vw, 80px) - clamp(44px, 5.5vw, 60px) - 18px);
          overflow-y: auto; overscroll-behavior: contain;
          /* plus LARGE (240 px) pour que les questions longues tiennent en
             2 lignes au lieu de 3 : le panneau gagne en hauteur ce qu'il
@@ -125,11 +125,12 @@
      les règles de base .qa-row/#qb-text (même spécificité — c'est
      l'ordre qui fait gagner la version compacte). */
   @media (max-height: 480px) {
-    #question-block { padding: 5px 7px 5px; }
-    #qb-text { font-size: 11.5px; }
-    .qa-row { margin-top: 4px; padding: 3px 7px; font-size: 12.5px; }
-    .qa-row .qa-letter { width: 18px; height: 18px; font-size: 11px; }
-    .qb-qmark { width: 18px; height: 18px; font-size: 12px; }
+    #question-block { padding: 4px 6px 4px; }
+    #qb-text { font-size: 11px; line-height: 1.18; }
+    .qa-row { margin-top: 3px; padding: 3px 6px; font-size: 12px; gap: 6px; }
+    .qa-row .qa-letter { width: 16px; height: 16px; font-size: 10px; }
+    .qb-qmark { width: 16px; height: 16px; font-size: 11px; }
+    .qb-head { gap: 6px; margin-bottom: 2px; }
   }
   /* marqueur de distance au bout des chevrons-boussole (planche 2026-08-10) */
   #compass-dist { position: fixed; transform: translate(-50%, -50%);
@@ -262,20 +263,23 @@
          font-size: calc(var(--btn-size, 64px) * 0.28);
          text-shadow: 0 2px 4px rgba(0,0,0,0.75); pointer-events: none; }
   /* ATTAQUE principale : la plus grande, coin bas-droit */
-  .btn-attack { --btn-size: clamp(68px, 8vw, 94px); right: 0; bottom: 0;
+  /* tailles resserrées (retour Camille 2026-08-10, 3e passe : « les
+     boutons plus resserrés en bas à droite ») : l'arc complet tient
+     dans ~130 px de haut sur téléphone paysage */
+  .btn-attack { --btn-size: clamp(58px, 7vw, 80px); right: 0; bottom: 0;
          --btn-c: #ff8a3c; --btn-top: #ffb35c; --btn-bot: #e0592a;
          --btn-glow: rgba(255,138,60,0.75); }
   /* ⚡ MOBILITÉ : départ de l'arc-en-ciel, posée sur le BORD BAS à
      gauche de l'attaque (retour Camille 2026-08-10 : « je pars vraiment
      du bas à droite et j'arrive vraiment sur le latéral droit ») */
-  .btn-skill1 { --btn-size: clamp(52px, 6.5vw, 74px);
-         right: calc(clamp(68px, 8vw, 94px) + 12px); bottom: 0;
+  .btn-skill1 { --btn-size: clamp(44px, 5.5vw, 60px);
+         right: calc(clamp(58px, 7vw, 80px) + 8px); bottom: 0;
          --btn-c: #21d4ff; --btn-top: #7fe3ff; --btn-bot: #1e8fd0;
          --btn-glow: rgba(33,212,255,0.75); }
   /* 🛡️ DÉFENSE : fin de l'arc, remontée sur le BORD DROIT au-dessus de
      l'attaque — l'arc enveloppe le coin, tout reste ramassé dedans */
-  .btn-skill2 { --btn-size: clamp(52px, 6.5vw, 74px);
-         right: 0; bottom: calc(clamp(68px, 8vw, 94px) + 12px);
+  .btn-skill2 { --btn-size: clamp(44px, 5.5vw, 60px);
+         right: 0; bottom: calc(clamp(58px, 7vw, 80px) + 8px);
          --btn-c: #b06ef5; --btn-top: #cf9bf7; --btn-bot: #7b3fd0;
          --btn-glow: rgba(176,110,245,0.75); }
   .pet-btn.ready { border-color: var(--btn-c);
@@ -2763,8 +2767,22 @@ function updateOffscreenIndicator(key, worldX, worldZ, colorHex, glyph) {
     const r = qbEl.getBoundingClientRect();
     if (iy > r.top - 18 && iy < r.bottom + 18 && ix > r.left - 18) ix = r.left - 18;
   }
+  // jamais DERRIÈRE l'arc de compétences (coin bas droite, 2026-08-10 :
+  // le badge 🐉 se glissait derrière le bouton 💥) — on le repousse hors
+  // de la boîte englobante des boutons, par le déplacement le plus court
+  let iyFinal = iy;
+  const btnEls = document.querySelectorAll('.pet-btn');
+  if (btnEls.length) {
+    let minX = Infinity, minY = Infinity;
+    btnEls.forEach(b => { const r = b.getBoundingClientRect();
+      if (r.left < minX) minX = r.left; if (r.top < minY) minY = r.top; });
+    if (ix > minX - 20 && iyFinal > minY - 20) {
+      if ((ix - (minX - 20)) < (iyFinal - (minY - 20))) ix = minX - 20;
+      else iyFinal = minY - 20;
+    }
+  }
   el.style.left = `${ix}px`;
-  el.style.top = `${iy}px`;
+  el.style.top = `${iyFinal}px`;
   const dist = Math.round(Math.hypot(worldX - player.position.x, worldZ - player.position.z));
   el.querySelector('.offscreen-dist').textContent = `${dist}m`;
 }
