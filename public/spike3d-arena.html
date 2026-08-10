@@ -41,7 +41,8 @@
      bandeau plein largeur). --------- */
   #question-banner { position: fixed; top: max(8px, var(--safe-top) + 6px); left: 50%;
          transform: translateX(-50%) translateY(-8px);
-         background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel)); border: 4px solid var(--el-gold);
+         /* fond sombre (décision Camille 2026-08-10 : « bandeau noir ») */
+         background: linear-gradient(180deg, rgba(18,20,38,0.95), rgba(8,10,22,0.96)); border: 3px solid var(--el-gold);
          border-radius: var(--el-radius-lg); padding: 8px 26px; color: var(--el-text-main); font-weight: 800;
          font-size: clamp(13px,4.8dvmin,22px); text-align: center;
          max-width: min(92dvw, 480px); line-height: 1.18;
@@ -54,15 +55,19 @@
     50% { border-color: var(--el-orange); box-shadow: 0 6px 14px rgba(4,9,28,0.4), 0 0 14px 3px rgba(255,138,61,0.75); }
   }
   #question-banner .qtimer { display: block; font-size: 11px; color: var(--el-warning); margin-top: 1px; }
-  /* -------- mode replié (retour Camille 2026-08-10 : « la question prend
-     une bonne partie de l'écran et recouvre des éléments ») : 5 s après
-     l'affichage, le bandeau se réduit à la question seule — un tap le
-     ré-étend. En mode réponses courtes, les réponses restent lisibles
-     dans les colonnes des zones. --------- */
-  #question-banner.show { pointer-events: auto; cursor: pointer; }
-  #question-banner.compact { padding: 3px 14px; border-width: 2px;
-         font-size: clamp(11px,3.4dvmin,15px); opacity: 0.92; }
-  #question-banner.compact .banner-answers { display: none; }
+  /* -------- design 2026-08-10 (décision Camille) : bandeau SOMBRE,
+     PERMANENT et compact — question + réponses CLIQUABLES. Le joueur
+     choisit sa réponse : une flèche-boussole 3D devant le personnage le
+     guide alors vers la zone correspondante. --------- */
+  #question-banner.show { pointer-events: auto; }
+  .answer-chips { display: flex; gap: 6px; justify-content: center;
+         flex-wrap: wrap; margin-top: 5px; }
+  .answer-chip { border: 2px solid var(--chip-c, #fff); color: #fff;
+         background: rgba(255,255,255,0.08); border-radius: 10px;
+         padding: 3px 10px; font-size: .74em; font-weight: 800;
+         cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .answer-chip.selected { background: var(--chip-c, #fff); color: #101226;
+         box-shadow: 0 0 12px var(--chip-c, #fff); }
   /* -------- brume (pouvoir aveuglant) : le texte devient illisible, pas
      juste "grisé" — retour de Camille sur l'identité du pouvoir « ne
      trouve plus les bonnes pastilles ». -------- */
@@ -850,6 +855,35 @@ const ZONE_LETTERS = ['A', 'B', 'C', 'D'];
 // C=violet D=vert — appliquée aux sanctuaires ET à leurs indicateurs
 // hors-écran, pour une association immédiate lettre<->couleur. --------
 const ZONE_COLORS = { A: 0x4fb3f7, B: 0xffd35c, C: 0xb06ef5, D: 0x6fe08a };
+// -------- sélection de réponse + flèche-boussole (décision Camille
+// 2026-08-10 : « l'utilisateur sélectionne la réponse et une flèche devant
+// le personnage, comme une boussole, lui affiche la direction ») --------
+let selectedZoneLetter = null;
+function selectAnswerZone(letter) {
+  selectedZoneLetter = selectedZoneLetter === letter ? null : letter;
+  document.querySelectorAll('.answer-chip').forEach(c =>
+    c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
+}
+let compassArrow = null;
+function ensureCompassArrow() {
+  if (compassArrow) return compassArrow;
+  const g = new THREE.Group();
+  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.52, 4), mat);
+  head.rotation.x = Math.PI / 2; // pointe vers +Z local
+  head.rotation.y = Math.PI / 4; // arête vers le haut : silhouette de flèche nette vue de dessus
+  head.position.z = 0.32;
+  g.add(head);
+  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.06, 0.36), mat);
+  tail.position.z = -0.04;
+  g.add(tail);
+  addOutline(head, 1.12); addOutline(tail, 1.12);
+  g.userData.mat = mat;
+  g.visible = false;
+  scene.add(g);
+  compassArrow = g;
+  return g;
+}
 let zones = []; // [{ letter, pos:{x,z}, answer, correct, eliminated, group, disc, ring, label }]
 let zonesGroup = null;
 // -------- pools de points (spec V3 §5/§7/§12) — fonctions, pas des objets
@@ -2678,19 +2712,19 @@ function renderLuminQuestionBanner() {
   // sanctuaire n'était pas déjà visible à l'écran, ce qui rendait
   // l'indicateur inutile pour se diriger. La correspondance s'affiche donc
   // maintenant TOUJOURS dans le bandeau, couleur par lettre incluse. --------
-  const lines = zones.filter(z => !z.eliminated)
-    .map(z => `<span style="color:${hexCss(ZONE_COLORS[z.letter])}">${z.letter}</span> — ${z.answer.text}`)
-    .join('  •  ');
-  questionTextEl.innerHTML = `${currentLuminQuestion.questionText}<br><span class="banner-answers" style="font-size:.75em;font-weight:700;">${lines}</span>`;
+  // -------- réponses CLIQUABLES (décision Camille 2026-08-10) : le joueur
+  // choisit sa réponse, la flèche-boussole le guide vers la zone choisie --------
+  const chips = zones.filter(z => !z.eliminated)
+    .map(z => `<button type="button" class="answer-chip${z.letter === selectedZoneLetter ? ' selected' : ''}" data-letter="${z.letter}" style="--chip-c:${hexCss(ZONE_COLORS[z.letter])}">${z.letter} — ${z.answer.text}</button>`)
+    .join('');
+  questionTextEl.innerHTML = `${currentLuminQuestion.questionText}<div class="answer-chips banner-answers">${chips}</div>`;
+  questionTextEl.querySelectorAll('.answer-chip').forEach(btn =>
+    btn.addEventListener('pointerdown', e => { e.stopPropagation(); selectAnswerZone(btn.dataset.letter); }));
   fitQuestionBannerText();
-  // repli automatique à 5 s — un tap sur le bandeau le ré-étend (handler
-  // posé une seule fois près de la déclaration de questionBannerEl)
-  questionBannerEl.classList.remove('compact');
-  clearTimeout(bannerCompactTimer);
-  bannerCompactTimer = setTimeout(() => questionBannerEl.classList.add('compact'), 5000);
 }
 function startDragonQuestion() {
   dragonQuestionActive = true;
+  selectedZoneLetter = null;
   currentLuminQuestion = pickLuminQuestion();
   const shuffled = shuffledAnswers(currentLuminQuestion);
   const correct = shuffled.find(a => a.isCorrect);
@@ -2732,6 +2766,10 @@ function resolveCorrectZone(entity) {
 function resolveWrongZone(entity, zone) {
   zone.eliminated = true;
   eliminateZoneVisual(zone);
+  // la zone choisie vient d'être éliminée → re-choisir (boussole éteinte) ;
+  // re-render du bandeau pour retirer la pastille correspondante
+  if (selectedZoneLetter === zone.letter) selectedZoneLetter = null;
+  renderLuminQuestionBanner();
   spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 'Faux !', '#e25b4a');
   spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xe25b4a, 14);
   const away = new THREE.Vector3(entity.position.x - zone.pos.x, 0, entity.position.z - zone.pos.z);
@@ -2782,6 +2820,7 @@ function endLuminRound() {
   dragonQuestionActive = false;
   currentLuminQuestion = null;
   luminMagnet = null;
+  selectedZoneLetter = null;
   questionBannerEl.classList.remove('show');
   removeZones();
   clearAllOffscreenEls();
@@ -2990,16 +3029,8 @@ const QUESTIONS = [
 const questionBannerEl = document.getElementById('question-banner');
 const questionTextEl = document.getElementById('question-text');
 const questionTimerEl = document.getElementById('question-timer');
-// -------- repli/dépli du bandeau au tap (2026-08-10) : replié, il libère
-// l'écran ; un tap le ré-étend 5 s puis il se replie à nouveau --------
-let bannerCompactTimer = 0;
-questionBannerEl.addEventListener('pointerdown', () => {
-  if (!questionBannerEl.classList.contains('show')) return;
-  const wasCompact = questionBannerEl.classList.contains('compact');
-  questionBannerEl.classList.toggle('compact');
-  clearTimeout(bannerCompactTimer);
-  if (wasCompact) bannerCompactTimer = setTimeout(() => questionBannerEl.classList.add('compact'), 5000);
-});
+// (le repli auto du bandeau, essayé plus tôt le 2026-08-10, est remplacé
+// par le design permanent-compact à réponses cliquables + boussole)
 // -------- barre du bas (planche ChatGPT, 2026-08-07) : affichage seul,
 // aucun handler clic — la vraie réponse reste la pastille 3D. Rendue depuis
 // les mêmes données que la question (jamais de texte en dur, cf.
@@ -4202,6 +4233,23 @@ function animate() {
             && Math.hypot(luminOwnerId.position.x - player.position.x,
                           luminOwnerId.position.z - player.position.z) <= pushPet.range + 0.8;
           petButtons[pushSlot].classList.toggle('steal-hint', canSteal);
+        }
+      }
+      // -------- flèche-boussole vers la zone de réponse choisie (2026-08-10) :
+      // tourne autour du joueur, couleur de la zone, pulse léger --------
+      {
+        const arrow = ensureCompassArrow();
+        const zoneSel = selectedZoneLetter && dragonQuestionActive
+          ? zones.find(z => z.letter === selectedZoneLetter && !z.eliminated) : null;
+        if (zoneSel && !player.userData.eliminated) {
+          const ang = Math.atan2(zoneSel.pos.x - player.position.x, zoneSel.pos.z - player.position.z);
+          arrow.position.set(player.position.x + Math.sin(ang) * 1.35, 0.2, player.position.z + Math.cos(ang) * 1.35);
+          arrow.rotation.y = ang;
+          arrow.scale.setScalar(1 + Math.sin(performance.now() * 0.008) * 0.14);
+          arrow.userData.mat.color.setHex(ZONE_COLORS[zoneSel.letter]);
+          arrow.visible = true;
+        } else {
+          arrow.visible = false;
         }
       }
       if (luminState === 'AVAILABLE' && currentLumin) {
