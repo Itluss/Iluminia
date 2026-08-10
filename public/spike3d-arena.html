@@ -59,15 +59,37 @@
      PERMANENT et compact — question + réponses CLIQUABLES. Le joueur
      choisit sa réponse : une flèche-boussole 3D devant le personnage le
      guide alors vers la zone correspondante. --------- */
-  #question-banner.show { pointer-events: auto; }
-  .answer-chips { display: flex; gap: 6px; justify-content: center;
-         flex-wrap: wrap; margin-top: 5px; }
-  .answer-chip { border: 2px solid var(--chip-c, #fff); color: #fff;
-         background: rgba(255,255,255,0.08); border-radius: 10px;
-         padding: 3px 10px; font-size: .74em; font-weight: 800;
-         cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
-  .answer-chip.selected { background: var(--chip-c, #fff); color: #101226;
-         box-shadow: 0 0 12px var(--chip-c, #fff); }
+  /* tableau des scores supprimé (décision Camille 2026-08-10) */
+  #leaderboard { display: none !important; }
+  /* -------- bloc de question sélectionnable (planche Camille 2026-08-10) :
+     couleurs échantillonnées sur la planche — panneau bleu nuit presque
+     noir, liseré cyan lumineux, rangées de réponse bordées à la couleur de
+     leur zone avec médaillon de lettre cerclé. -------- */
+  #question-block { position: fixed; top: max(10px, var(--safe-top) + 8px);
+         right: max(10px, var(--safe-right) + 8px); z-index: 15;
+         width: min(238px, 62dvw); padding: 10px 10px 9px;
+         background: rgba(10,14,26,0.93); border: 2px solid rgba(96,190,255,0.55);
+         border-radius: 18px;
+         box-shadow: 0 6px 18px rgba(4,9,28,0.55), 0 0 14px rgba(96,190,255,0.25);
+         opacity: 0; pointer-events: none; transition: opacity .2s; }
+  #question-block.show { opacity: 1; pointer-events: auto; }
+  .qb-head { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
+  .qb-qmark { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+         background: #2f8fe8; color: #fff; font-weight: 900; font-size: 14px;
+         display: flex; align-items: center; justify-content: center; margin-top: 1px; }
+  #qb-text { color: #fff; font-weight: 800; font-size: 14px; line-height: 1.25; }
+  .qa-row { display: flex; align-items: center; gap: 9px; width: 100%;
+         margin: 6px 0 0; padding: 7px 10px; border-radius: 13px; cursor: pointer;
+         border: 2px solid var(--chip-c, #fff);
+         background: linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.03));
+         color: #fff; font-weight: 800; font-size: 14px; text-align: left;
+         user-select: none; -webkit-tap-highlight-color: transparent; }
+  .qa-row .qa-letter { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+         border: 2px solid var(--chip-c, #fff); color: var(--chip-c, #fff);
+         display: flex; align-items: center; justify-content: center; font-size: 12px; }
+  .qa-row.selected { background: var(--chip-c, #fff); color: #101226;
+         box-shadow: 0 0 14px var(--chip-c, #fff); }
+  .qa-row.selected .qa-letter { border-color: #101226; color: #101226; }
   /* -------- brume (pouvoir aveuglant) : le texte devient illisible, pas
      juste "grisé" — retour de Camille sur l'identité du pouvoir « ne
      trouve plus les bonnes pastilles ». -------- */
@@ -490,6 +512,14 @@
   </div>
 </div>
 <div id="leaderboard"></div>
+<!-- -------- bloc de question sélectionnable (planche fournie par Camille,
+     2026-08-10) : panneau sombre à droite, badge « ? », question, puis
+     réponses empilées cliquables — remplace le bandeau pour les questions
+     (le bandeau ne sert plus qu'aux annonces). -------- -->
+<div id="question-block">
+  <div class="qb-head"><span class="qb-qmark">?</span><span id="qb-text"></span></div>
+  <div id="qb-answers"></div>
+</div>
 <div id="question-banner"><span id="question-text"></span><span class="qtimer" id="question-timer"></span></div>
 <!-- -------- barre du bas (planche ChatGPT fournie par Camille, 2026-08-07)
      — reproduction visuelle STRICTE de la référence : bandeau question +
@@ -861,24 +891,25 @@ const ZONE_COLORS = { A: 0x4fb3f7, B: 0xffd35c, C: 0xb06ef5, D: 0x6fe08a };
 let selectedZoneLetter = null;
 function selectAnswerZone(letter) {
   selectedZoneLetter = selectedZoneLetter === letter ? null : letter;
-  document.querySelectorAll('.answer-chip').forEach(c =>
+  document.querySelectorAll('.qa-row').forEach(c =>
     c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
 }
 let compassArrow = null;
 function ensureCompassArrow() {
   if (compassArrow) return compassArrow;
+  // traînée de 3 chevrons (planche Camille 2026-08-10) qui ondulent vers la
+  // zone choisie — matériaux séparés pour le pulse séquentiel
   const g = new THREE.Group();
-  const mat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-  const head = new THREE.Mesh(new THREE.ConeGeometry(0.24, 0.52, 4), mat);
-  head.rotation.x = Math.PI / 2; // pointe vers +Z local
-  head.rotation.y = Math.PI / 4; // arête vers le haut : silhouette de flèche nette vue de dessus
-  head.position.z = 0.32;
-  g.add(head);
-  const tail = new THREE.Mesh(new THREE.BoxGeometry(0.13, 0.06, 0.36), mat);
-  tail.position.z = -0.04;
-  g.add(tail);
-  addOutline(head, 1.12); addOutline(tail, 1.12);
-  g.userData.mat = mat;
+  g.userData.chevrons = [0, 1, 2].map(i => {
+    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
+    const head = new THREE.Mesh(new THREE.ConeGeometry(0.19 + i * 0.035, 0.4 + i * 0.06, 4), mat);
+    head.rotation.x = Math.PI / 2; // pointe vers +Z local
+    head.rotation.y = Math.PI / 4; // arête vers le haut : silhouette nette vue de dessus
+    head.position.z = i * 0.62;
+    addOutline(head, 1.1);
+    g.add(head);
+    return head;
+  });
   g.visible = false;
   scene.add(g);
   compassArrow = g;
@@ -2516,8 +2547,16 @@ function updateOffscreenIndicator(key, worldX, worldZ, colorHex, glyph) {
   // les indicateurs du haut glissent juste en dessous --------
   const bannerSafe = questionBannerEl.classList.contains('show')
     ? questionBannerEl.getBoundingClientRect().bottom + 24 : margin;
-  el.style.left = `${cx + dx * scale}px`;
-  el.style.top = `${Math.max(bannerSafe, cy + dy * scale)}px`;
+  let ix = cx + dx * scale;
+  const iy = Math.max(bannerSafe, cy + dy * scale);
+  // jamais SOUS le bloc de question (panneau de droite, 2026-08-10)
+  const qbEl = document.getElementById('question-block');
+  if (qbEl.classList.contains('show')) {
+    const r = qbEl.getBoundingClientRect();
+    if (iy > r.top - 18 && iy < r.bottom + 18 && ix > r.left - 18) ix = r.left - 18;
+  }
+  el.style.left = `${ix}px`;
+  el.style.top = `${iy}px`;
   const dist = Math.round(Math.hypot(worldX - player.position.x, worldZ - player.position.z));
   el.querySelector('.offscreen-dist').textContent = `${dist}m`;
 }
@@ -2712,15 +2751,18 @@ function renderLuminQuestionBanner() {
   // sanctuaire n'était pas déjà visible à l'écran, ce qui rendait
   // l'indicateur inutile pour se diriger. La correspondance s'affiche donc
   // maintenant TOUJOURS dans le bandeau, couleur par lettre incluse. --------
-  // -------- réponses CLIQUABLES (décision Camille 2026-08-10) : le joueur
-  // choisit sa réponse, la flèche-boussole le guide vers la zone choisie --------
-  const chips = zones.filter(z => !z.eliminated)
-    .map(z => `<button type="button" class="answer-chip${z.letter === selectedZoneLetter ? ' selected' : ''}" data-letter="${z.letter}" style="--chip-c:${hexCss(ZONE_COLORS[z.letter])}">${z.letter} — ${z.answer.text}</button>`)
+  // -------- bloc de question sélectionnable (planche Camille 2026-08-10) :
+  // le bandeau du haut ne sert plus qu'aux annonces — la question et les
+  // réponses cliquables vivent dans le panneau de droite --------
+  questionBannerEl.classList.remove('show');
+  const rows = zones.filter(z => !z.eliminated)
+    .map(z => `<button type="button" class="qa-row${z.letter === selectedZoneLetter ? ' selected' : ''}" data-letter="${z.letter}" style="--chip-c:${hexCss(ZONE_COLORS[z.letter])}"><span class="qa-letter">${z.letter}</span><span>${z.answer.text}</span></button>`)
     .join('');
-  questionTextEl.innerHTML = `${currentLuminQuestion.questionText}<div class="answer-chips banner-answers">${chips}</div>`;
-  questionTextEl.querySelectorAll('.answer-chip').forEach(btn =>
+  document.getElementById('qb-text').textContent = currentLuminQuestion.questionText;
+  document.getElementById('qb-answers').innerHTML = rows;
+  document.querySelectorAll('#qb-answers .qa-row').forEach(btn =>
     btn.addEventListener('pointerdown', e => { e.stopPropagation(); selectAnswerZone(btn.dataset.letter); }));
-  fitQuestionBannerText();
+  document.getElementById('question-block').classList.add('show');
 }
 function startDragonQuestion() {
   dragonQuestionActive = true;
@@ -2821,6 +2863,7 @@ function endLuminRound() {
   currentLuminQuestion = null;
   luminMagnet = null;
   selectedZoneLetter = null;
+  document.getElementById('question-block').classList.remove('show');
   questionBannerEl.classList.remove('show');
   removeZones();
   clearAllOffscreenEls();
@@ -3150,7 +3193,7 @@ function screenPosOf(x, z, y = 0) {
 // boutons). querySelectorAll (pas querySelector) car ce sont des boutons
 // multiples, pas un conteneur unique — leur conteneur (#ability-zone) a une
 // boîte vide puisque ses enfants sont en position:fixed. --------
-const HUD_SAFE_SELECTORS = ['#leaderboard', '#hud-top', '#question-banner', '.pet-btn'];
+const HUD_SAFE_SELECTORS = ['#question-block', '#hud-top', '#question-banner', '.pet-btn'];
 function isUnderHud(x, z, margin = 46) {
   const p = screenPosOf(x, z);
   return HUD_SAFE_SELECTORS.some(sel => Array.from(document.querySelectorAll(sel)).some(el => {
@@ -4243,10 +4286,15 @@ function animate() {
           ? zones.find(z => z.letter === selectedZoneLetter && !z.eliminated) : null;
         if (zoneSel && !player.userData.eliminated) {
           const ang = Math.atan2(zoneSel.pos.x - player.position.x, zoneSel.pos.z - player.position.z);
-          arrow.position.set(player.position.x + Math.sin(ang) * 1.35, 0.2, player.position.z + Math.cos(ang) * 1.35);
+          // départ à 2,1 u : à l'angle iso, plus près le premier chevron
+          // chevauchait visuellement la tête du personnage (vu en capture)
+          arrow.position.set(player.position.x + Math.sin(ang) * 2.1, 0.2, player.position.z + Math.cos(ang) * 2.1);
           arrow.rotation.y = ang;
-          arrow.scale.setScalar(1 + Math.sin(performance.now() * 0.008) * 0.14);
-          arrow.userData.mat.color.setHex(ZONE_COLORS[zoneSel.letter]);
+          const col = ZONE_COLORS[zoneSel.letter];
+          arrow.userData.chevrons.forEach((c, i) => {
+            c.material.color.setHex(col);
+            c.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(performance.now() * 0.008 - i * 1.1));
+          });
           arrow.visible = true;
         } else {
           arrow.visible = false;

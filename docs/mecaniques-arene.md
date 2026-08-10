@@ -59,7 +59,11 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 
 ## Interface
 
-- Bandeau du haut : question + correspondance lettre/couleur/réponse.
+- Bloc de question (planche Camille 2026-08-10) : panneau sombre à
+  droite, question + réponses EMPILÉES CLIQUABLES ; taper une réponse
+  fait apparaître une traînée de chevrons-boussole (couleur de la zone)
+  qui guide vers la zone choisie. Le bandeau du haut ne sert plus qu'aux
+  annonces. Tableau des scores supprimé (même décision).
 - Indicateurs de bord d'écran : 🐉 dragon et zones A/B/C/D hors champ,
   avec distance ; jamais par-dessus le bandeau.
 - Toast pédagogique « 🦊 Pousse le porteur pour lui voler le dragon ! »
