@@ -1629,6 +1629,42 @@ function awardPetFragments(multiplier = 1) {
 // commune activate(caster, petDef) — caster = player OU un bot, ils
 // utilisent exactement le même code (indépendance input/logique/état
 // demandée par Camille, prêt pour du vrai multijoueur plus tard). --------
+// -------- effets visuels de compétence (retour Camille 2026-08-09 :
+// « aucun effet artistique et aucun effet sur l'ennemi ») : ondes planes
+// additives animées dans animate() (voir la boucle près des particules).
+// spawnShockSector = secteur annulaire orienté (cône de poussée),
+// spawnImpactRing = anneau complet (impact sur cible / cast d'aimant). --------
+const shockWaves = [];
+function spawnShockSector(caster, pet) {
+  const group = new THREE.Group();
+  // secteur centré sur -Y en géométrie : après rotation.x = -PI/2 il pointe
+  // vers +Z local, soit la direction du regard une fois group.rotation.y
+  // aligné sur caster.rotation.y (même convention que le cône de hit)
+  const geo = new THREE.RingGeometry(0.5, 0.8, 24, 1, -Math.PI / 2 - pet.angle / 2, pet.angle);
+  const mat = new THREE.MeshBasicMaterial({ color: pet.color, transparent: true, opacity: 0.85,
+    side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending });
+  const wave = new THREE.Mesh(geo, mat);
+  wave.rotation.x = -Math.PI / 2;
+  group.add(wave);
+  group.position.set(caster.position.x, 0.12, caster.position.z);
+  group.rotation.y = caster.rotation.y;
+  scene.add(group);
+  shockWaves.push({ obj: group, mesh: wave, born: performance.now(), life: 0.35, targetScale: pet.range / 0.65 });
+}
+function spawnImpactRing(pos, color, maxScale = 2.2, life = 0.3) {
+  const mesh = new THREE.Mesh(
+    new THREE.RingGeometry(0.42, 0.6, 26),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.9,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(pos.x, 0.14, pos.z);
+  scene.add(mesh);
+  shockWaves.push({ obj: mesh, mesh, born: performance.now(), life, targetScale: maxScale });
+}
+// -------- aimant sur le dragon (mode LUMIN) : le Chat attire le dragon
+// LIBRE vers le lanceur — rend le 2e bouton utile dans l'arène dragon
+// (les pastilles de l'ancien système n'existent plus en LUMIN_MODE) --------
+let luminMagnet = null; // { source, until, strength }
 const PET_ABILITY_HANDLERS = {
   // -------- Renard/Push : charge courte + repousse le cône devant soi.
   // « peut servir à empêcher un adversaire d'attraper une bonne réponse »
@@ -1642,6 +1678,8 @@ const PET_ABILITY_HANDLERS = {
       caster.position.copy(dashTarget);
       squashPunch(caster, true);
       spawnBurst(caster.position.clone().add(new THREE.Vector3(0, 0.6, 0)), pet.color, 16);
+      spawnShockSector(caster, pet);
+      if (caster === player) shakeCamera(0.1);
       allEntities().forEach(t => {
         if (t === caster) return;
         const toT = new THREE.Vector3(t.position.x - caster.position.x, 0, t.position.z - caster.position.z);
@@ -1656,7 +1694,8 @@ const PET_ABILITY_HANDLERS = {
         }
         t.position.addScaledVector(toT, pet.power);
         clampToArena(t.position);
-        spawnBurst(t.position.clone().add(new THREE.Vector3(0, 0.6, 0)), pet.color, 14);
+        spawnImpactRing(t.position, 0xffa15c);
+        spawnBurst(t.position.clone().add(new THREE.Vector3(0, 0.6, 0)), pet.color, 22);
         spawnFloatingText(t.position.clone().add(new THREE.Vector3(0, 1.2, 0)), `${t.userData.name} repoussé !`, '#3fb6e0');
         squashPunch(t);
         // -------- la poussée blesse (décision Camille 2026-08-09 : « 3 coups
@@ -1692,13 +1731,29 @@ const PET_ABILITY_HANDLERS = {
   // réutilisation du cône entité-vs-entité de Push. --------
   magnet: {
     activate(caster, pet) {
+      spawnBurst(caster.position.clone().add(new THREE.Vector3(0, 0.9, 0)), pet.color, 20);
+      spawnImpactRing(caster.position, pet.color, 3.2, 0.45);
+      // -------- mode LUMIN (2026-08-09) : les pastilles n'existent pas dans
+      // l'arène dragon — le Chat attire le DRAGON LIBRE à la place, sinon le
+      // bouton était toujours « Rien à proximité... » (retour « les boutons
+      // ne servent à rien »). Attraction douce et contestable, jamais un
+      // téléport (même philosophie que la spec des pastilles). --------
+      if (LUMIN_MODE) {
+        if (luminState === 'AVAILABLE' && currentLumin
+            && Math.hypot(currentLumin.position.x - caster.position.x, currentLumin.position.z - caster.position.z) <= pet.range * 2) {
+          luminMagnet = { source: caster, until: performance.now() + pet.duration * 1600, strength: pet.power * 1.6 };
+          spawnFloatingText(currentLumin.position.clone().add(new THREE.Vector3(0, 1.2, 0)), '🐉 Attiré !', '#e0a0c9');
+        } else {
+          spawnFloatingText(caster.position.clone().add(new THREE.Vector3(0, 1.3, 0)), 'Aucun dragon libre à portée...', '#cfd0d8');
+        }
+        return;
+      }
       let best = null, bestDist = Infinity;
       questionPads.forEach(pad => {
         const dist = Math.hypot(pad.pos.x - caster.position.x, pad.pos.z - caster.position.z);
         if (dist > pet.range) return;
         if (dist < bestDist) { bestDist = dist; best = pad; }
       });
-      spawnBurst(caster.position.clone().add(new THREE.Vector3(0, 0.9, 0)), pet.color, 20);
       if (!best) {
         spawnFloatingText(caster.position.clone().add(new THREE.Vector3(0, 1.3, 0)), 'Rien à proximité...', '#cfd0d8');
         return;
@@ -1986,11 +2041,14 @@ function scheduleLuminRespawn(entity) {
     if (!running || !entity.userData.eliminated) return;
     const refX = currentLumin ? currentLumin.position.x : 0;
     const refZ = currentLumin ? currentLumin.position.z : 0;
-    let best = null, bestDist = -Infinity;
-    dragonSpawnPoints().forEach(p => {
-      const d = Math.hypot(p.x - refX, p.z - refZ);
-      if (d > bestDist) { bestDist = d; best = p; }
-    });
+    // aléatoire parmi les 4 points les plus éloignés du dragon (retour
+    // Camille 2026-08-09 : « n'importe où aléatoire mais le plus loin » —
+    // pas toujours le même coin, mais jamais à côté du dragon)
+    const far = dragonSpawnPoints()
+      .map(p => ({ p, d: Math.hypot(p.x - refX, p.z - refZ) }))
+      .sort((a, b) => b.d - a.d)
+      .slice(0, 4);
+    const best = far[Math.floor(Math.random() * far.length)].p;
     entity.position.set(best.x, 0, best.z);
     entity.userData.life = LIFE_MAX;
     entity.userData.eliminated = false;
@@ -2366,6 +2424,7 @@ function showLuminAnnouncement(text, seconds = 1.6) {
 function entityHeadHeight(entity) { return entity.userData.maxMaterials ? 0.9 : 1.5; }
 function spawnLumin() {
   const p = randomLuminPosition();
+  luminMagnet = null;
   currentLumin = makeLumin();
   currentLumin.position.set(p.x, 0.5, p.z);
   scene.add(currentLumin);
@@ -2617,6 +2676,7 @@ function runLuminCountdown(onDone) {
 function endLuminRound() {
   dragonQuestionActive = false;
   currentLuminQuestion = null;
+  luminMagnet = null;
   questionBannerEl.classList.remove('show');
   removeZones();
   clearAllOffscreenEls();
@@ -4032,6 +4092,21 @@ function animate() {
       if (luminState === 'AVAILABLE' && currentLumin) {
         currentLumin.rotation.y += dt * 2.4;
         currentLumin.position.y = 0.5 + Math.sin(performance.now() * 0.006) * 0.12;
+        // -------- aimant du Chat (2026-08-09) : attire doucement le dragon
+        // libre vers le lanceur — s'arrête juste avant le contact (c'est le
+        // contact physique qui capture, règle inchangée) --------
+        if (luminMagnet && performance.now() < luminMagnet.until && !luminMagnet.source.userData.eliminated) {
+          const toS = new THREE.Vector3(luminMagnet.source.position.x - currentLumin.position.x, 0,
+                                        luminMagnet.source.position.z - currentLumin.position.z);
+          const d = toS.length();
+          if (d > 0.6) {
+            toS.normalize();
+            currentLumin.position.addScaledVector(toS, Math.min(luminMagnet.strength * dt, d - 0.5));
+            if (Math.random() < dt * 14) spawnBurst(currentLumin.position.clone(), 0xe0a0c9, 1);
+          }
+        } else if (luminMagnet && performance.now() >= luminMagnet.until) {
+          luminMagnet = null;
+        }
         if (!player.userData.eliminated
             && Math.hypot(currentLumin.position.x - player.position.x, currentLumin.position.z - player.position.z) < LUMIN_CONFIG.captureRadius) {
           captureLumin(player);
@@ -4106,6 +4181,16 @@ function animate() {
     if (age > 1.1) { scene.remove(t); floatingTexts.splice(i, 1); continue; }
     t.position.y += dt * 1.4;
     t.material.opacity = 1 - age / 1.1;
+  }
+
+  // ondes de compétence (secteur de poussée / anneaux d'impact) : expansion
+  // + fondu, purement cosmétique (2026-08-09)
+  for (let i = shockWaves.length - 1; i >= 0; i--) {
+    const w = shockWaves[i];
+    const t01 = Math.min(1, (performance.now() - w.born) / 1000 / w.life);
+    w.obj.scale.setScalar(1 + (w.targetScale - 1) * t01);
+    w.mesh.material.opacity = 0.9 * (1 - t01);
+    if (t01 >= 1) { scene.remove(w.obj); shockWaves.splice(i, 1); }
   }
 
   // traits de compétence (gel/éclair/feu) : vif et bref, façon éclair
