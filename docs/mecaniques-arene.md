@@ -5,7 +5,18 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 `public/spike3d-arena.html` (`ENERGY`, `LUMIN_CONFIG`, `KO_CONFIG`,
 `PET_DEFINITIONS`, `SPARK_CONFIG`, `ENERGY_CRYSTAL_CONFIG`).
 
-## Boucle principale
+## Boucle principale (GAMEPLAY V4, spec Camille 2026-08-10)
+
+**La question est visible dès le top départ** (pas d'attente de capture),
+sans timer de réponse — la pression vient du jeu. Le joueur peut choisir
+sa réponse À TOUT MOMENT (avant ou après la capture) ; le choix est
+VERROUILLÉ pour la tentative. Guidage SÉQUENTIEL : tant qu'on ne porte
+pas le dragon → indicateur 🐉 (vers le dragon libre OU son porteur) ;
+une fois porteur + réponse choisie → chevrons + distance vers SA zone.
+Jamais deux directions à l'écran. Les badges de zones sont supprimés ;
+seule la colonne de lumière de la zone choisie s'allume.
+
+### Ancienne boucle (pré-V4, pour mémoire)
 
 1. Un **dragon** apparaît (loin des joueurs, souvent hors écran — suivre
    l'indicateur 🐉 en bord d'écran avec la distance en mètres).
