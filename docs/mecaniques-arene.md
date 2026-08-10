@@ -30,7 +30,8 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 
 ## Énergie, dégâts, K.O.
 
-- Énergie max 100, **drain passif 1,5/s** (vide en ~67 s sans rien faire).
+- Énergie max 100. **Plus de drain passif** (décision 2026-08-10) : on ne
+  perd de l'énergie QUE sur une attaque subie ou une mauvaise réponse.
 - **Poussée = 34 dégâts** (« -34 » rouge flottant sur la cible, flash
   rouge du personnage touché, secousse caméra + « ⚔️ X t'attaque ! » si
   c'est toi).
@@ -38,7 +39,8 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
   **aléatoire parmi les 4 points les plus éloignés du dragon**, énergie
   pleine, **bouclier 1,5 s** (les attaques glissent dessus).
 - Récupérer de l'énergie : **bonne réponse +15**, mauvaise -10,
-  **cristal d'énergie 💎 +20** (apparaît périodiquement sur la carte).
+  **cristal d'énergie 💎 +20** (apparaît périodiquement sur la carte) —
+  c'est le soin principal maintenant que le drain a disparu.
 
 ## Compétences (2 boutons, bas droite)
 
@@ -48,9 +50,12 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
   Renard **pulse en doré** quand le porteur adverse est à portée de vol.
 - **🦊 Renard — Poussée** (portée 3,2, cône ~78°) : petit dash, onde de
   choc orientée, repousse + 34 dégâts + vole le dragon au porteur touché.
-- **🐱 Chat — Aimant** : attire **le dragon LIBRE** à portée (≤ 9) vers
-  toi (traînée d'étincelles roses) ; la capture reste au contact. Hors
-  mode dragon, il attire une pastille de réponse (ancien système).
+- **🐱 Chat — Éclat magique** (2026-08-10) : projectile rose en ligne
+  droite (portée 9, extinction pile à portée max = la portée se voit),
+  **22 dégâts** au premier ennemi touché. Ne vole PAS le dragon.
+- **Portée visible** : au cast du Renard, l'onde s'étend jusqu'à la
+  portée exacte et un **arc blanc marque la limite** ; l'éclat du Chat
+  matérialise sa portée par sa trajectoire.
 
 ## Interface
 

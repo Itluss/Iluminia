@@ -523,8 +523,8 @@
       <div>🐉 <b>Attrape le dragon</b> en marchant dessus.</div>
       <div>🎯 <b>Amène-le dans la zone de la bonne réponse</b> pour marquer.</div>
       <div>🦊 <b>Vole le dragon</b> : pousse son porteur (bouton Renard).</div>
-      <div>🐱 Le <b>Chat</b> attire vers toi un dragon libre proche.</div>
-      <div>⚔️ 3 poussées = K.O. (3 s) · ✨ étincelles = recharge · 💎 gemmes = énergie.</div>
+      <div>🐱 Le <b>Chat</b> tire un éclat magique à distance (dégâts).</div>
+      <div>⚔️ 3 poussées = K.O. (3 s) · ✨ étincelles = recharge · 💎 gemmes = soin.</div>
     </div>
     <div class="pet-pick-row" id="pet-pick-row"></div>
     <button id="start-btn" class="el-btn el-btn--primary" type="button"><svg class="el-icon"><use href="#icon-play"></use></svg>Jouer</button>
@@ -720,11 +720,11 @@ scene.fog = new THREE.Fog(0x4a3868, 40, 100);
 const ENERGY = {
   maxEnergy: 100,
   startingEnergy: 100,
-  // -------- rééquilibrage (retour de Camille, 2026-08-05) : le drain à
-  // 0,8/s était trop lent, un joueur immobile dans un coin ne le
-  // remarquait presque pas. 1,5/s -> vide en ~67s (100/1,5) sans aucune
-  // bonne réponse, dans la fourchette 65-70s demandée. --------
-  passiveEnergyDrainPerSecond: 1.5, // vide en ~67s si rien n'est récupéré
+  // -------- drain passif SUPPRIMÉ (décision Camille 2026-08-10 : « on ne
+  // comprend pas pourquoi on perd de la vie ») — l'énergie ne baisse plus
+  // que sur une ATTAQUE subie ou une mauvaise réponse ; annule le
+  // rééquilibrage à 1,5/s du 2026-08-05. --------
+  passiveEnergyDrainPerSecond: 0,
   correctAnswerEnergyGain: 15,
   wrongAnswerEnergyPenalty: -10,
 };
@@ -1471,9 +1471,14 @@ const PET_DEFINITIONS = {
     discovery: { type: 'level', value: 1 }, fragmentsRequired: 0,
   },
   chat: {
-    id: 'chat', name: 'Chat', description: 'Attire vers toi une réponse proche.',
-    icon: 'icon-pet-chat.png', abilityType: 'magnet',
-    cooldown: 9, duration: 1.3, power: 3, range: 4.5, angle: 0,
+    // -------- rework 2026-08-10 (décision Camille : « attaquer avec nos
+    // deux compétences... éventuellement à distance ») : l'aimant devient un
+    // ÉCLAT MAGIQUE à distance — projectile en ligne droite, dégâts au
+    // premier ennemi touché, la trajectoire matérialise la portée. Le VOL
+    // du dragon reste réservé à la poussée (corps-à-corps risqué). --------
+    id: 'chat', name: 'Chat', description: 'Tire un éclat magique à distance.',
+    icon: 'icon-pet-chat.png', abilityType: 'bolt',
+    cooldown: 9, duration: 0, power: 22, range: 9, angle: 0,
     params: {}, rarity: 'commun', level: 1, color: 0xe0a0c9,
     discovery: { type: 'level', value: 1 }, fragmentsRequired: 0,
   },
@@ -1667,7 +1672,24 @@ function spawnShockSector(caster, pet) {
   group.rotation.y = caster.rotation.y;
   scene.add(group);
   shockWaves.push({ obj: group, mesh: wave, born: performance.now(), life: 0.35, targetScale: pet.range / 0.65 });
+  // -------- arc de LIMITE de portée (décision Camille 2026-08-10 : « voir
+  // quand on appuie quelle distance a la portée d'attaque ») : trait fixe à
+  // la portée exacte, fondu un peu plus lent que l'onde --------
+  const limitGroup = new THREE.Group();
+  const limit = new THREE.Mesh(
+    new THREE.RingGeometry(pet.range - 0.12, pet.range, 32, 1, -Math.PI / 2 - pet.angle / 2, pet.angle),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.55,
+      side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+  limit.rotation.x = -Math.PI / 2;
+  limitGroup.add(limit);
+  limitGroup.position.set(caster.position.x, 0.12, caster.position.z);
+  limitGroup.rotation.y = caster.rotation.y;
+  scene.add(limitGroup);
+  shockWaves.push({ obj: limitGroup, mesh: limit, born: performance.now(), life: 0.55, targetScale: 1 });
 }
+// -------- éclats magiques (Chat) : projectiles en vol, mis à jour dans
+// animate() — la mort du projectile à portée max REND la portée visible --------
+const magicBolts = [];
 function spawnImpactRing(pos, color, maxScale = 2.2, life = 0.3) {
   const mesh = new THREE.Mesh(
     new THREE.RingGeometry(0.42, 0.6, 26),
@@ -1751,6 +1773,22 @@ const PET_ABILITY_HANDLERS = {
   // adversaire puisse encore la contester, jamais un téléport. Cible une
   // PASTILLE (questionPads), pas une entité — logique dédiée, pas de
   // réutilisation du cône entité-vs-entité de Push. --------
+  // -------- Chat/Bolt (2026-08-10) : éclat magique à distance — ligne
+  // droite, premier ennemi touché encaisse pet.power de dégâts. Pas de vol
+  // de dragon (réservé à la poussée). --------
+  bolt: {
+    activate(caster, pet) {
+      const forward = new THREE.Vector3(Math.sin(caster.rotation.y), 0, Math.cos(caster.rotation.y));
+      const core = emissive(new THREE.SphereGeometry(0.16, 10, 8), pet.color, 2.2);
+      core.position.set(caster.position.x, 0.95, caster.position.z);
+      const glow = addGlowOutline2(core, 1.9, pet.color);
+      glow.material.opacity = 0.35;
+      scene.add(core);
+      magicBolts.push({ mesh: core, caster, dir: forward, traveled: 0, range: pet.range, damage: pet.power });
+      spawnImpactRing(caster.position, pet.color, 1.5, 0.22);
+      if (caster === player) shakeCamera(0.06);
+    },
+  },
   magnet: {
     activate(caster, pet) {
       spawnBurst(caster.position.clone().add(new THREE.Vector3(0, 0.9, 0)), pet.color, 20);
@@ -4243,6 +4281,43 @@ function animate() {
     w.obj.scale.setScalar(1 + (w.targetScale - 1) * t01);
     w.mesh.material.opacity = 0.9 * (1 - t01);
     if (t01 >= 1) { scene.remove(w.obj); shockWaves.splice(i, 1); }
+  }
+
+  // éclats magiques du Chat : vol en ligne droite, dégâts au premier
+  // ennemi touché, extinction pile à portée max (2026-08-10)
+  for (let i = magicBolts.length - 1; i >= 0; i--) {
+    const bl = magicBolts[i];
+    const step = 14 * dt;
+    bl.mesh.position.addScaledVector(bl.dir, step);
+    bl.traveled += step;
+    let done = bl.traveled >= bl.range;
+    const hit = allEntities().find(e => e !== bl.caster && !e.userData.eliminated
+      && Math.hypot(e.position.x - bl.mesh.position.x, e.position.z - bl.mesh.position.z) < 0.75);
+    if (hit) {
+      spawnImpactRing(hit.position, 0xe0a0c9);
+      spawnBurst(hit.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xe0a0c9, 16);
+      if (isShielded(hit)) {
+        spawnFloatingText(hit.position.clone().add(new THREE.Vector3(0, 1.2, 0)), `${hit.userData.name} protégé !`, '#9fe3ff');
+      } else {
+        const before = hit.userData.life ?? LIFE_MAX;
+        damageLife(hit, bl.damage);
+        const lost = Math.round(before - (hit.userData.life ?? 0));
+        if (lost > 0) {
+          spawnFloatingText(hit.position.clone().add(new THREE.Vector3(0, 1.9, 0)), `-${lost}`, '#ff6a5c');
+          if (hit === player) {
+            shakeCamera(0.12);
+            spawnFloatingText(hit.position.clone().add(new THREE.Vector3(0, 2.35, 0)),
+              `⚔️ ${bl.caster.userData.name || 'Adversaire'} t'attaque !`, '#ffb35c');
+          }
+        }
+      }
+      done = true;
+    }
+    if (done) {
+      if (!hit) spawnBurst(bl.mesh.position.clone(), 0xe0a0c9, 6); // fizzle : portée max atteinte
+      scene.remove(bl.mesh);
+      magicBolts.splice(i, 1);
+    }
   }
 
   // traits de compétence (gel/éclair/feu) : vif et bref, façon éclair
