@@ -67,14 +67,21 @@
      leur zone avec médaillon de lettre cerclé. -------- */
   /* collé au bord droit + réduit (retour Camille 2026-08-10) ; coins
      arrondis côté gauche uniquement */
-  #question-block { position: fixed; top: max(56px, var(--safe-top) + 52px);
+  #question-block { position: fixed; top: max(8px, var(--safe-top) + 4px);
          right: 0; z-index: 15;
-         /* jamais par-dessus les boutons (retour Camille 2026-08-10) : le
-            panneau s'arrête au-dessus du cluster de compétences (~110 px
-            + ancre bas) et défile à l'intérieur si la question est longue */
-         max-height: calc(100dvh - max(56px, var(--safe-top) + 52px) - 148px);
+         /* retour Camille 2026-08-10 (2e passe) : le panneau démarre TOUT
+            en haut à droite (le HUD Menu/score est à gauche) et doit
+            montrer question + 4 réponses EN ENTIER, sans slider. Le
+            plafond ci-dessous n'est qu'un garde-fou (= l'écran moins le
+            coin des boutons) : sur téléphone paysage réel, tout tient. */
+         max-height: calc(100dvh - max(8px, var(--safe-top) + 4px)
+           - max(16px, var(--safe-bottom) + 12px)
+           - clamp(68px, 8vw, 94px) - clamp(52px, 6.5vw, 74px) - 22px);
          overflow-y: auto; overscroll-behavior: contain;
-         width: min(196px, 56dvw); padding: 7px 8px 7px;
+         /* plus LARGE (240 px) pour que les questions longues tiennent en
+            2 lignes au lieu de 3 : le panneau gagne en hauteur ce qu'il
+            prend en largeur — tout doit être visible sans défilement */
+         width: min(240px, 62dvw); padding: 7px 8px 7px;
          background: rgba(10,14,26,0.93); border: 2px solid rgba(96,190,255,0.55);
          border-right: none; border-radius: 14px 0 0 14px;
          box-shadow: 0 6px 18px rgba(4,9,28,0.55), 0 0 14px rgba(96,190,255,0.25);
@@ -87,7 +94,7 @@
          justify-content: center; cursor: pointer;
          -webkit-tap-highlight-color: transparent; }
   /* bouton « ? » de ré-ouverture quand le bloc est masqué en pleine question */
-  #qb-reopen { position: fixed; top: max(56px, var(--safe-top) + 52px);
+  #qb-reopen { position: fixed; top: max(8px, var(--safe-top) + 4px);
          right: 0; z-index: 15; width: 34px; height: 34px;
          border-radius: 10px 0 0 10px; background: rgba(10,14,26,0.93);
          border: 2px solid rgba(96,190,255,0.55); border-right: none;
@@ -95,19 +102,6 @@
          align-items: center; justify-content: center; cursor: pointer;
          -webkit-tap-highlight-color: transparent; }
   #qb-reopen.show { display: flex; }
-  /* écrans bas (téléphone paysage) : rangées compactées pour que la
-     question + 4 réponses tiennent ENTIÈREMENT au-dessus des boutons
-     (sinon la réponse D passait sous le pli, retour Camille 2026-08-10) */
-  @media (max-height: 480px) {
-    /* les boutons sont aussi plus petits ici (clamp en vw) : réserve du
-       bas resserrée 148 → 118 px, l'écart mesuré reste ≥ 15 px */
-    #question-block { padding: 5px 7px 5px;
-      max-height: calc(100dvh - max(56px, var(--safe-top) + 52px) - 118px); }
-    #qb-text { font-size: 11.5px; }
-    .qa-row { margin-top: 4px; padding: 3px 7px; font-size: 12.5px; }
-    .qa-row .qa-letter { width: 18px; height: 18px; font-size: 11px; }
-    .qb-qmark { width: 18px; height: 18px; font-size: 12px; }
-  }
   .qb-head { display: flex; gap: 8px; align-items: flex-start; margin-bottom: 4px; }
   .qb-qmark { flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
          background: #2f8fe8; color: #fff; font-weight: 900; font-size: 14px;
@@ -125,6 +119,18 @@
   .qa-row.selected { background: var(--chip-c, #fff); color: #101226;
          box-shadow: 0 0 14px var(--chip-c, #fff); }
   .qa-row.selected .qa-letter { border-color: #101226; color: #101226; }
+  /* écrans bas (téléphone paysage) : rangées compactées pour que la
+     question + 4 réponses tiennent ENTIÈREMENT, jamais de défilement
+     (retour Camille 2026-08-10). ATTENTION : ce bloc doit rester APRÈS
+     les règles de base .qa-row/#qb-text (même spécificité — c'est
+     l'ordre qui fait gagner la version compacte). */
+  @media (max-height: 480px) {
+    #question-block { padding: 5px 7px 5px; }
+    #qb-text { font-size: 11.5px; }
+    .qa-row { margin-top: 4px; padding: 3px 7px; font-size: 12.5px; }
+    .qa-row .qa-letter { width: 18px; height: 18px; font-size: 11px; }
+    .qb-qmark { width: 18px; height: 18px; font-size: 12px; }
+  }
   /* marqueur de distance au bout des chevrons-boussole (planche 2026-08-10) */
   #compass-dist { position: fixed; transform: translate(-50%, -50%);
          background: rgba(10,14,26,0.88); border: 2px solid #fff;
@@ -259,18 +265,17 @@
   .btn-attack { --btn-size: clamp(68px, 8vw, 94px); right: 0; bottom: 0;
          --btn-c: #ff8a3c; --btn-top: #ffb35c; --btn-bot: #e0592a;
          --btn-glow: rgba(255,138,60,0.75); }
-  /* ⚡ MOBILITÉ : juste à gauche de l'attaque, à peine surélevée —
-     l'arc reste collé au bord bas pour laisser le haut de l'écran au
-     panneau question */
+  /* ⚡ MOBILITÉ : départ de l'arc-en-ciel, posée sur le BORD BAS à
+     gauche de l'attaque (retour Camille 2026-08-10 : « je pars vraiment
+     du bas à droite et j'arrive vraiment sur le latéral droit ») */
   .btn-skill1 { --btn-size: clamp(52px, 6.5vw, 74px);
-         right: calc(clamp(68px, 8vw, 94px) + 14px); bottom: 12px;
+         right: calc(clamp(68px, 8vw, 94px) + 12px); bottom: 0;
          --btn-c: #21d4ff; --btn-top: #7fe3ff; --btn-bot: #1e8fd0;
          --btn-glow: rgba(33,212,255,0.75); }
-  /* 🛡️ DÉFENSE : encore à gauche, un cran plus haut (fan du pouce) —
-     la hauteur totale du cluster reste ≈ 110 px */
+  /* 🛡️ DÉFENSE : fin de l'arc, remontée sur le BORD DROIT au-dessus de
+     l'attaque — l'arc enveloppe le coin, tout reste ramassé dedans */
   .btn-skill2 { --btn-size: clamp(52px, 6.5vw, 74px);
-         right: calc(clamp(68px, 8vw, 94px) + clamp(52px, 6.5vw, 74px) + 22px);
-         bottom: 30px;
+         right: 0; bottom: calc(clamp(68px, 8vw, 94px) + 12px);
          --btn-c: #b06ef5; --btn-top: #cf9bf7; --btn-bot: #7b3fd0;
          --btn-glow: rgba(176,110,245,0.75); }
   .pet-btn.ready { border-color: var(--btn-c);
