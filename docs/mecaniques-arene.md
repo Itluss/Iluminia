@@ -20,6 +20,13 @@ seule la colonne de lumière de la zone choisie s'allume.
 
 1. Un **dragon** apparaît (loin des joueurs, souvent hors écran — suivre
    l'indicateur 🐉 en bord d'écran avec la distance en mètres).
+   **Le dragon libre S'ENFUIT** (idée Camille 2026-08-10) : dès qu'un
+   chasseur approche à moins de 5,5 u il trottine à l'opposé (2 u/s),
+   et panique à moins de 2,6 u (2,6 u/s, petits bonds + poussière) —
+   toujours plus lent que les bots (3,2) et le joueur (4,4), et un
+   biais vers le centre l'empêche de se coincer dans les coins.
+   Réglages : `LUMIN_CONFIG.fleeSpeed/fleeCalmSpeed/fleeDetectRadius/
+   fleePanicRadius`.
 2. **L'attraper = marcher dessus** (contact, rayon 1,1).
 3. Dès la 1re capture, une **question** s'affiche (bandeau du haut) et
    **4 zones de réponse A/B/C/D** apparaissent (colonnes de lumière

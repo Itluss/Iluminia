@@ -1,38 +1,33 @@
-# Fiche d'itération — boutons au ras du coin + le vol du dragon marche
+# Fiche d'itération — le dragon libre s'enfuit
 
-Retour Camille (2026-08-10, 4e passe) : « les boutons sont encore trop
-haut, baisse-les vraiment en bas à droite. J'arrive pas à voler le
-dragon. »
+Idée Camille (2026-08-10) : « ce qui serait très cool c'est que le
+dragon essaye de nous échapper à chaque fois que personne ne le
+possède. »
 
 ## Changements (public/spike3d-arena.html)
 
-1. **Boutons abaissés au ras du coin** : ancre 16→6 px des bords,
-   écarts internes 8→6 px. Le bas du bouton 💥 est à 6 px du bord bas
-   et 6 px du bord droit.
-2. **Vol du dragon — cause n°1 trouvée** : le bot porteur activait son
-   bouclier INSTANTANÉMENT dès qu'on entrait à 3,2 u (= pile la portée
-   de l'onde) → chaque tentative de vol du joueur était contrée.
-   Désormais réaction PROBABILISTE (~50 %/s sous menace) : une fenêtre
-   de vol existe toujours. L'onde des bots devient probabiliste aussi
-   (~1,2/s) pour la symétrie.
-3. **Vol du dragon — cause n°2** : viser le porteur au joystick pile au
-   moment du tap est très dur (le cône fait ~78°). VISÉE ASSISTÉE pour
-   le joueur : au cast de l'onde, si une cible est à portée (porteur du
-   dragon en priorité, sinon l'ennemi le plus proche), le personnage
-   pivote automatiquement vers elle avant de tirer. Les bots ne passent
-   pas par là (ils visent déjà leur cible).
+1. Dans la boucle `AVAILABLE` : le dragon repère le chasseur le plus
+   proche (< 5,5 u) et fuit à l'opposé — trottinement 2,0 u/s, PANIQUE
+   2,6 u/s sous 2,6 u (bonds rapides + bouffées de poussière dorée).
+   Toujours rattrapable : bots 3,2 u/s, joueur 4,4 u/s.
+2. Anti-coin : près des murs, un biais courbe sa fuite vers le centre
+   (il longe les bords au lieu de s'y coincer). `clampToArena` en
+   garde-fou.
+3. Il REGARDE dans la direction de sa fuite (fini la toupie quand il
+   est chassé ; la rotation lente reste quand personne n'est proche).
+4. Valeurs centralisées dans `LUMIN_CONFIG` : `fleeSpeed`,
+   `fleeCalmSpeed`, `fleeDetectRadius`, `fleePanicRadius`.
 
 ## Vérifié (probes Playwright, 0 erreur console)
 
-- Vol : joueur placé à 2,2 u du porteur DOS TOURNÉ → onde → dragon volé
-  (2/2 sur les tentatives valides ; les autres essais annulés par la
-  partie vivante — bots qui déposent —, pas par un échec du vol).
-- Layout 844×390 : bas du cluster à 6 px des deux bords, question la
-  plus longue entière, 0 chevauchement, boutons immobiles.
+- Joueur téléporté à 3 u du dragon libre → la distance AUGMENTE
+  (3,2 → 4,0 u en 1,5 s headless, plus vif en conditions réelles).
+- Le dragon reste dans l'arène pendant la fuite.
+- La capture au contact marche toujours (téléport sur lui → capturé).
+- Capture visuelle : dragon en fuite dos au joueur.
 
-## Réglages faciles (équilibrage du vol)
+## Note d'équilibrage
 
-- `ABILITY_CONFIG.SHOCKWAVE_RANGE` (3,2) : portée du vol.
-- `dt * 0.5` (bouclier bot) et `dt * 1.2` (onde bot) dans updateBot :
-  réactivité des bots.
-- Immunité au vol 1 s : `LUMIN_CONFIG` (anti ping-pong).
+La fuite rallonge un peu la chasse (bots : ~0,6 u/s de vitesse de
+rattrapage en panique). Si les manches traînent, baisser `fleeSpeed`
+à 2,3-2,4 suffit.

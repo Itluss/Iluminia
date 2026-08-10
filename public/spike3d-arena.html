@@ -941,6 +941,13 @@ const LUMIN_CONFIG = {
   stealImmunitySeconds: 1,  // anti ping-pong : vol refusé juste après une prise
   respawnShieldSeconds: 1.5, // filet anti re-K.O. instantané à la réapparition
   botAnswerAccuracy: 0.5,   // probabilité qu'un bot « réponde » juste (V4, 2026-08-10)
+  // -------- fuite du dragon libre (idée Camille 2026-08-10 : « le dragon
+  // essaye de nous échapper à chaque fois que personne ne le possède ») —
+  // TOUJOURS rattrapable : nettement plus lent que les joueurs (4,4 u/s) --------
+  fleeSpeed: 2.6,           // u/s en panique — < bots (3,2) et joueur (4,4)
+  fleeCalmSpeed: 2.0,       // u/s en trottinement (chasseur détecté mais loin)
+  fleeDetectRadius: 5.5,    // distance à laquelle le dragon repère un chasseur
+  fleePanicRadius: 2.6,     // distance de panique (vitesse max + pattes affolées)
 };
 let luminStealImmuneUntil = 0;
 // -------- état — un seul dragon actif à la fois (currentLumin/luminOwnerId
@@ -4668,8 +4675,42 @@ function animate() {
         }
       }
       if (luminState === 'AVAILABLE' && currentLumin) {
-        currentLumin.rotation.y += dt * 2.4;
-        currentLumin.position.y = 0.5 + Math.sin(performance.now() * 0.006) * 0.12;
+        // -------- fuite (idée Camille 2026-08-10) : le dragon libre repère
+        // le chasseur le plus proche et s'enfuit — plus lent que les
+        // joueurs (toujours rattrapable), biais vers le centre près des
+        // murs pour ne pas se laisser coincer bêtement dans un coin --------
+        let fleeing = null;
+        {
+          let bestD = LUMIN_CONFIG.fleeDetectRadius;
+          allEntities().forEach(e => {
+            if (e.userData.eliminated) return;
+            const d = Math.hypot(e.position.x - currentLumin.position.x, e.position.z - currentLumin.position.z);
+            if (d < bestD) { bestD = d; fleeing = { chaser: e, dist: bestD }; }
+          });
+        }
+        if (fleeing) {
+          const away = new THREE.Vector3(
+            currentLumin.position.x - fleeing.chaser.position.x, 0,
+            currentLumin.position.z - fleeing.chaser.position.z).normalize();
+          const edgeX = Math.max(0, Math.abs(currentLumin.position.x) - (PLAY_W - 3.5)) / 3.5;
+          const edgeZ = Math.max(0, Math.abs(currentLumin.position.z) - (PLAY_D - 3.5)) / 3.5;
+          away.x -= Math.sign(currentLumin.position.x) * edgeX * 1.4;
+          away.z -= Math.sign(currentLumin.position.z) * edgeZ * 1.4;
+          away.normalize();
+          const panicked = fleeing.dist < LUMIN_CONFIG.fleePanicRadius;
+          const speed = panicked ? LUMIN_CONFIG.fleeSpeed : LUMIN_CONFIG.fleeCalmSpeed;
+          currentLumin.position.addScaledVector(away, speed * dt);
+          clampToArena(currentLumin.position, 0.9);
+          // regarde là où il fuit + petits bonds affolés (remplace le bob calme)
+          currentLumin.rotation.y = Math.atan2(away.x, away.z);
+          currentLumin.position.y = 0.5 + Math.abs(Math.sin(performance.now() * (panicked ? 0.016 : 0.010))) * 0.2;
+          if (panicked && Math.random() < dt * 5) {
+            spawnBurst(currentLumin.position.clone().add(new THREE.Vector3(0, 0.1, 0)), 0xffdc4a, 2);
+          }
+        } else {
+          currentLumin.rotation.y += dt * 2.4;
+          currentLumin.position.y = 0.5 + Math.sin(performance.now() * 0.006) * 0.12;
+        }
         // -------- aimant du Chat (2026-08-09) : attire doucement le dragon
         // libre vers le lanceur — s'arrête juste avant le contact (c'est le
         // contact physique qui capture, règle inchangée) --------
