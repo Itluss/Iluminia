@@ -625,9 +625,9 @@
     <div class="howto">
       <div>🐉 <b>Attrape le dragon</b> en marchant dessus.</div>
       <div>🎯 <b>Amène-le dans la zone de la bonne réponse</b> pour marquer.</div>
-      <div>🦊 <b>Vole le dragon</b> : pousse son porteur (bouton Renard).</div>
-      <div>🐱 Le <b>Chat</b> tire un éclat magique à distance (dégâts).</div>
-      <div>⚔️ 3 poussées = K.O. (3 s) · ✨ étincelles = recharge · 💎 gemmes = soin.</div>
+      <div>💥 <b>Onde de choc</b> : pousse — et vole le dragon au porteur touché.</div>
+      <div>⚡ <b>Dash</b> : fonce · 🛡️ <b>Bouclier</b> : protège ton dragon (2 s).</div>
+      <div>💎 gemmes = soin · les pouvoirs se rechargent tout seuls.</div>
     </div>
     <div class="pet-pick-row" id="pet-pick-row"></div>
     <button id="start-btn" class="el-btn el-btn--primary" type="button"><svg class="el-icon"><use href="#icon-play"></use></svg>Jouer</button>
@@ -1864,6 +1864,104 @@ function spawnImpactRing(pos, color, maxScale = 2.2, life = 0.3) {
 // LIBRE vers le lanceur — rend le 2e bouton utile dans l'arène dragon
 // (les pastilles de l'ancien système n'existent plus en LUMIN_MODE) --------
 let luminMagnet = null; // { source, until, strength }
+// ==================================================================
+// SYSTÈME DE COMPÉTENCES V1 (spec Camille 2026-08-10) — 3 FAMILLES
+// fixes (offense / mobilité / défense), UNE variante chacune pour
+// l'instant. Structure prête pour des variantes futures (Grappin,
+// Téléportation, Bulle…) débloquables aux cristaux — PAS de boutique ici.
+// PAS de mana : cooldown pur, affiché dans les boutons.
+// ==================================================================
+const ABILITY_CONFIG = {
+  SHOCKWAVE_COOLDOWN: 4,        // s
+  SHOCKWAVE_FORCE: 2.6,         // distance de poussée (u)
+  SHOCKWAVE_RANGE: 3.2,         // portée du cône (u)
+  SHOCKWAVE_ANGLE: Math.PI / 2.3,
+  SHOCKWAVE_DAMAGE: 10,         // faible VOLONTAIREMENT : l'intérêt est le knockback (spec §1/§10)
+  DASH_COOLDOWN: 5,             // s
+  DASH_DISTANCE: 6,             // u
+  DASH_SPEED: 26,               // u/s (durée du burst = distance/vitesse ≈ 0,23 s)
+  SHIELD_COOLDOWN: 7,           // s
+  SHIELD_DURATION: 2,           // s
+};
+// identique pour tous les joueurs et bots (spec §13 : pas de choix en V1)
+const equippedAbilities = { offense: 'shockwave', mobility: 'dash', defense: 'shield' };
+function abilityCooldownSeconds(family) {
+  return { offense: ABILITY_CONFIG.SHOCKWAVE_COOLDOWN, mobility: ABILITY_CONFIG.DASH_COOLDOWN, defense: ABILITY_CONFIG.SHIELD_COOLDOWN }[family];
+}
+function abilityReadyState(entity) {
+  if (!entity.userData.abilityReadyAt) entity.userData.abilityReadyAt = { offense: 0, mobility: 0, defense: 0 };
+  return entity.userData.abilityReadyAt;
+}
+// bulle de bouclier : visuel évident, créée une fois puis re-visible
+function ensureShieldBubble(entity) {
+  if (!entity.userData.shieldBubble) {
+    const bubble = new THREE.Mesh(new THREE.SphereGeometry(0.95, 18, 14),
+      new THREE.MeshBasicMaterial({ color: 0x9f7ff5, transparent: true, opacity: 0.4,
+        blending: THREE.AdditiveBlending, depthWrite: false }));
+    bubble.position.y = 0.65;
+    // anneau équatorial net : la sphère additive seule disparaît sur le sol
+    // lavande clair (constat capture 2026-08-10) — l'anneau garantit la
+    // lisibilité du bouclier quel que soit le fond
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.06, 10, 40),
+      new THREE.MeshBasicMaterial({ color: 0xc9a9ff, transparent: true, opacity: 0.95, depthWrite: false }));
+    rim.rotation.x = Math.PI / 2;
+    bubble.add(rim);
+    entity.add(bubble);
+    entity.userData.shieldBubble = bubble;
+  }
+  return entity.userData.shieldBubble;
+}
+const ABILITY_DEFINITIONS = {
+  // 💥 ONDE DE CHOC : réutilise le handler de poussée existant avec des
+  // dégâts réduits — pousser/interrompre/voler le dragon, pas tuer
+  shockwave: {
+    glyph: '💥',
+    activate(entity) {
+      PET_ABILITY_HANDLERS.push.activate(entity, {
+        color: 0xff8a3c, power: ABILITY_CONFIG.SHOCKWAVE_FORCE,
+        range: ABILITY_CONFIG.SHOCKWAVE_RANGE, angle: ABILITY_CONFIG.SHOCKWAVE_ANGLE,
+        damage: ABILITY_CONFIG.SHOCKWAVE_DAMAGE,
+      });
+    },
+  },
+  // ⚡ DASH : burst de vitesse dans la direction du regard (déplacement
+  // appliqué frame par frame dans animate(), traînée cyan)
+  dash: {
+    glyph: '⚡',
+    activate(entity) {
+      entity.userData.dashDir = new THREE.Vector3(Math.sin(entity.rotation.y), 0, Math.cos(entity.rotation.y));
+      // distance restante (et non un minuteur) : la distance parcourue est
+      // EXACTEMENT DASH_DISTANCE quel que soit le framerate (téléphone qui
+      // rame, dt clampé…)
+      entity.userData.dashRemaining = ABILITY_CONFIG.DASH_DISTANCE;
+      spawnImpactRing(entity.position, 0x21d4ff, 1.8, 0.25);
+      if (entity === player) shakeCamera(0.08);
+    },
+  },
+  // 🛡️ BOUCLIER : réutilise shieldedUntil/isShielded (les poussées, vols
+  // et dégâts glissent déjà dessus) + bulle visible
+  shield: {
+    glyph: '🛡️',
+    activate(entity) {
+      entity.userData.shieldedUntil = performance.now() + ABILITY_CONFIG.SHIELD_DURATION * 1000;
+      ensureShieldBubble(entity).visible = true;
+      spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0x9f7ff5, 12);
+    },
+  },
+};
+function activateAbility(entity, family) {
+  const ready = abilityReadyState(entity);
+  if (entity.userData.eliminated || performance.now() < ready[family]) {
+    if (entity === player && abilityButtons[family]) {
+      const btn = abilityButtons[family];
+      btn.classList.remove('denied'); void btn.offsetWidth; btn.classList.add('denied');
+    }
+    return false;
+  }
+  ready[family] = performance.now() + abilityCooldownSeconds(family) * 1000;
+  ABILITY_DEFINITIONS[equippedAbilities[family]].activate(entity);
+  return true;
+}
 const PET_ABILITY_HANDLERS = {
   // -------- Renard/Push : charge courte + repousse le cône devant soi.
   // « peut servir à empêcher un adversaire d'attraper une bonne réponse »
@@ -1905,7 +2003,7 @@ const PET_ABILITY_HANDLERS = {
         // qui encaisse. --------
         if (LUMIN_MODE) {
           const before = t.userData.life ?? LIFE_MAX;
-          damageLife(t, LUMIN_CONFIG.pushDamage);
+          damageLife(t, pet.damage ?? LUMIN_CONFIG.pushDamage);
           const lost = Math.round(before - (t.userData.life ?? 0));
           if (lost > 0) {
             spawnFloatingText(t.position.clone().add(new THREE.Vector3(0, 1.9, 0)), `-${lost}`, '#ff6a5c');
@@ -2068,52 +2166,40 @@ function activatePetSlot(caster, slot) {
   if (handler) handler.activate(caster, petStatsForCaster(caster, pet));
   if (caster === player) updatePetButtons();
 }
-// -------- handler stub GRAPPIN (spec contrôles 2026-08-10 §16) : la
-// mécanique n'existe pas encore — AUCUN gameplay inventé ici, le bouton
-// est affiché désactivé pour le test d'ergonomie uniquement --------
-function onGrapplinPressed() {
-  // À implémenter sur décision de Camille (compétence « grappin »).
-}
+// -------- boutons du kit V1 (spec compétences 2026-08-10) : 💥 Onde
+// (grande, action principale), ⚡ Dash, 🛡️ Bouclier — cooldown pur --------
+const abilityButtons = { offense: null, mobility: null, defense: null };
 function buildPetButtons() {
   abilityZone.querySelectorAll('.pet-btn').forEach(b => b.remove());
   petButtons.length = 0;
-  // arc ergonomique (spec 2026-08-10) : ATTAQUE = poussée du Renard (slot 0),
-  // COMP 1 = éclat du Chat (slot 1), COMP 2 = grappin (stub désactivé)
   const defs = [
-    { slot: 0, cls: 'btn-attack', glyph: '⚔️' },
-    { slot: 1, cls: 'btn-skill1', glyph: '⚡' },
-    { slot: null, cls: 'btn-skill2 disabled', glyph: '🪝', stub: onGrapplinPressed },
+    { family: 'offense', cls: 'btn-attack', glyph: '💥' },
+    { family: 'mobility', cls: 'btn-skill1', glyph: '⚡' },
+    { family: 'defense', cls: 'btn-skill2', glyph: '🛡️' },
   ];
   defs.forEach(def => {
     const btn = document.createElement('div');
     btn.className = `pet-btn ${def.cls}`;
     btn.innerHTML = `<div class="pet-btn-face"><span class="pet-btn-glyph">${def.glyph}</span><span class="pet-btn-cd"></span></div>`;
-    if (def.slot !== null) {
-      btn.addEventListener('pointerdown', e => { e.preventDefault(); activatePetSlot(player, def.slot); });
-      petButtons[def.slot] = btn; // index = slot (updatePetButtons/steal-hint)
-    } else {
-      btn.addEventListener('pointerdown', e => { e.preventDefault(); def.stub(); });
-    }
+    btn.addEventListener('pointerdown', e => { e.preventDefault(); activateAbility(player, def.family); });
+    abilityButtons[def.family] = btn;
     abilityZone.appendChild(btn);
   });
 }
 function updatePetButtons() {
-  petButtons.forEach((btn, slot) => {
-    const pet = PET_DEFINITIONS[petLoadout[slot]];
-    if (!pet || !btn) return;
-    const pct = petCharge[slot];
-    btn.style.setProperty('--charge', pct);
-    const ready = pct >= 100;
-    btn.classList.toggle('ready', ready);
-    btn.classList.toggle('empty', !ready);
-    btn.classList.toggle('cooldown', !ready);
-    // chiffre de recharge dans le bouton (spec §8) — estimé sur la régén
-    // passive (les étincelles peuvent l'accélérer)
+  // cooldown pur (spec compétences §4) : anneau radial + chiffre restant
+  const ready = abilityReadyState(player);
+  Object.entries(abilityButtons).forEach(([family, btn]) => {
+    if (!btn) return;
+    const left = Math.max(0, ready[family] - performance.now()) / 1000;
+    const cd = abilityCooldownSeconds(family);
+    const isReady = left <= 0;
+    btn.style.setProperty('--charge', isReady ? 100 : (1 - left / cd) * 100);
+    btn.classList.toggle('ready', isReady);
+    btn.classList.toggle('empty', !isReady);
+    btn.classList.toggle('cooldown', !isReady);
     const cdEl = btn.querySelector('.pet-btn-cd');
-    if (cdEl) {
-      const secs = (100 - pct) * pet.cooldown / 100;
-      cdEl.textContent = ready || secs <= 0 ? '' : secs.toFixed(1);
-    }
+    if (cdEl) cdEl.textContent = isReady ? '' : left.toFixed(1);
   });
 }
 buildPetButtons();
@@ -2238,6 +2324,7 @@ function updateLifeBar() {
 function eliminateEntity(entity) {
   if (entity.userData.eliminated) return;
   entity.userData.eliminated = true;
+  entity.userData.dashRemaining = 0; // un K.O. coupe net le dash en cours
   spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 0xe25b4a, 40);
   spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.4, 0)), `${entity.userData.name} K.O. !`, '#e25b4a');
   entity.visible = false;
@@ -3659,7 +3746,8 @@ function startRound() {
   petCharge[0] = 100; petCharge[1] = 100;
   updatePetButtons();
   stealTipNextAt = 0;
-  allEntities().forEach(e => { e.userData.life = LIFE_MAX; e.userData.eliminated = false; e.visible = true; e.userData.wanderTarget = null; e.userData.luminTargetZone = null; });
+  allEntities().forEach(e => { e.userData.life = LIFE_MAX; e.userData.eliminated = false; e.visible = true; e.userData.wanderTarget = null; e.userData.luminTargetZone = null;
+    e.userData.abilityReadyAt = { offense: 0, mobility: 0, defense: 0 }; e.userData.dashRemaining = 0; });
   updateLifeBar();
   bots.forEach((b, i) => {
     b.userData.score = 0; b.userData.frozenUntil = 0; b.userData.slowUntil = 0; b.userData.blindUntil = 0; b.userData.shieldedUntil = 0;
@@ -4071,6 +4159,11 @@ function updateBot(botObj, dt) {
   // survie (cristal si énergie basse) > voler le porteur > le reste
   // inchangé. --------
   if (LUMIN_MODE && luminState === 'CARRIED' && luminOwnerId === botObj) {
+    // 🛡️ bouclier quand le bot PORTE le dragon et qu'un adversaire est
+    // tout près (spec compétences §14)
+    const threat = allEntities().some(e => e !== botObj && !e.userData.eliminated
+      && Math.hypot(e.position.x - botObj.position.x, e.position.z - botObj.position.z) < 3.2);
+    if (threat) activateAbility(botObj, 'defense');
     if (!botObj.userData.luminTargetZone || botObj.userData.luminTargetZone.eliminated) {
       const options = zones.filter(z => !z.eliminated);
       // -------- « réponse » du bot (V4, développé le 2026-08-10) : il
@@ -4086,6 +4179,10 @@ function updateBot(botObj, dt) {
     target = botObj.userData.luminTargetZone?.pos || null;
   } else if (LUMIN_MODE && luminState === 'AVAILABLE' && currentLumin) {
     target = currentLumin.position;
+    // ⚡ dash pour arriver le premier sur le dragon libre encore loin
+    if (Math.hypot(target.x - botObj.position.x, target.z - botObj.position.z) > 9) {
+      activateAbility(botObj, 'mobility');
+    }
   } else if (energyCrystal
       && lifePct(botObj) < ENERGY_CRYSTAL_CONFIG.seekEnergyThreshold
       && Math.hypot(energyCrystal.position.x - botObj.position.x, energyCrystal.position.z - botObj.position.z) < ENERGY_CRYSTAL_CONFIG.seekRange) {
@@ -4096,11 +4193,12 @@ function updateBot(botObj, dt) {
     // Une fois assez proche, tente la poussée (Renard) si chargée. --------
     target = luminOwnerId.position;
     const distToHolder = Math.hypot(target.x - botObj.position.x, target.z - botObj.position.z);
-    if (distToHolder < 3.5) {
-      const loadout = botObj.userData.petLoadout || [];
-      loadout.forEach((petId, slot) => {
-        if (PET_DEFINITIONS[petId]?.abilityType === 'push') activatePetSlot(botObj, slot);
-      });
+    // -------- IA V1 (spec compétences §14) : 💥 onde quand le porteur est
+    // à portée (tentative de vol), ⚡ dash pour le rattraper de loin --------
+    if (distToHolder < ABILITY_CONFIG.SHOCKWAVE_RANGE + 0.3) {
+      activateAbility(botObj, 'offense');
+    } else if (distToHolder > 9) {
+      activateAbility(botObj, 'mobility');
     }
   } else if (questionActive && nearSpark
       && botCharge.some(c => c > SPARK_CONFIG.sparkBotChargeThreshold && c < 100)
@@ -4200,7 +4298,19 @@ function animate() {
     // utiliser », la charge 100% étincelles-only était trop rare pour être
     // amusante. Les étincelles restent utiles (accélèrent le cycle), elles
     // ne sont plus le SEUL moyen de charger. --------
-    allEntities().forEach(e => applyPassivePetRegen(e, dt));
+    allEntities().forEach(e => {
+      applyPassivePetRegen(e, dt); // legacy pets (hors kit V1), sans effet UI
+      // bulle de bouclier : visible tant que l'entité est protégée
+      if (e.userData.shieldBubble) e.userData.shieldBubble.visible = isShielded(e);
+      // ⚡ dash en cours : burst de vitesse + traînée cyan
+      if (e.userData.dashRemaining > 0 && !e.userData.eliminated) {
+        const step = Math.min(ABILITY_CONFIG.DASH_SPEED * dt, e.userData.dashRemaining);
+        e.userData.dashRemaining -= step;
+        e.position.addScaledVector(e.userData.dashDir, step);
+        clampToArena(e.position);
+        if (Math.random() < dt * 30) spawnBurst(e.position.clone().add(new THREE.Vector3(0, 0.4, 0)), 0x21d4ff, 2);
+      }
+    });
     updatePetButtons();
     allEntities().forEach(e => damageLife(e, LIFE_DRAIN_PER_SEC * dt));
 
@@ -4440,14 +4550,14 @@ function animate() {
       // poussée + charge prête = « c'est le moment de voler » (pédagogie,
       // retour Camille 2026-08-09) --------
       {
-        const pushSlot = petLoadout.findIndex(id => PET_DEFINITIONS[id]?.abilityType === 'push');
-        if (pushSlot >= 0 && petButtons[pushSlot]) {
-          const pushPet = PET_DEFINITIONS[petLoadout[pushSlot]];
+        // pulse doré du bouton 💥 : porteur adverse à portée d'onde + prête
+        if (abilityButtons.offense) {
           const canSteal = luminState === 'CARRIED' && luminOwnerId && luminOwnerId !== player
-            && !player.userData.eliminated && petCharge[pushSlot] >= 100
+            && !player.userData.eliminated
+            && performance.now() >= abilityReadyState(player).offense
             && Math.hypot(luminOwnerId.position.x - player.position.x,
-                          luminOwnerId.position.z - player.position.z) <= pushPet.range + 0.8;
-          petButtons[pushSlot].classList.toggle('steal-hint', canSteal);
+                          luminOwnerId.position.z - player.position.z) <= ABILITY_CONFIG.SHOCKWAVE_RANGE + 0.8;
+          abilityButtons.offense.classList.toggle('steal-hint', canSteal);
         }
       }
       // -------- flèche-boussole vers la zone de réponse choisie (2026-08-10) :
@@ -4804,6 +4914,20 @@ window.__arenaDebug = {
   forceKO: (botName) => {
     const entity = botName ? bots.find(b => b.userData.name === botName) : player;
     if (entity) damageLife(entity, 9999);
+  },
+  // -------- kit V1 (2026-08-10) : tester chaque pouvoir séparément --------
+  forceAbility: (family, botName) => {
+    const entity = botName ? bots.find(b => b.userData.name === botName) : player;
+    if (entity) return activateAbility(entity, family); // 'offense' | 'mobility' | 'defense'
+  },
+  // état du bouclier du joueur (probes headless : la bulle est-elle rendue ?)
+  getShieldInfo: () => {
+    const b = player.userData.shieldBubble;
+    return {
+      shielded: isShielded(player),
+      bubble: b ? { visible: b.visible, opacity: b.material.opacity,
+        worldY: b.getWorldPosition(new THREE.Vector3()).y, children: b.children.length } : null,
+    };
   },
   // -------- téléporte le porteur actuel dans la zone correcte/une zone
   // fausse — simule « entrer dans la zone » sans avoir à viser en vrai,
