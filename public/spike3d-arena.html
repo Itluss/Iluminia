@@ -191,6 +191,7 @@
          bottom: max(24px, var(--safe-bottom) + 14px); width: 110px; height: 110px; border-radius: 50%;
          background: radial-gradient(circle at 35% 30%, var(--el-bg-panel-light), var(--el-bg-deep) 70%);
          border: var(--el-border-w) solid var(--el-outline); z-index: 21;
+         opacity: 0.65; /* discret au repos (spec contrôles 2026-08-10 §1) */
          box-shadow: inset 0 4px 10px rgba(0,0,0,0.5), 0 4px 14px rgba(0,0,0,0.3);
          display: flex; align-items: center; justify-content: center;
          pointer-events: none; }
@@ -210,29 +211,62 @@
      safe-area-aware (right/bottom), taille 0 — chaque .pet-btn se positionne
      en absolute par rapport à elle via --arc-r/--arc-b (JS), donc plus
      jamais de calcul innerWidth/innerHeight qui ignorait les safe areas. -------- */
-  #ability-zone { position: fixed; right: max(28px, var(--safe-right) + 12px);
-         bottom: max(28px, var(--safe-bottom) + 16px); width: 0; height: 0; z-index: 25; }
-  .pet-btn { position: absolute; right: var(--arc-r, 0px); bottom: var(--arc-b, 0px);
-         width: 64px; height: 64px; border-radius: 50%;
-         background: conic-gradient(var(--el-cyan) calc(var(--charge, 0) * 1%), var(--el-bg-deep) calc(var(--charge, 0) * 1%));
+  /* -------- contrôles de combat (spec Camille 2026-08-10, UI uniquement) :
+     arc ergonomique pouce droit — ATTAQUE (grande, orange, bas droite) +
+     2 compétences au-dessus/à gauche. Décalage doux vers le centre quand
+     le panneau question est ouvert (§6), jamais de barre horizontale. --------- */
+  #ability-zone { position: fixed; right: max(16px, var(--safe-right) + 10px);
+         bottom: max(16px, var(--safe-bottom) + 12px); width: 0; height: 0; z-index: 25;
+         transition: transform .35s ease; }
+  /* §6 : sur les écrans bas (téléphone paysage), le panneau question
+     descend jusque dans la zone des boutons — on glisse alors l'arc
+     nettement vers le centre ; sur grand écran, aucun déplacement
+     (aucun chevauchement possible) */
+  @media (max-height: 480px) {
+    body.q-open #ability-zone { transform: translateX(calc(-1 * min(30dvw, 215px))); }
+  }
+  .pet-btn { position: absolute;
+         width: var(--btn-size, 64px); height: var(--btn-size, 64px); border-radius: 50%;
+         /* anneau de recharge : conic-gradient à la couleur du bouton */
+         background: conic-gradient(var(--btn-c, var(--el-cyan)) calc(var(--charge, 0) * 1%), var(--el-bg-deep) calc(var(--charge, 0) * 1%));
          border: 3px solid var(--el-outline);
          box-shadow: 0 4px 14px rgba(4,9,28,0.4);
          display: flex; align-items: center; justify-content: center;
-         transition: border-color .2s, box-shadow .2s, transform .15s; cursor: pointer;
+         transition: border-color .2s, box-shadow .2s, transform .1s; cursor: pointer;
          -webkit-tap-highlight-color: transparent; }
-  /* -------- photo ronde façon avatar, avec une marge suffisante pour que
-     l'anneau de charge (conic-gradient posé sur le fond de .pet-btn, voir
-     updatePetButtons) reste VISIBLE tout autour — retour de revue visuelle
-     (itération Étincelles, 2026-08-05) : avec seulement 4px d'inset, le
-     bordure de 3px du bouton mangeait presque tout l'anneau (~1px visible,
-     illisible). 9px d'inset laisse ~6px d'anneau net entre la bordure et
-     la photo. -------- */
-  .pet-btn-icon { position: absolute; inset: 9px; z-index: 1; width: calc(100% - 18px); height: calc(100% - 18px);
-         object-fit: cover; border-radius: 50%; pointer-events: none; }
-  .pet-btn.ready { border-color: var(--el-cyan); box-shadow: 0 0 22px 6px rgba(33,212,255,0.85), 0 4px 14px rgba(4,9,28,0.4);
-         animation: abilityPulse 1.1s ease-in-out infinite; }
-  .pet-btn.ready:active { transform: scale(0.88); }
-  .pet-btn.empty { opacity: 0.8; }
+  /* face bombée façon cartoon : gradient chaud + highlight supérieur + ombre interne */
+  .pet-btn-face { position: absolute; inset: 7px; border-radius: 50%; z-index: 1;
+         background: linear-gradient(180deg, var(--btn-top), var(--btn-bot));
+         box-shadow: inset 0 3px 0 rgba(255,255,255,0.35), inset 0 -4px 6px rgba(4,9,28,0.45);
+         display: flex; align-items: center; justify-content: center; pointer-events: none; }
+  .pet-btn-glyph { font-size: calc(var(--btn-size, 64px) * 0.4); line-height: 1;
+         filter: drop-shadow(0 2px 2px rgba(4,9,28,0.5)); }
+  .pet-btn-cd { position: absolute; z-index: 2; color: #fff; font-weight: 900;
+         font-size: calc(var(--btn-size, 64px) * 0.28);
+         text-shadow: 0 2px 4px rgba(0,0,0,0.75); pointer-events: none; }
+  /* ATTAQUE principale : la plus grande, coin bas-droit */
+  .btn-attack { --btn-size: clamp(68px, 8vw, 94px); right: 0; bottom: 0;
+         --btn-c: #ff8a3c; --btn-top: #ffb35c; --btn-bot: #e0592a;
+         --btn-glow: rgba(255,138,60,0.75); }
+  /* COMPÉTENCE 1 (éclat) : à gauche de l'attaque, légèrement plus haut
+     (croquis spec §5 : COMP1 en bas-gauche de l'arc) */
+  .btn-skill1 { --btn-size: clamp(52px, 6.5vw, 74px);
+         right: calc(clamp(68px, 8vw, 94px) + 24px); bottom: 20px;
+         --btn-c: #21d4ff; --btn-top: #7fe3ff; --btn-bot: #1e8fd0;
+         --btn-glow: rgba(33,212,255,0.75); }
+  /* COMPÉTENCE 2 (grappin, à venir) : en haut de l'arc, entre les deux
+     colonnes — jamais dans l'axe du panneau question */
+  .btn-skill2 { --btn-size: clamp(52px, 6.5vw, 74px);
+         right: calc(clamp(68px, 8vw, 94px) * 0.55 + 26px);
+         bottom: calc(clamp(52px, 6.5vw, 74px) + 42px);
+         --btn-c: #b06ef5; --btn-top: #cf9bf7; --btn-bot: #7b3fd0;
+         --btn-glow: rgba(176,110,245,0.75); }
+  .pet-btn.ready { border-color: var(--btn-c);
+         box-shadow: 0 0 16px 4px var(--btn-glow), 0 4px 14px rgba(4,9,28,0.4); }
+  .pet-btn:active { transform: scale(0.94); }
+  .pet-btn.cooldown .pet-btn-face { filter: brightness(0.55) saturate(0.7); }
+  .pet-btn.empty { opacity: 0.9; }
+  .pet-btn.disabled { opacity: 0.45; filter: grayscale(0.6); cursor: default; }
   /* appui sur un bouton pas encore chargé : secousse brève (feedback
      d'échec, retour Camille 2026-08-09) */
   .pet-btn.denied { animation: petDenied 0.3s ease-in-out; }
@@ -923,6 +957,9 @@ let selectedZoneLetter = null;
 function showQuestionBlock() {
   document.getElementById('question-block').classList.add('show');
   document.getElementById('qb-reopen').classList.remove('show');
+  // §6 spec contrôles : les boutons de combat glissent doucement vers le
+  // centre pour ne jamais passer sous le panneau question
+  document.body.classList.add('q-open');
 }
 function hideQuestionBlock() {
   document.getElementById('question-block').classList.remove('show');
@@ -930,6 +967,7 @@ function hideQuestionBlock() {
   // au choix (spec V4 §3 : « disponible tant qu'aucune réponse choisie »)
   document.getElementById('qb-reopen').classList.toggle('show',
     dragonQuestionActive && !selectedZoneLetter);
+  document.body.classList.remove('q-open');
 }
 function selectAnswerZone(letter) {
   if (!letter || selectedZoneLetter || !dragonQuestionActive) return; // choix verrouillé (V4 §5)
@@ -1586,7 +1624,9 @@ const PET_DEFINITIONS = {
   renard: {
     id: 'renard', name: 'Renard', description: 'Charge et repousse les adversaires proches.',
     icon: 'icon-pet-renardin.png', abilityType: 'push',
-    cooldown: 7, duration: 0, power: 2.6, range: 3.2, angle: Math.PI / 2.3,
+    // cooldown 7 → 2.5 (spec contrôles 2026-08-10 §9 : l'ATTAQUE principale
+    // doit avoir une recharge très courte, utilisable régulièrement)
+    cooldown: 2.5, duration: 0, power: 2.6, range: 3.2, angle: Math.PI / 2.3,
     params: {}, rarity: 'commun', level: 1, color: 0xe0793a,
     discovery: { type: 'level', value: 1 }, fragmentsRequired: 0,
   },
@@ -2028,34 +2068,52 @@ function activatePetSlot(caster, slot) {
   if (handler) handler.activate(caster, petStatsForCaster(caster, pet));
   if (caster === player) updatePetButtons();
 }
+// -------- handler stub GRAPPIN (spec contrôles 2026-08-10 §16) : la
+// mécanique n'existe pas encore — AUCUN gameplay inventé ici, le bouton
+// est affiché désactivé pour le test d'ergonomie uniquement --------
+function onGrapplinPressed() {
+  // À implémenter sur décision de Camille (compétence « grappin »).
+}
 function buildPetButtons() {
   abilityZone.querySelectorAll('.pet-btn').forEach(b => b.remove());
   petButtons.length = 0;
-  petLoadout.forEach((petId, slot) => {
-    const pet = PET_DEFINITIONS[petId];
-    if (!pet) return;
+  // arc ergonomique (spec 2026-08-10) : ATTAQUE = poussée du Renard (slot 0),
+  // COMP 1 = éclat du Chat (slot 1), COMP 2 = grappin (stub désactivé)
+  const defs = [
+    { slot: 0, cls: 'btn-attack', glyph: '⚔️' },
+    { slot: 1, cls: 'btn-skill1', glyph: '⚡' },
+    { slot: null, cls: 'btn-skill2 disabled', glyph: '🪝', stub: onGrapplinPressed },
+  ];
+  defs.forEach(def => {
     const btn = document.createElement('div');
-    btn.className = 'pet-btn ready';
-    const img = document.createElement('img');
-    img.className = 'pet-btn-icon';
-    img.src = `ui/generated/${pet.icon}`;
-    img.alt = pet.name;
-    btn.appendChild(img);
-    btn.addEventListener('pointerdown', e => { e.preventDefault(); activatePetSlot(player, slot); });
+    btn.className = `pet-btn ${def.cls}`;
+    btn.innerHTML = `<div class="pet-btn-face"><span class="pet-btn-glyph">${def.glyph}</span><span class="pet-btn-cd"></span></div>`;
+    if (def.slot !== null) {
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); activatePetSlot(player, def.slot); });
+      petButtons[def.slot] = btn; // index = slot (updatePetButtons/steal-hint)
+    } else {
+      btn.addEventListener('pointerdown', e => { e.preventDefault(); def.stub(); });
+    }
     abilityZone.appendChild(btn);
-    petButtons.push(btn);
   });
-  positionPetButtons();
 }
 function updatePetButtons() {
   petButtons.forEach((btn, slot) => {
     const pet = PET_DEFINITIONS[petLoadout[slot]];
-    if (!pet) return;
+    if (!pet || !btn) return;
     const pct = petCharge[slot];
     btn.style.setProperty('--charge', pct);
     const ready = pct >= 100;
     btn.classList.toggle('ready', ready);
     btn.classList.toggle('empty', !ready);
+    btn.classList.toggle('cooldown', !ready);
+    // chiffre de recharge dans le bouton (spec §8) — estimé sur la régén
+    // passive (les étincelles peuvent l'accélérer)
+    const cdEl = btn.querySelector('.pet-btn-cd');
+    if (cdEl) {
+      const secs = (100 - pct) * pet.cooldown / 100;
+      cdEl.textContent = ready || secs <= 0 ? '' : secs.toFixed(1);
+    }
   });
 }
 buildPetButtons();
