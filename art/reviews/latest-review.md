@@ -1,30 +1,38 @@
-# Fiche d'itération — arc resserré + zéro scroll garanti sur la question
+# Fiche d'itération — boutons au ras du coin + le vol du dragon marche
 
-Retour Camille (2026-08-10, 3e passe layout) : « les boutons plus
-resserrés en bas à droite et pas de scroll sur les questions !!! »
+Retour Camille (2026-08-10, 4e passe) : « les boutons sont encore trop
+haut, baisse-les vraiment en bas à droite. J'arrive pas à voler le
+dragon. »
 
 ## Changements (public/spike3d-arena.html)
 
-1. **Boutons nettement plus petits et collés au coin** : 💥 58→80 px
-   (avant 68→94), ⚡/🛡️ 44→60 px (avant 52→74), écarts 12→8 px.
-   L'arc complet (bord bas → coin → bord droit) tient dans ~110 px de
-   haut sur téléphone paysage (~148 px sur desktop).
-2. **Zéro scroll possible sur la question** : rangées encore compactées
-   sur écrans ≤ 480 px (police 12, médaillons 16 px, marges 3 px) — la
-   question LA PLUS LONGUE de la banque + ses 4 réponses gardent
-   52-99 px de marge au-dessus des boutons, même sur un écran 700×340.
-3. **Indicateur 🐉 tenu à l'écart du coin des boutons** : il se glissait
-   derrière le bouton 💥 ; désormais repoussé hors de la boîte des
-   boutons par le déplacement le plus court (comme il évitait déjà le
-   panneau question).
+1. **Boutons abaissés au ras du coin** : ancre 16→6 px des bords,
+   écarts internes 8→6 px. Le bas du bouton 💥 est à 6 px du bord bas
+   et 6 px du bord droit.
+2. **Vol du dragon — cause n°1 trouvée** : le bot porteur activait son
+   bouclier INSTANTANÉMENT dès qu'on entrait à 3,2 u (= pile la portée
+   de l'onde) → chaque tentative de vol du joueur était contrée.
+   Désormais réaction PROBABILISTE (~50 %/s sous menace) : une fenêtre
+   de vol existe toujours. L'onde des bots devient probabiliste aussi
+   (~1,2/s) pour la symétrie.
+3. **Vol du dragon — cause n°2** : viser le porteur au joystick pile au
+   moment du tap est très dur (le cône fait ~78°). VISÉE ASSISTÉE pour
+   le joueur : au cast de l'onde, si une cible est à portée (porteur du
+   dragon en priorité, sinon l'ennemi le plus proche), le personnage
+   pivote automatiquement vers elle avant de tirer. Les bots ne passent
+   pas par là (ils visent déjà leur cible).
 
-## Vérifié (probes Playwright, pire cas = « En quelle année commence la
-Révolution française ? », 0 erreur console)
+## Vérifié (probes Playwright, 0 erreur console)
 
-- 844×390 : contenu entier, 0 chevauchement, 99 px d'écart, arc 113 px.
-- 740×360 : contenu entier, 0 chevauchement, 72 px d'écart.
-- 700×340 : contenu entier, 0 chevauchement, 52 px d'écart.
-- 1280×720 : contenu entier, 0 chevauchement, 320 px d'écart.
-- Boutons strictement immobiles panneau ouvert/fermé (tous viewports).
-- Indicateur 🐉 : 0 chevauchement avec les boutons (dragon placé hors
-  écran côté coin bas droit).
+- Vol : joueur placé à 2,2 u du porteur DOS TOURNÉ → onde → dragon volé
+  (2/2 sur les tentatives valides ; les autres essais annulés par la
+  partie vivante — bots qui déposent —, pas par un échec du vol).
+- Layout 844×390 : bas du cluster à 6 px des deux bords, question la
+  plus longue entière, 0 chevauchement, boutons immobiles.
+
+## Réglages faciles (équilibrage du vol)
+
+- `ABILITY_CONFIG.SHOCKWAVE_RANGE` (3,2) : portée du vol.
+- `dt * 0.5` (bouclier bot) et `dt * 1.2` (onde bot) dans updateBot :
+  réactivité des bots.
+- Immunité au vol 1 s : `LUMIN_CONFIG` (anti ping-pong).

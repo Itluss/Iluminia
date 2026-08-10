@@ -75,7 +75,7 @@
             plafond ci-dessous n'est qu'un garde-fou (= l'écran moins le
             coin des boutons) : sur téléphone paysage réel, tout tient. */
          max-height: calc(100dvh - max(8px, var(--safe-top) + 4px)
-           - max(16px, var(--safe-bottom) + 12px)
+           - max(6px, var(--safe-bottom) + 4px)
            - clamp(58px, 7vw, 80px) - clamp(44px, 5.5vw, 60px) - 18px);
          overflow-y: auto; overscroll-behavior: contain;
          /* plus LARGE (240 px) pour que les questions longues tiennent en
@@ -241,8 +241,10 @@
      l'écran — les boutons ne bougent JAMAIS (ni quand le panneau
      question s'ouvre, ni quand il se ferme) et le panneau question
      (haut droite) est plafonné en hauteur pour ne jamais les recouvrir. --------- */
-  #ability-zone { position: fixed; right: max(16px, var(--safe-right) + 10px);
-         bottom: max(16px, var(--safe-bottom) + 12px); width: 0; height: 0; z-index: 25; }
+  /* ancre AU RAS du coin (retour Camille 2026-08-10 : « baisse-les
+     vraiment en bas à droite ») */
+  #ability-zone { position: fixed; right: max(6px, var(--safe-right) + 4px);
+         bottom: max(6px, var(--safe-bottom) + 4px); width: 0; height: 0; z-index: 25; }
   .pet-btn { position: absolute;
          width: var(--btn-size, 64px); height: var(--btn-size, 64px); border-radius: 50%;
          /* anneau de recharge : conic-gradient à la couleur du bouton */
@@ -273,13 +275,13 @@
      gauche de l'attaque (retour Camille 2026-08-10 : « je pars vraiment
      du bas à droite et j'arrive vraiment sur le latéral droit ») */
   .btn-skill1 { --btn-size: clamp(44px, 5.5vw, 60px);
-         right: calc(clamp(58px, 7vw, 80px) + 8px); bottom: 0;
+         right: calc(clamp(58px, 7vw, 80px) + 6px); bottom: 0;
          --btn-c: #21d4ff; --btn-top: #7fe3ff; --btn-bot: #1e8fd0;
          --btn-glow: rgba(33,212,255,0.75); }
   /* 🛡️ DÉFENSE : fin de l'arc, remontée sur le BORD DROIT au-dessus de
      l'attaque — l'arc enveloppe le coin, tout reste ramassé dedans */
   .btn-skill2 { --btn-size: clamp(44px, 5.5vw, 60px);
-         right: 0; bottom: calc(clamp(58px, 7vw, 80px) + 8px);
+         right: 0; bottom: calc(clamp(58px, 7vw, 80px) + 6px);
          --btn-c: #b06ef5; --btn-top: #cf9bf7; --btn-bot: #7b3fd0;
          --btn-glow: rgba(176,110,245,0.75); }
   .pet-btn.ready { border-color: var(--btn-c);
@@ -1938,6 +1940,30 @@ const ABILITY_DEFINITIONS = {
   shockwave: {
     glyph: '💥',
     activate(entity) {
+      // -------- visée assistée JOUEUR (retour Camille 2026-08-10
+      // « j'arrive pas à voler le dragon ») : au joystick, faire face au
+      // porteur pile au moment du tap est très dur — si une cible est à
+      // portée (porteur du dragon en priorité, sinon l'ennemi le plus
+      // proche), le personnage pivote vers elle avant de tirer. Les bots
+      // ne passent pas ici : ils visent déjà leur cible de poursuite. --------
+      if (entity === player) {
+        const reach = ABILITY_CONFIG.SHOCKWAVE_RANGE + 0.7;
+        let aim = null;
+        if (luminState === 'CARRIED' && luminOwnerId && luminOwnerId !== player
+            && !luminOwnerId.userData.eliminated) {
+          const d = Math.hypot(luminOwnerId.position.x - entity.position.x, luminOwnerId.position.z - entity.position.z);
+          if (d < reach) aim = luminOwnerId;
+        }
+        if (!aim) {
+          let best = reach;
+          allEntities().forEach(t => {
+            if (t === entity || t.userData.eliminated) return;
+            const d = Math.hypot(t.position.x - entity.position.x, t.position.z - entity.position.z);
+            if (d < best) { best = d; aim = t; }
+          });
+        }
+        if (aim) entity.rotation.y = Math.atan2(aim.position.x - entity.position.x, aim.position.z - entity.position.z);
+      }
       PET_ABILITY_HANDLERS.push.activate(entity, {
         color: 0xff8a3c, power: ABILITY_CONFIG.SHOCKWAVE_FORCE,
         range: ABILITY_CONFIG.SHOCKWAVE_RANGE, angle: ABILITY_CONFIG.SHOCKWAVE_ANGLE,
@@ -4195,10 +4221,13 @@ function updateBot(botObj, dt) {
   // inchangé. --------
   if (LUMIN_MODE && luminState === 'CARRIED' && luminOwnerId === botObj) {
     // 🛡️ bouclier quand le bot PORTE le dragon et qu'un adversaire est
-    // tout près (spec compétences §14)
+    // tout près (spec compétences §14). PROBABILISTE (retour Camille
+    // 2026-08-10 « j'arrive pas à voler le dragon ») : le réflexe
+    // instantané contrait CHAQUE tentative de vol du joueur — désormais
+    // ~50 %/s de réaction sous menace, une fenêtre existe toujours.
     const threat = allEntities().some(e => e !== botObj && !e.userData.eliminated
       && Math.hypot(e.position.x - botObj.position.x, e.position.z - botObj.position.z) < 3.2);
-    if (threat) activateAbility(botObj, 'defense');
+    if (threat && Math.random() < dt * 0.5) activateAbility(botObj, 'defense');
     if (!botObj.userData.luminTargetZone || botObj.userData.luminTargetZone.eliminated) {
       const options = zones.filter(z => !z.eliminated);
       // -------- « réponse » du bot (V4, développé le 2026-08-10) : il
@@ -4230,7 +4259,9 @@ function updateBot(botObj, dt) {
     const distToHolder = Math.hypot(target.x - botObj.position.x, target.z - botObj.position.z);
     // -------- IA V1 (spec compétences §14) : 💥 onde quand le porteur est
     // à portée (tentative de vol), ⚡ dash pour le rattraper de loin --------
-    if (distToHolder < ABILITY_CONFIG.SHOCKWAVE_RANGE + 0.3) {
+    // probabiliste aussi (≈ 1,2/s) : un vol bot quasi certain mais pas
+    // instantané à la frame près — même logique que le bouclier ci-dessus
+    if (distToHolder < ABILITY_CONFIG.SHOCKWAVE_RANGE + 0.3 && Math.random() < dt * 1.2) {
       activateAbility(botObj, 'offense');
     } else if (distToHolder > 9) {
       activateAbility(botObj, 'mobility');

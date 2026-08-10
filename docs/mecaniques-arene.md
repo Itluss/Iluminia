@@ -65,6 +65,9 @@ des variantes futures, PAS de boutique pour l'instant).
   repousse fort tout ce qui est dans le cône (force 2,6), **vole le
   dragon au porteur touché**. Arc blanc = limite de portée au cast.
   Pouvoir de contrôle, pas d'exécution (10 ≪ 34 d'avant).
+  **Visée assistée (joueur)** : si une cible est à portée (porteur du
+  dragon en priorité), le personnage pivote vers elle avant de tirer —
+  au joystick, viser pile au tap était infaisable (retour 2026-08-10).
 - **⚡ Dash** (cooldown 5 s, **distance exactement 6 u**, vitesse 26 u/s
   ≈ 0,23 s) : burst dans la direction du regard, traînée cyan. La
   distance est décomptée frame par frame (`dashRemaining`) → identique
@@ -75,9 +78,10 @@ des variantes futures, PAS de boutique pour l'instant).
 - Boutons (arc bas droite) : anneau de charge circulaire + décompte en
   secondes dans le bouton ; appui à vide = secousse « denied » ; 💥
   pulse en doré quand le porteur adverse est à portée de vol.
-- **Bots** : onde si le porteur est à ≤ 3,5 u, dash s'ils sont à > 9 u de
-  leur cible, bouclier quand ils portent le dragon avec une menace à
-  < 3,2 u — mêmes cooldowns que le joueur.
+- **Bots** : onde si le porteur est à ≤ 3,5 u (~1,2 chance/s), dash
+  s'ils sont à > 9 u de leur cible, bouclier quand ils portent le dragon
+  avec une menace à < 3,2 u (~0,5 chance/s — le réflexe instantané
+  contrait chaque vol du joueur) — mêmes cooldowns que le joueur.
 - Héritage : les ✨ étincelles n'ont **plus d'effet** sur la recharge
   (décision en attente : les réaffecter ou les retirer). L'Éclat magique
   du Chat est retiré du kit V1 (candidat variante future).
