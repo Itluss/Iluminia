@@ -1142,14 +1142,19 @@ composer.addPass(new OutputPass());
 // lumière plus blanche et plus forte : un fort tint violet + ambiance
 // sombre désaturait toutes les couleurs de la scène — retour de Camille :
 // « il faut rendre les couleurs beaucoup plus vives »
-const ambient = new THREE.AmbientLight(0xf2ecff, 1.05);
+// DA 2026-08-10 : ambiante un cran plus basse + soleil plus chaud — le
+// 1,05 uniforme aplatissait le nouveau damier (plus de relief à montrer)
+const ambient = new THREE.AmbientLight(0xf2ecff, 0.78);
 scene.add(ambient);
-const sun = new THREE.DirectionalLight(0xffffff, 1.3);
+const sun = new THREE.DirectionalLight(0xfff2dc, 1.18);
 sun.position.set(14, 22, 10);
 sun.castShadow = true;
-sun.shadow.camera.left = -14; sun.shadow.camera.right = 14;
-sun.shadow.camera.top = 34; sun.shadow.camera.bottom = -34;
-sun.shadow.mapSize.set(1024, 1024);
+// revue DA 2026-08-10 : la shadow camera (±14) ne couvrait qu'une
+// fraction de l'arène — personnages « flottants » partout ailleurs.
+// Élargie à tout le plateau : les ombres portées ancrent chaque entité.
+sun.shadow.camera.left = -46; sun.shadow.camera.right = 46;
+sun.shadow.camera.top = 46; sun.shadow.camera.bottom = -46;
+sun.shadow.mapSize.set(2048, 2048);
 scene.add(sun);
 // contre-lumière rose chaude, discrète — évite que la scène ne devienne
 // entièrement bleu/mauve uniforme, casse un peu le plat de l'éclairage
@@ -1161,56 +1166,160 @@ scene.add(rimLight);
 // lumineuses qui courent d'une dalle à l'autre — reprend la planche de
 // concept validée par Camille (2026-08-04), en remplacement du sol à
 // simples mouchetures qui manquait de matière. --------
+// -------- refonte DA « qualité Clash Royale » (demande Camille
+// 2026-08-10) : damier de grandes dalles lisibles et saturées (le sol
+// Voronoi précédent rendait un aplat lavande de loin), joints sombres,
+// biseau par dalle, motifs épars (losange d'or, fissures, mousse
+// cristalline), liseré doré autour de la ZONE JOUABLE et médaillon
+// runique central. Tout est dessiné en canvas → zéro asset externe. --------
 function makeGroundTexture() {
-  // canvas proportionné à FULL_W:FULL_D pour que le motif reste cohérent
-  // une fois étiré sur la face du rectangle (sinon déformé, un carré de
-  // texture sur un rectangle très allongé écrase le motif)
-  const w = 256, h = Math.round(256 * (FULL_D / FULL_W));
+  // 2048 : à 1024, la magnification (≈ 4 px écran / texel) rendait tout
+  // le sol flou (revue DA 2026-08-10 « annule le travail du damier »)
+  const w = 2048, h = Math.round(2048 * (FULL_D / FULL_W));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const ctx = c.getContext('2d');
+  const wx = x => (x + FULL_W) / (2 * FULL_W) * w;   // monde → canvas
+  const wz = z => (z + FULL_D) / (2 * FULL_D) * h;
 
-  // dalles : cellules Voronoi approximées, teinte de base légèrement
-  // variée par dalle pour casser le plat
-  const seeds = [];
-  const seedCount = Math.max(8, Math.round((w * h) / 9000));
-  for (let i = 0; i < seedCount; i++) seeds.push({ x: Math.random() * w, y: Math.random() * h, shade: 0.82 + Math.random() * 0.34 });
-  const baseR = 0x4d, baseG = 0x39, baseB = 0x72;
-  const imgData = ctx.createImageData(w, h);
-  for (let y = 0; y < h; y++) {
-    for (let x = 0; x < w; x++) {
-      let best = seeds[0], bestD = Infinity;
-      for (const s of seeds) {
-        const d = (s.x - x) * (s.x - x) + (s.y - y) * (s.y - y);
-        if (d < bestD) { bestD = d; best = s; }
+  // damier : dalles ~3,4 u — deux violets francs qui alternent, jitter
+  // de teinte par dalle pour casser la répétition
+  const cols = 22, rows = Math.round(cols * (FULL_D / FULL_W));
+  const tw = w / cols, th = h / rows;
+  // IMPORTANT : la lumière de la scène (ambiante + soleil ≈ ×1,8 sur un
+  // sol horizontal) SURESPOSE l'albédo — les couleurs sont donc peintes
+  // ~40 % plus sombres que la teinte voulue À L'ÉCRAN (constat capture
+  // 2026-08-10 : peintes « justes », elles rendaient pastel délavé)
+  const k = w / 1024; // facteur d'échelle des traits (canvas 2048)
+  ctx.fillStyle = '#191134'; ctx.fillRect(0, 0, w, h); // fond = joints
+  for (let r = 0; r < rows; r++) {
+    for (let q = 0; q < cols; q++) {
+      const checker = (r + q) % 2 === 0;
+      const jitter = 0.93 + Math.random() * 0.14;
+      // contraste FRANC entre les deux tons (revue DA : « variation trop
+      // timide ») + dalles « accent » bleu nuit rapprochées du damier
+      const accent = Math.random() < 0.045;
+      const base = accent ? [0x27, 0x22, 0x6e] : checker ? [0x55, 0x3c, 0x9a] : [0x1f, 0x13, 0x44];
+      ctx.fillStyle = `rgb(${Math.round(base[0] * jitter)},${Math.round(base[1] * jitter)},${Math.round(base[2] * jitter)})`;
+      const x = q * tw + 1.5 * k, y = r * th + 1.5 * k, cw = tw - 3 * k, ch = th - 3 * k;
+      ctx.fillRect(x, y, cw, ch);
+      // cadre intérieur discret
+      ctx.strokeStyle = 'rgba(10,6,30,0.18)'; ctx.lineWidth = 2 * k;
+      ctx.strokeRect(x + 3.5 * k, y + 3.5 * k, cw - 7 * k, ch - 7 * k);
+      // biseau cartoon : arête claire en haut, ombre en bas
+      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x, y, cw, 3 * k);
+      ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.fillRect(x, y + ch - 3 * k, cw, 3 * k);
+      // lueur intérieure cyan des dalles accent (revue : sans elle, la
+      // dalle lisait comme un decal plaqué)
+      if (accent) {
+        ctx.strokeStyle = 'rgba(111,216,255,0.22)'; ctx.lineWidth = 3 * k;
+        ctx.strokeRect(x + 6 * k, y + 6 * k, cw - 12 * k, ch - 12 * k);
       }
-      const idx = (y * w + x) * 4;
-      imgData.data[idx] = Math.min(255, baseR * best.shade);
-      imgData.data[idx + 1] = Math.min(255, baseG * best.shade);
-      imgData.data[idx + 2] = Math.min(255, baseB * best.shade);
-      imgData.data[idx + 3] = 255;
+      const roll = Math.random();
+      if (!accent && roll >= 0.19 && roll < 0.225) {
+        // dalle-rune : glyphe cyan lumineux discret (identité Eluminia)
+        ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(k, k);
+        ctx.rotate((Math.floor(Math.random() * 4)) * Math.PI / 2);
+        ctx.strokeStyle = 'rgba(111,216,255,0.4)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+        ctx.shadowColor = '#6fd8ff'; ctx.shadowBlur = 4;
+        const glyph = Math.floor(Math.random() * 3);
+        ctx.beginPath();
+        if (glyph === 0) { ctx.moveTo(-6, 6); ctx.lineTo(0, -7); ctx.lineTo(6, 6); ctx.moveTo(-3, 1); ctx.lineTo(3, 1); }
+        else if (glyph === 1) { ctx.arc(0, 0, 6, 0.6, Math.PI * 2 - 0.6); ctx.moveTo(0, -2); ctx.lineTo(0, 4); }
+        else { ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(-2, 7); ctx.moveTo(-6, 0); ctx.lineTo(2, 0); }
+        ctx.stroke(); ctx.restore();
+        ctx.shadowBlur = 0;
+      }
+      if (roll < 0.045) {          // losange doré ASSUMÉ (revue : cœur
+        // clair + contour sombre, sinon « tache beige ») — plus rare
+        ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.rotate(Math.PI / 4);
+        ctx.fillStyle = 'rgba(96,64,20,0.55)'; ctx.fillRect(-5.5 * k, -5.5 * k, 11 * k, 11 * k);
+        ctx.fillStyle = 'rgba(255,211,92,0.5)'; ctx.fillRect(-4 * k, -4 * k, 8 * k, 8 * k);
+        ctx.fillStyle = 'rgba(255,244,200,0.6)'; ctx.fillRect(-1.6 * k, -1.6 * k, 3.2 * k, 3.2 * k);
+        ctx.restore();
+      } else if (roll < 0.10) {    // fissure gravée (2 passes : ombre +
+        // arête claire décalée — revue : « cheveux collés » avant)
+        const steps = [];
+        let px = x + cw * (0.25 + Math.random() * 0.5), py = y + 4 * k;
+        steps.push([px, py]);
+        for (let s = 0; s < 3; s++) { px += (Math.random() - 0.5) * 26 * k; py += ch / 3.4; steps.push([px, py]); }
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2.6 * k;
+        ctx.beginPath(); steps.forEach(([a, b], i) => i ? ctx.lineTo(a + 1.6 * k, b + 1.6 * k) : ctx.moveTo(a + 1.6 * k, b + 1.6 * k)); ctx.stroke();
+        ctx.strokeStyle = 'rgba(14,8,32,0.6)'; ctx.lineWidth = 2.6 * k;
+        ctx.beginPath(); steps.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.stroke();
+      } else if (roll < 0.16) {    // mousse cristalline (coin de dalle)
+        const mx = x + (Math.random() < 0.5 ? 4 * k : cw - 4 * k), my = y + (Math.random() < 0.5 ? 4 * k : ch - 4 * k);
+        const col = Math.random() < 0.5 ? '142,240,201' : '111,216,255';
+        for (let b = 0; b < 4; b++) {
+          ctx.fillStyle = `rgba(${col},${0.10 + Math.random() * 0.14})`;
+          ctx.beginPath();
+          ctx.arc(mx + (Math.random() - 0.5) * 20 * k, my + (Math.random() - 0.5) * 20 * k, (2.5 + Math.random() * 3.5) * k, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
     }
   }
-  ctx.putImageData(imgData, 0, 0);
 
-  // veines lumineuses : chaque dalle relie ses 2 voisines les plus
-  // proches, façon réseau de fissures qui courent au sol
-  ctx.lineCap = 'round';
-  // veines assagies (retour Camille 2026-08-09 : « l'arène est brouillon ») :
-  // 2 teintes au lieu de 4, alpha et lueur réduits — le sol redevient un
-  // fond, le gameplay (dragon, zones, joueurs) reprend le premier plan
-  const veinColors = ['#6fd8ff', '#c98aff'];
-  seeds.forEach(s => {
-    const others = seeds.filter(o => o !== s).sort((a, b) => Math.hypot(a.x - s.x, a.y - s.y) - Math.hypot(b.x - s.x, b.y - s.y));
-    others.slice(0, 2).forEach(n => {
-      const color = veinColors[Math.floor(Math.random() * veinColors.length)];
-      ctx.strokeStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 3;
-      ctx.lineWidth = 1.1; ctx.globalAlpha = 0.45;
-      ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(n.x, n.y); ctx.stroke();
-    });
-  });
-  ctx.shadowBlur = 0; ctx.globalAlpha = 1;
+  // hiérarchie de valeurs (revue DA) : centre légèrement plus clair et
+  // chaud, bords nettement plus sombres — AVANT le liseré et le
+  // médaillon pour ne pas les éteindre
+  const warm = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.55);
+  warm.addColorStop(0, 'rgba(255,220,180,0.10)'); warm.addColorStop(1, 'rgba(255,220,180,0)');
+  ctx.fillStyle = warm; ctx.fillRect(0, 0, w, h);
+  const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.30, w / 2, h / 2, Math.max(w, h) * 0.70);
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(10,4,28,0.55)');
+  ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+
+  // bande d'occlusion au pied des remparts (revue : la jonction muret /
+  // dalles était une couture brute)
+  const ao = 26 * k, aoCol = 'rgba(8,4,20,0.45)';
+  let g1 = ctx.createLinearGradient(0, 0, 0, ao);
+  g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, w, ao);
+  g1 = ctx.createLinearGradient(0, h, 0, h - ao);
+  g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
+  ctx.fillStyle = g1; ctx.fillRect(0, h - ao, w, ao);
+  g1 = ctx.createLinearGradient(0, 0, ao, 0);
+  g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
+  ctx.fillStyle = g1; ctx.fillRect(0, 0, ao, h);
+  g1 = ctx.createLinearGradient(w, 0, w - ao, 0);
+  g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
+  ctx.fillStyle = g1; ctx.fillRect(w - ao, 0, ao, h);
+
+  // liseré doré INCRUSTÉ autour de la zone jouable (revue : contour
+  // sombre + cœur clair pour lire comme de l'or, pas un trait pâle)
+  const bx = wx(-PLAY_W), by = wz(-PLAY_D), bw = wx(PLAY_W) - bx, bh = wz(PLAY_D) - by;
+  ctx.strokeStyle = 'rgba(74,50,14,0.85)'; ctx.lineWidth = 7 * k;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeStyle = 'rgba(255,211,92,0.85)'; ctx.lineWidth = 3.4 * k;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeStyle = 'rgba(255,244,200,0.7)'; ctx.lineWidth = 1.2 * k;
+  ctx.strokeRect(bx, by, bw, bh);
+
+  // médaillon runique central AFFIRMÉ (revue : « fantomatique » avant) :
+  // disque légèrement plus sombre + anneaux or opaques + studs éclatants
+  const cx = wx(0), cy = wz(0), R = wx(4.6) - wx(0);
+  ctx.fillStyle = 'rgba(12,8,30,0.28)';
+  ctx.beginPath(); ctx.arc(cx, cy, R + 4 * k, 0, Math.PI * 2); ctx.fill();
+  ctx.lineWidth = 6 * k; ctx.strokeStyle = 'rgba(74,50,14,0.8)';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 3.4 * k; ctx.strokeStyle = 'rgba(255,211,92,0.8)';
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 2.4 * k; ctx.strokeStyle = 'rgba(111,216,255,0.6)';
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.72, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 2 * k; ctx.strokeStyle = 'rgba(255,211,92,0.5)';
+  ctx.beginPath(); ctx.arc(cx, cy, R * 0.45, 0, Math.PI * 2); ctx.stroke();
+  for (let a = 0; a < 4; a++) {
+    const ang = a * Math.PI / 2 + Math.PI / 4;
+    ctx.save(); ctx.translate(cx + Math.cos(ang) * R * 0.86, cy + Math.sin(ang) * R * 0.86); ctx.rotate(ang);
+    ctx.fillStyle = 'rgba(74,50,14,0.8)'; ctx.fillRect(-5 * k, -5 * k, 10 * k, 10 * k);
+    ctx.fillStyle = 'rgba(255,211,92,0.85)'; ctx.fillRect(-3.5 * k, -3.5 * k, 7 * k, 7 * k);
+    ctx.fillStyle = 'rgba(255,244,200,0.8)'; ctx.fillRect(-1.4 * k, -1.4 * k, 2.8 * k, 2.8 * k);
+    ctx.restore();
+  }
 
   const tex = new THREE.CanvasTexture(c);
+  tex.anisotropy = 8;
   return tex;
 }
 const groundTex = makeGroundTexture();
@@ -1309,6 +1418,120 @@ for (let i = 0; i < 5; i++) {
   rock.add(rockGlow);
   scene.add(rock);
   floatingRocks.push(rock);
+}
+
+// -------- DA « qualité Clash Royale » (demande Camille 2026-08-10) :
+// remparts crénelés + tours d'angle à drapeau + torches animées +
+// arbres-champignons luminescents. Tout en géométrie basique toon
+// (mobile-friendly), posé HORS de la zone jouable. --------
+const decorAnimated = []; // { obj, update(t) } — animés dans animate()
+{
+  const stoneA = 0xe8dcc4, stoneB = 0xd9c9a8;
+  const wallY = 0.42, wallH = 0.84, wallT = 0.8;
+  const towerInset = 1.4; // les tours mangent les extrémités des murets
+  // 4 murets continus le long du plateau (au-delà : le vide de la caverne)
+  [
+    { w: FULL_W * 2 - towerInset * 2, d: wallT, x: 0, z: -FULL_D - wallT / 2 },
+    { w: FULL_W * 2 - towerInset * 2, d: wallT, x: 0, z: FULL_D + wallT / 2 },
+    { w: wallT, d: FULL_D * 2 - towerInset * 2, x: -FULL_W - wallT / 2, z: 0 },
+    { w: wallT, d: FULL_D * 2 - towerInset * 2, x: FULL_W + wallT / 2, z: 0 },
+  ].forEach(seg => {
+    const wall = toon(new THREE.BoxGeometry(seg.w, wallH, seg.d), stoneA, { outlineScale: 1.015 });
+    wall.position.set(seg.x, wallY, seg.z);
+    wall.receiveShadow = true;
+    scene.add(wall);
+    // créneaux : petits blocs alternés sur le dessus (sans outline, trop fins)
+    const len = Math.max(seg.w, seg.d), across = Math.min(seg.w, seg.d);
+    const step = 2.2, count = Math.floor(len / step);
+    const crenGeo = new THREE.BoxGeometry(
+      seg.w > seg.d ? 1.1 : across * 0.9, 0.42, seg.w > seg.d ? across * 0.9 : 1.1);
+    const crenMat = new THREE.MeshToonMaterial({ color: stoneB, gradientMap: coolGradient });
+    for (let i = 0; i < count; i += 2) {
+      const cren = new THREE.Mesh(crenGeo, crenMat);
+      const off = -len / 2 + step / 2 + i * step / 1;
+      if (off > len / 2 - step / 2) break;
+      cren.position.set(seg.w > seg.d ? seg.x + off : seg.x, wallY + wallH / 2 + 0.21,
+                        seg.w > seg.d ? seg.z : seg.z + off);
+      scene.add(cren);
+    }
+  });
+  // 4 tours d'angle : fût de pierre + couronne + toit violet + drapeau cyan
+  const flagMatColor = 0x21d4ff;
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sz]) => {
+    const g = new THREE.Group();
+    const shaft = toon(new THREE.CylinderGeometry(1.35, 1.55, 2.6, 10), stoneA, { outlineScale: 1.03 });
+    shaft.position.y = 1.3; g.add(shaft);
+    const crown = toon(new THREE.CylinderGeometry(1.62, 1.62, 0.5, 10), stoneB, { outlineScale: 1.03 });
+    crown.position.y = 2.75; g.add(crown);
+    const roof = toon(new THREE.ConeGeometry(1.5, 1.7, 10), 0x7b3fd0, { outlineScale: 1.04 });
+    roof.position.y = 3.85; g.add(roof);
+    const tip = emissive(new THREE.SphereGeometry(0.16, 8, 8), 0xffd35c, 0.9);
+    tip.position.y = 4.85; g.add(tip);
+    // drapeau : plan qui « claque » (rotation sinusoïdale dans animate)
+    const pole = toon(new THREE.CylinderGeometry(0.05, 0.05, 1.3, 6), 0x6b5a43, { outlineScale: 1.1 });
+    pole.position.y = 5.35; g.add(pole);
+    const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.15, 0.62),
+      new THREE.MeshToonMaterial({ color: flagMatColor, gradientMap: coolGradient, side: THREE.DoubleSide }));
+    flag.position.set(0.62, 5.62, 0); flag.rotation.y = 0;
+    g.add(flag);
+    decorAnimated.push({ obj: flag, update: t => { flag.rotation.y = Math.sin(t * 3 + sx + sz) * 0.35; } });
+    g.position.set(sx * FULL_W, 0, sz * FULL_D);
+    scene.add(g);
+  });
+  // torches le long des remparts : mât + flamme émissive qui vacille
+  const torchSpots = [];
+  for (let i = 0; i < 4; i++) torchSpots.push({ x: -FULL_W + (i + 0.5) * (FULL_W * 2 / 4), z: -FULL_D - 0.4 });
+  for (let i = 0; i < 4; i++) torchSpots.push({ x: -FULL_W + (i + 0.5) * (FULL_W * 2 / 4), z: FULL_D + 0.4 });
+  for (let i = 0; i < 2; i++) torchSpots.push({ x: -FULL_W - 0.4, z: -FULL_D + (i + 0.5) * (FULL_D * 2 / 2) });
+  for (let i = 0; i < 2; i++) torchSpots.push({ x: FULL_W + 0.4, z: -FULL_D + (i + 0.5) * (FULL_D * 2 / 2) });
+  torchSpots.forEach((p, i) => {
+    const g = new THREE.Group();
+    const mast = toon(new THREE.CylinderGeometry(0.09, 0.12, 1.5, 6), 0x6b5a43, { outlineScale: 1.08 });
+    mast.position.y = 0.75; g.add(mast);
+    const cup = toon(new THREE.CylinderGeometry(0.26, 0.16, 0.28, 8), 0x8a7355, { outlineScale: 1.08 });
+    cup.position.y = 1.55; g.add(cup);
+    const flame = emissive(new THREE.ConeGeometry(0.2, 0.55, 7), 0xffa15c, 1.6);
+    flame.position.y = 1.98; g.add(flame);
+    const glow = makeGlowSprite(0xffb35c, 1.5);
+    glow.position.y = 1.95; g.add(glow);
+    // halo chaud AU SOL (revue DA : « c'est ce halo qui vendra les
+    // remparts, pas la flamme ») — plane additif orangé qui pulse
+    const groundGlow = new THREE.Mesh(new THREE.CircleGeometry(2.2, 20),
+      new THREE.MeshBasicMaterial({ map: glowTex, color: 0xff9a4c, transparent: true, opacity: 0.4,
+        blending: THREE.AdditiveBlending, depthWrite: false }));
+    groundGlow.rotation.x = -Math.PI / 2;
+    groundGlow.position.y = -wallY - wallH / 2 + 0.19; // ras du sol
+    g.add(groundGlow);
+    const phase = i * 1.7;
+    decorAnimated.push({ obj: flame, update: t => {
+      const k = 0.86 + Math.sin(t * 9 + phase) * 0.1 + Math.sin(t * 23 + phase * 2) * 0.05;
+      flame.scale.set(k, 1.1 - (k - 0.86) * 0.6, k);
+      glow.material.opacity = 0.55 + (k - 0.86) * 1.4;
+      groundGlow.material.opacity = 0.3 + (k - 0.86) * 1.1;
+    } });
+    g.position.set(p.x, wallY + wallH / 2, p.z);
+    scene.add(g);
+  });
+  // arbres-champignons luminescents, en retrait derrière les remparts
+  const capColors = [0xc98aff, 0x6fd8ff, 0xff8ad6];
+  for (let i = 0; i < 7; i++) {
+    const p = perimeterPoint((i + 0.35) / 7);
+    const nx = Math.abs(p.x) > Math.abs(p.z) ? Math.sign(p.x) : 0;
+    const nz = Math.abs(p.z) >= Math.abs(p.x) ? Math.sign(p.z) : 0;
+    const g = new THREE.Group();
+    const s = 0.8 + Math.random() * 0.7;
+    const trunk = toon(new THREE.CylinderGeometry(0.22 * s, 0.34 * s, 1.5 * s, 8), 0xcbb08e, { outlineScale: 1.06 });
+    trunk.position.y = 0.75 * s; g.add(trunk);
+    const cap = emissive(new THREE.SphereGeometry(0.95 * s, 12, 9, 0, Math.PI * 2, 0, Math.PI * 0.55),
+      capColors[i % capColors.length], 0.5);
+    cap.scale.y = 0.72; cap.position.y = 1.42 * s;
+    addOutline(cap, 1.05); g.add(cap);
+    const spot = emissive(new THREE.SphereGeometry(0.1 * s, 6, 6), 0xffffff, 0.8);
+    spot.position.set(0.4 * s, 1.85 * s, 0.35 * s); g.add(spot);
+    g.position.set(p.x + nx * (2.6 + Math.random() * 2.2), 0, p.z + nz * (2.6 + Math.random() * 2.2));
+    g.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(g);
+  }
 }
 
 function clampToArena(v, margin = 0.6) {
@@ -4781,6 +5004,8 @@ function animate() {
     r.position.y = r.userData.baseY + Math.sin(performance.now() * 0.0008 + r.userData.phase) * 0.4;
     r.rotation.y += dt * 0.15;
   });
+  // décor animé DA 2026-08-10 : drapeaux qui claquent + torches qui vacillent
+  { const tSec = performance.now() * 0.001; decorAnimated.forEach(d => d.update(tSec)); }
 
   // anneau du joueur : pulse continu (grossit/s'atténue) pour rester
   // repérable en permanence, pas juste à l'arrivée sur la carte
