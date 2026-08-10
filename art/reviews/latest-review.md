@@ -1,42 +1,38 @@
-# Fiche d'itération — kit V1 : 3 pouvoirs à cooldown (spec Camille 2026-08-10)
+# Fiche d'itération — layout question/boutons sans chevauchement
 
-Spec « GAMEPLAY V1 COMPÉTENCES » : remplacer le système de pets/charges
-par exactement 3 pouvoirs — 💥 Onde de choc, ⚡ Dash, 🛡️ Bouclier — en
-pur cooldown (pas de mana), valeurs centralisées, bots utilisateurs
-simples, structure prête pour des variantes futures (pas de boutique).
+Retour Camille (2026-08-10) : « les boutons doivent toujours être
+visibles SOUS les questions, rassemblés en bas à droite, les questions
+en haut à droite, AUCUN chevauchement — et si le bloc des questions
+disparaît, les boutons ne doivent pas bouger. »
 
-## Changements (public/spike3d-arena.html)
+## Changements (public/spike3d-arena.html, CSS uniquement)
 
-1. `ABILITY_CONFIG` : toutes les valeurs (cooldowns 4/5/7 s, onde
-   force 2,6 / portée 3,2 / cône 78° / 10 dégâts, dash 6 u à 26 u/s,
-   bouclier 2 s) au même endroit.
-2. `equippedAbilities` { offense: 'shockwave', mobility: 'dash',
-   defense: 'shield' } + `ABILITY_DEFINITIONS` + `activateAbility`
-   (gate cooldown, secousse « denied » sur le bouton du joueur).
-3. Onde = délégation au handler de poussée existant (vol du dragon,
-   arc de portée, flash/dégâts inclus) avec dégâts paramétrés à 10.
-4. Dash **basé distance** (`dashRemaining`, décompté frame par frame) :
-   exactement 6 u quel que soit le framerate ; coupé net par un K.O.
-5. Bouclier : réutilise `shieldedUntil`/`isShielded` (déjà respecté par
-   dégâts/poussées/vols) + bulle violette AVEC anneau équatorial net
-   (la sphère additive seule disparaissait sur le sol lavande).
-6. 3 boutons (arc bas droite) avec anneau de charge + décompte
-   secondes ; bots : onde ≤ 3,5 u du porteur, dash > 9 u, bouclier en
-   portant si menace < 3,2 u.
-7. Debug : `forceAbility(family, botName?)` + `getShieldInfo()`.
+1. **Les boutons ne bougent plus jamais** : suppression du décalage
+   `body.q-open #ability-zone { translateX(…) }` (c'est lui qui glissait
+   l'arc vers le centre à l'ouverture du panneau sur téléphone) et de la
+   transition associée.
+2. **Cluster compact bas droite** : les 3 boutons suivent le bord bas
+   (💥 coin, ⚡ à gauche +12 px, 🛡️ encore à gauche +30 px) — hauteur
+   totale ≈ 110 px au lieu de ≈ 190 px (le 🛡️ montait trop vers le
+   panneau).
+3. **Le panneau question ne peut plus recouvrir les boutons** :
+   `max-height: calc(100dvh − haut − 148px)` (118 px sur écrans
+   ≤ 480 px de haut où les boutons sont plus petits) + `overflow-y:
+   auto` — si l'écran est vraiment trop court, le panneau défile à
+   l'intérieur au lieu de déborder.
+4. Rangées de réponse compactées sous 480 px de haut pour que la
+   question + les 4 réponses tiennent entières au-dessus des boutons.
 
 ## Vérifié (probes Playwright, 0 erreur console)
 
-- Dash : déplacement mesuré = 6,00 u pile, bouton cooldown 5 s → ready.
-- Bouclier : `forceKO()` (9999 dégâts) absorbé pendant les 2 s, dégâts
-  repassent après expiration ; bulle + anneau rendus (capture).
-- Onde : bot Nova a frappé le porteur (100 → 90, -10) ET volé le dragon
-  en ~5 s de jeu — IA bots + dégâts + vol validés en une passe.
-- Boutons : décomptes « 2.4 » / « 5.4 » visibles sur la capture.
+- 844×390 (iPhone paysage) : 4 réponses entières sans défilement,
+  0 chevauchement, 32 px d'écart panneau→boutons, boutons STRICTEMENT
+  immobiles à l'ouverture/fermeture du panneau.
+- 740×360 : 0 chevauchement, boutons immobiles, panneau défile en
+  interne (dégradation voulue).
+- 1280×720 : 0 chevauchement (339 px d'écart), boutons immobiles.
 
-## Signalé / hors périmètre
+## Signalé
 
-- Les ✨ étincelles n'ont plus d'effet (recharge = temps pur) → à
-  réaffecter ou retirer, décision Camille.
-- L'indicateur 🐉 en bord d'écran peut frôler les boutons en bas à
+- L'indicateur 🐉 en bord d'écran peut passer près des boutons en bas à
   droite (cosmétique, préexistant).
