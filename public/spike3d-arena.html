@@ -54,6 +54,15 @@
     50% { border-color: var(--el-orange); box-shadow: 0 6px 14px rgba(4,9,28,0.4), 0 0 14px 3px rgba(255,138,61,0.75); }
   }
   #question-banner .qtimer { display: block; font-size: 11px; color: var(--el-warning); margin-top: 1px; }
+  /* -------- mode replié (retour Camille 2026-08-10 : « la question prend
+     une bonne partie de l'écran et recouvre des éléments ») : 5 s après
+     l'affichage, le bandeau se réduit à la question seule — un tap le
+     ré-étend. En mode réponses courtes, les réponses restent lisibles
+     dans les colonnes des zones. --------- */
+  #question-banner.show { pointer-events: auto; cursor: pointer; }
+  #question-banner.compact { padding: 3px 14px; border-width: 2px;
+         font-size: clamp(11px,3.4dvmin,15px); opacity: 0.92; }
+  #question-banner.compact .banner-answers { display: none; }
   /* -------- brume (pouvoir aveuglant) : le texte devient illisible, pas
      juste "grisé" — retour de Camille sur l'identité du pouvoir « ne
      trouve plus les bonnes pastilles ». -------- */
@@ -2503,6 +2512,7 @@ function showLuminAnnouncement(text, seconds = 1.6) {
   questionTextEl.textContent = text;
   questionTimerEl.textContent = '';
   questionBannerEl.classList.remove('recap');
+  questionBannerEl.classList.remove('compact'); // une annonce s'affiche toujours en grand
   questionBannerEl.classList.add('show');
   luminAnnounceUntil = performance.now() + seconds * 1000;
 }
@@ -2671,8 +2681,13 @@ function renderLuminQuestionBanner() {
   const lines = zones.filter(z => !z.eliminated)
     .map(z => `<span style="color:${hexCss(ZONE_COLORS[z.letter])}">${z.letter}</span> — ${z.answer.text}`)
     .join('  •  ');
-  questionTextEl.innerHTML = `${currentLuminQuestion.questionText}<br><span style="font-size:.75em;font-weight:700;">${lines}</span>`;
+  questionTextEl.innerHTML = `${currentLuminQuestion.questionText}<br><span class="banner-answers" style="font-size:.75em;font-weight:700;">${lines}</span>`;
   fitQuestionBannerText();
+  // repli automatique à 5 s — un tap sur le bandeau le ré-étend (handler
+  // posé une seule fois près de la déclaration de questionBannerEl)
+  questionBannerEl.classList.remove('compact');
+  clearTimeout(bannerCompactTimer);
+  bannerCompactTimer = setTimeout(() => questionBannerEl.classList.add('compact'), 5000);
 }
 function startDragonQuestion() {
   dragonQuestionActive = true;
@@ -2975,6 +2990,16 @@ const QUESTIONS = [
 const questionBannerEl = document.getElementById('question-banner');
 const questionTextEl = document.getElementById('question-text');
 const questionTimerEl = document.getElementById('question-timer');
+// -------- repli/dépli du bandeau au tap (2026-08-10) : replié, il libère
+// l'écran ; un tap le ré-étend 5 s puis il se replie à nouveau --------
+let bannerCompactTimer = 0;
+questionBannerEl.addEventListener('pointerdown', () => {
+  if (!questionBannerEl.classList.contains('show')) return;
+  const wasCompact = questionBannerEl.classList.contains('compact');
+  questionBannerEl.classList.toggle('compact');
+  clearTimeout(bannerCompactTimer);
+  if (wasCompact) bannerCompactTimer = setTimeout(() => questionBannerEl.classList.add('compact'), 5000);
+});
 // -------- barre du bas (planche ChatGPT, 2026-08-07) : affichage seul,
 // aucun handler clic — la vraie réponse reste la pastille 3D. Rendue depuis
 // les mêmes données que la question (jamais de texte en dur, cf.
