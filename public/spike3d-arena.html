@@ -1067,15 +1067,14 @@ function selectAnswerZone(letter) {
   // une réponse déjà testée (❌) ne peut pas être re-choisie (spec V5 §14)
   if ((player.userData.eliminatedLetters || []).includes(letter)) return;
   if (manchePhase === 'QUESTION') {
-    // phase question : le panneau reste affiché ; dès que le joueur a
-    // répondu, la manche démarre 0,7 s plus tard (2026-08-11 : « démarrer
-    // le jeu dès que le joueur a répondu ») — fenêtre pendant laquelle on
-    // peut encore corriger son tap
+    // dès que LE JOUEUR répond : la question DISPARAÎT immédiatement et
+    // la manche démarre (retour Camille 2026-08-11 — pas de délai, pas de
+    // fenêtre de correction : le tap est définitif)
     selectedZoneLetter = letter;
-    document.querySelectorAll('.qa-row').forEach(c =>
-      c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
     updateAnswerCount();
-    questionPhaseEndsAt = Math.min(questionPhaseEndsAt, performance.now() + 700);
+    spawnFloatingText(player.position.clone().add(new THREE.Vector3(0, 1.9, 0)),
+      `Réponse choisie : ${letter}`, hexCss(ZONE_COLORS[letter]));
+    endQuestionPhase();
     return;
   }
   if (selectedZoneLetter) return; // en action : choix verrouillé (V4 §5)
