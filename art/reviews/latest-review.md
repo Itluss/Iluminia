@@ -1,50 +1,40 @@
-# Fiche d'itération — BOUCLE V5 : la question AVANT l'action
+# Fiche d'itération — obstacles infranchissables dans l'arène
 
-Spec complète Camille 2026-08-11 (« FLUIDE, SIMPLE, SANS QUESTION
-PENDANT L'ACTION ») — voir docs/mecaniques-arene.md pour la boucle
-détaillée.
+Demande Camille (2026-08-11) : « des petits obstacles infranchissables,
+des choses qui nous fassent faire des détours ».
 
-## Machine d'état (public/spike3d-arena.html)
+## Changements (public/spike3d-arena.html)
 
-`manchePhase` : 'IDLE' → 'QUESTION' → 'PLAYING' → (fin) 'IDLE'.
-Par entité (userData) : `selectedLetter` (bots ; le joueur garde
-`selectedZoneLetter`), `eliminatedLetters []` (réponses testées,
-INDIVIDUELLES), `frozenUntil` (gel).
+1. `ARENA_OBSTACLES` : 8 obstacles circulaires (x, z, rayon, type) —
+   4 formations de cristaux, 2 piliers en ruine, 2 amas de rochers —
+   placés à mi-terrain en diagonales symétriques, jamais sur les zones
+   de réponse ni les points d'apparition (marge mini vérifiée : 2,3 u).
+2. `resolveObstacles(pos, marge)` : collision par cercle — on repousse
+   hors du cercle, ce qui fait GLISSER le long du bord : le détour se
+   dessine tout seul, pour le joueur COMME pour les bots (aucun
+   pathfinding nécessaire). Appliquée en fin de frame à toutes les
+   entités (marche, dash, poussées), au dragon en fuite, et au spawn du
+   dragon (jamais DANS un obstacle).
+3. `buildArenaObstacles()` : visuels bâtis avec le kit toon existant
+   (cristaux du kit + socles rocheux, colonnes beiges brisées, rochers
+   sombres) + disque d'occlusion au sol + ombres portées.
 
-- `startQuestionPhase()` : question + zones + panneau CENTRÉ (classe
-  `qb-center`) + barre de décompte, gel général, bots choisissent
-  (`botPickAnswer`, précision `botAnswerAccuracy`).
-- `endQuestionPhase()` : panneau masqué (pilule « ? » si sans réponse),
-  dragon spawné, chrono de manche affiché (pilule 🐉 haut centre).
-- `resolveWrongZone()` réécrite : élimination INDIVIDUELLE (plus de
-  zone morte globale), ❌ + drop du dragon + gel 2 s + re-question
-  centrée avec réponses barrées (`qa-dead`) pour le joueur / re-choix
-  automatique post-gel pour les bots.
-- `resolveMancheTimeout()` : chrono à 0 → porteur gagne (+100) ; dragon
-  au sol → personne ne marque (signalé, choix le plus simple).
-- Gates : déplacement joueur, updateBot et activateAbility bloqués en
-  phase QUESTION ; compétences bloquées pendant un gel.
+## Réglages
 
-## Réglages (LUMIN_CONFIG)
-
-- `questionCountdown` : 6 s (phase question)
-- `mancheDuration` : 45 s (chrono de manche)
-- `wrongFreezeSeconds` : 2 s (gel après erreur)
+Tout dans `ARENA_OBSTACLES` (cherche ce mot) : position, rayon, type.
+Ajouter/retirer un obstacle = une ligne.
 
 ## Vérifié (probes Playwright, 0 erreur console)
 
-Scénario 1 complet : phase question centrée sans dragon → choix B →
-lancement (panneau disparu, dragon, chrono 45 s) → mauvaise zone
-(❌, lettre éliminée, gel actif, dragon libre, retry centré, réponse
-barrée incliquable) → nouveau choix (panneau se ferme) → fin du gel →
-re-capture → bonne zone → manche terminée → NOUVELLE phase question.
-Scénario 2 : bot porteur + chrono forcé à 0 → manche terminée.
-Transition naturelle de la phase question mesurée à 6,0 s pile.
-Captures téléphone : phase question / action pure / retry.
+- Téléporté AU CENTRE d'un obstacle → repoussé à 2,9 u (rayon 2,4 +
+  marge 0,5) dès la frame suivante.
+- Clairance obstacles ↔ tous les pools de points (spawns joueurs,
+  spawns dragon, zones de réponse) : minimum 2,31 u — rien de bloqué.
+- Captures : formation de cristaux, amas de rochers, pilier.
 
-## Signalé (§3/§19 de la spec)
+## À surveiller après test Camille
 
-- Sans réponse au décompte : la partie démarre, pilule « ? » toujours
-  accessible, et la capture sans réponse rouvre le petit panneau.
-- Dragon au sol au chrono 0 : manche terminée sans vainqueur.
-- Le 3-2-1 inter-manches est remplacé par la phase question elle-même.
+- Le pilier vu du dessus (caméra iso) lit comme un gros galet beige —
+  si peu lisible, le remplacer par un type cristal/rocher.
+- Densité : 8 obstacles pour 68×46 u — en ajouter si les détours ne se
+  sentent pas assez.

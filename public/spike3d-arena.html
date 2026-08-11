@@ -1727,6 +1727,78 @@ const decorAnimated = []; // { obj, update(t) } — animés dans animate()
   }
 }
 
+// -------- visuels des obstacles (voir ARENA_OBSTACLES plus bas) : gros
+// cristaux, piliers en ruine, amas de rochers — bâtis avec le kit toon
+// existant, ombre portée + disque d'occlusion au sol pour l'ancrage. --------
+function buildArenaObstacles() {
+  ARENA_OBSTACLES.forEach(o => {
+    const g = new THREE.Group();
+    // disque d'occlusion : ancre l'obstacle sur le damier peint
+    const ao = new THREE.Mesh(new THREE.CircleGeometry(o.r + 0.35, 22),
+      new THREE.MeshBasicMaterial({ color: 0x0a0618, transparent: true, opacity: 0.32, depthWrite: false }));
+    ao.rotation.x = -Math.PI / 2; ao.position.y = 0.16; g.add(ao);
+    if (o.type === 'crystal') {
+      // socle rocheux + gros cluster de cristaux (kit existant)
+      const base = toon(new THREE.IcosahedronGeometry(o.r * 0.75, 0), 0x3a2b62, { outlineScale: 1.05 });
+      base.scale.y = 0.5; base.position.y = 0.3; base.castShadow = true; g.add(base);
+      const cluster = makeCrystalCluster(o.r * 0.78);
+      cluster.position.y = 0.25; g.add(cluster);
+    } else if (o.type === 'pillar') {
+      // colonne en ruine : fût beige + chapiteau renversé
+      const shaft = toon(new THREE.CylinderGeometry(o.r * 0.52, o.r * 0.62, 2.2, 9), 0xe8dcc4, { outlineScale: 1.04 });
+      shaft.position.y = 1.1; shaft.castShadow = true; g.add(shaft);
+      const crown = toon(new THREE.CylinderGeometry(o.r * 0.7, o.r * 0.58, 0.5, 9), 0xd9c9a8, { outlineScale: 1.04 });
+      crown.position.set(o.r * 0.25, 2.5, 0.1); crown.rotation.z = 0.28; crown.castShadow = true; g.add(crown);
+      const chunk = toon(new THREE.IcosahedronGeometry(o.r * 0.38, 0), 0xd9c9a8, { outlineScale: 1.06 });
+      chunk.position.set(-o.r * 0.55, 0.32, o.r * 0.4); chunk.castShadow = true; g.add(chunk);
+    } else {
+      // amas de rochers sombres
+      for (let i = 0; i < 3; i++) {
+        const rr = o.r * (0.42 + Math.random() * 0.3);
+        const rock = toon(new THREE.IcosahedronGeometry(rr, 0), i % 2 ? 0x4a3a78 : 0x3a2b62, { outlineScale: 1.05 });
+        const a = i / 3 * Math.PI * 2 + Math.random();
+        rock.position.set(Math.cos(a) * o.r * 0.4, rr * 0.55, Math.sin(a) * o.r * 0.4);
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+        rock.castShadow = true; g.add(rock);
+      }
+      const mossTuft = emissive(new THREE.SphereGeometry(o.r * 0.2, 7, 6), 0x8ef0c9, 0.4);
+      mossTuft.scale.y = 0.4; mossTuft.position.set(0, o.r * 0.55, 0); g.add(mossTuft);
+    }
+    g.position.set(o.x, 0, o.z);
+    g.rotation.y = Math.random() * Math.PI * 2;
+    scene.add(g);
+  });
+}
+
+// -------- OBSTACLES infranchissables (demande Camille 2026-08-11 :
+// « des petits obstacles qui nous fassent faire des détours ») —
+// collision par CERCLE : on repousse hors du cercle, ce qui fait
+// naturellement GLISSER le long du bord (le détour se dessine tout
+// seul, aucun pathfinding nécessaire). Placés à mi-terrain, jamais sur
+// les zones de réponse ni les points d'apparition (vérifié par probe). --------
+const ARENA_OBSTACLES = [
+  { x: -11, z: -6.5, r: 2.4, type: 'crystal' },
+  { x: 11, z: 6.5, r: 2.4, type: 'crystal' },
+  { x: -18, z: 9, r: 1.9, type: 'pillar' },
+  { x: 18, z: -9, r: 1.9, type: 'pillar' },
+  { x: -7, z: 14, r: 2.1, type: 'rock' },
+  { x: 7, z: -14, r: 2.1, type: 'rock' },
+  { x: -24, z: -12, r: 1.8, type: 'crystal' },
+  { x: 24, z: 12, r: 1.8, type: 'crystal' },
+];
+buildArenaObstacles();
+function resolveObstacles(v, margin = 0.5) {
+  for (const o of ARENA_OBSTACLES) {
+    const dx = v.x - o.x, dz = v.z - o.z;
+    const d = Math.hypot(dx, dz), min = o.r + margin;
+    if (d < min) {
+      if (d < 0.0001) { v.x = o.x + min; continue; }
+      v.x = o.x + (dx / d) * min;
+      v.z = o.z + (dz / d) * min;
+    }
+  }
+  return v;
+}
 function clampToArena(v, margin = 0.6) {
   const maxX = PLAY_W - margin, maxZ = PLAY_D - margin;
   v.x = THREE.MathUtils.clamp(v.x, -maxX, maxX);
@@ -3285,6 +3357,7 @@ function spawnLumin() {
   luminMagnet = null;
   currentLumin = makeLumin();
   currentLumin.position.set(p.x, 0.5, p.z);
+  resolveObstacles(currentLumin.position, 0.6); // jamais DANS un obstacle
   scene.add(currentLumin);
   luminState = 'AVAILABLE';
   spawnBurst(currentLumin.position.clone(), 0xffdc4a, 20);
@@ -4916,6 +4989,9 @@ function animate() {
         clampToArena(e.position);
         if (Math.random() < dt * 30) spawnBurst(e.position.clone().add(new THREE.Vector3(0, 0.4, 0)), 0x21d4ff, 2);
       }
+      // obstacles infranchissables (2026-08-11) : contrainte appliquée en
+      // fin de frame pour TOUS les déplacements (marche, dash, poussées)
+      if (!e.userData.eliminated) resolveObstacles(e.position);
     });
     updatePetButtons();
     allEntities().forEach(e => damageLife(e, LIFE_DRAIN_PER_SEC * dt));
@@ -5252,6 +5328,7 @@ function animate() {
           const speed = panicked ? LUMIN_CONFIG.fleeSpeed : LUMIN_CONFIG.fleeCalmSpeed;
           currentLumin.position.addScaledVector(away, speed * dt);
           clampToArena(currentLumin.position, 0.9);
+          resolveObstacles(currentLumin.position, 0.4); // le dragon contourne aussi
           // regarde là où il fuit + petits bonds affolés (remplace le bob calme)
           currentLumin.rotation.y = Math.atan2(away.x, away.z);
           currentLumin.position.y = 0.5 + Math.abs(Math.sin(performance.now() * (panicked ? 0.016 : 0.010))) * 0.2;
