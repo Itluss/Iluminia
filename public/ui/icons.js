@@ -35,7 +35,8 @@
     sound: '<path d="M4 9.5h4l5-4v13l-5-4H4z"/><path d="M16.5 9c1 .8 1.6 1.9 1.6 3s-.6 2.2-1.6 3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
     music: '<circle cx="7" cy="18" r="2.6"/><circle cx="17" cy="16" r="2.6"/><path d="M9.6 18V6.5L19.6 4v11.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
     info: '<circle cx="12" cy="12" r="9.5"/><rect x="10.7" y="10.2" width="2.6" height="7" rx="1" fill="#0a1230"/><circle cx="12" cy="7.4" r="1.5" fill="#0a1230"/>',
-    plus: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>'
+    plus: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
+    book: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v15H5.5c-.8 0-1.5.7-1.5 1.5z"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H13v15h5.5c.8 0 1.5.7 1.5 1.5z"/><path d="M11 4v15M13 4v15" stroke="#0a1230" stroke-width="1.4"/>'
   };
 
   var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');

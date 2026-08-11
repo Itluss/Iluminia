@@ -1,12 +1,592 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Eluminia</title>
-    <meta http-equiv="refresh" content="0; url=./spike3d-menu.html" />
-  </head>
-  <body>
-    <p><a href="./spike3d-menu.html">Eluminia — jouer</a></p>
-  </body>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Illuminia</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+/* =====================================================================
+   HOME SCREEN — reproduction de la maquette Camille (2026-08-11)
+   Composition : carte joueur (haut gauche) · monnaies + menu (haut
+   droite) · navigation verticale (gauche) · cartes événements (droite)
+   · défi du jour (bas gauche) · JOUER (bas droite) · Max + pet en 3D
+   au centre. Aucun scroll (paysage), 100dvh/100dvw, safe areas,
+   états hover/press, tout en composants réutilisables.
+   ===================================================================== */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hidden;
+  overscroll-behavior: none; font-family: var(--el-font); background: var(--el-bg-deep); }
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --hs-pad: clamp(10px, 2dvmin, 18px);
+}
+
+/* ---------- fond peint (monde coloré derrière Max) ---------- */
+#world-bg { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; }
+#stage-canvas { position: fixed; inset: 0; z-index: 1; width: 100%; height: 100%; pointer-events: none; }
+
+/* ---------- grille générale ---------- */
+#hud { position: fixed; inset: 0; z-index: 2; display: grid; pointer-events: none;
+  padding: calc(var(--hs-pad) + var(--safe-top)) calc(var(--hs-pad) + var(--safe-right))
+           calc(var(--hs-pad) + var(--safe-bottom)) calc(var(--hs-pad) + var(--safe-left));
+  grid-template-columns: auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
+  grid-template-areas:
+    "tl . tr"
+    "nav . right"
+    "defi . play";
+  gap: clamp(6px, 1.4dvmin, 12px); }
+#hud > * { pointer-events: auto; }
+
+/* ---------- composant : plaque cartoon générique ---------- */
+.plate { background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  border: var(--el-border-w) solid var(--el-outline); border-radius: var(--el-radius-md);
+  box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.18); }
+
+/* ---------- carte joueur (haut gauche) ---------- */
+#player-card { grid-area: tl; display: flex; align-items: center; gap: 10px;
+  padding: 7px 12px 7px 8px; width: max-content; }
+#player-card .avatar { width: clamp(44px, 9dvmin, 58px); height: clamp(44px, 9dvmin, 58px);
+  border-radius: 50%; border: 3px solid var(--el-outline); position: relative; flex: 0 0 auto;
+  background: radial-gradient(circle at 35% 30%, #6fb7ff, #258cff 70%); overflow: hidden; }
+.avatar .hair { position: absolute; top: -6%; left: 8%; right: 8%; height: 52%;
+  background: #5a3d28; border-radius: 50% 50% 42% 42%; }
+.avatar .face { position: absolute; top: 34%; left: 18%; right: 18%; height: 52%;
+  background: #ffd9b0; border-radius: 46%; }
+.avatar .eye { position: absolute; top: 56%; width: 9%; height: 13%; background: #26221f; border-radius: 50%; }
+.avatar .eye.l { left: 34%; } .avatar .eye.r { right: 34%; }
+.avatar .lvl-badge { position: absolute; bottom: -4%; left: -4%; width: 40%; height: 40%;
+  background: linear-gradient(180deg, var(--el-success), var(--el-success-dark));
+  border: 2.5px solid var(--el-outline); border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 900; font-size: 55%; }
+#player-card .who { display: flex; flex-direction: column; gap: 3px; }
+#player-card .name { color: #fff; font-weight: 900; font-size: clamp(14px, 2.6dvmin, 18px); letter-spacing: 0.5px; }
+#player-card .lvl { color: var(--el-gold); font-weight: 800; font-size: clamp(10px, 1.9dvmin, 13px);
+  display: flex; align-items: center; gap: 4px; }
+#player-card .lvl .el-icon { width: 12px; height: 12px; fill: var(--el-gold); }
+.xp-track { width: clamp(100px, 18dvmin, 150px); height: 12px; border-radius: 999px;
+  background: rgba(4,9,28,0.6); border: 2px solid var(--el-outline); overflow: hidden; position: relative; }
+.xp-fill { height: 100%; width: 62.5%; border-radius: 999px;
+  background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
+.xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 900; font-size: 8.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+#xp-chip { align-self: flex-start; margin-left: 2px; background: linear-gradient(180deg, #5fc0ff, #1c72c9);
+  border: 3px solid var(--el-outline); border-radius: 12px; color: #fff; font-weight: 900;
+  font-size: clamp(10px, 2dvmin, 13px); padding: 5px 9px;
+  box-shadow: 0 3px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.3); }
+
+/* ---------- monnaies + menu (haut droite) ---------- */
+#top-right { grid-area: tr; display: flex; align-items: flex-start; gap: clamp(6px, 1.4dvmin, 12px); justify-self: end; }
+.capsule { display: flex; align-items: center; gap: 7px; background: rgba(10,18,48,0.92);
+  border: 3px solid var(--el-outline); border-radius: 999px; padding: 5px 6px 5px 8px;
+  box-shadow: 0 3px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.12); }
+.capsule .el-icon { width: clamp(16px, 3dvmin, 21px); height: clamp(16px, 3dvmin, 21px); }
+.capsule .val { color: #fff; font-weight: 900; font-size: clamp(12px, 2.3dvmin, 16px); letter-spacing: 0.5px; }
+.capsule .add { width: clamp(18px, 3.4dvmin, 23px); height: clamp(18px, 3.4dvmin, 23px); border-radius: 50%;
+  background: linear-gradient(180deg, #7fe08a, var(--el-success) 55%, var(--el-success-dark));
+  border: 2.5px solid var(--el-outline); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; }
+.capsule .add .el-icon { width: 60%; height: 60%; fill: #fff; stroke: #fff; }
+.capsule .add:active { transform: translateY(1px); }
+#coin-capsule .el-icon { fill: var(--el-gold); }
+#gem-capsule .el-icon { fill: var(--el-purple); }
+#burger { position: relative; width: clamp(40px, 7.5dvmin, 52px); height: clamp(40px, 7.5dvmin, 52px);
+  border-radius: var(--el-radius-md); cursor: pointer; display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  border: 3px solid var(--el-outline); box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.18); }
+#burger .el-icon { width: 55%; height: 55%; color: #fff; }
+#burger:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(4,9,28,0.55); }
+
+/* ---------- badge notification (rond rouge) ---------- */
+.badge { position: absolute; top: -8px; right: -8px; min-width: 21px; height: 21px; padding: 0 5px;
+  background: linear-gradient(180deg, #ff7583, var(--el-danger) 55%, var(--el-danger-dark));
+  border: 2.5px solid var(--el-outline); border-radius: 999px; color: #fff; font-weight: 900;
+  font-size: 11.5px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 0 rgba(4,9,28,0.4); }
+
+/* ---------- navigation verticale (gauche) ---------- */
+#side-nav { grid-area: nav; display: flex; flex-direction: column; gap: clamp(5px, 1.2dvmin, 10px);
+  align-self: start; margin-top: clamp(2px, 1dvmin, 8px); }
+.nav-btn { position: relative; display: flex; align-items: center; gap: 8px; cursor: pointer;
+  width: clamp(128px, 22dvmin, 172px); padding: 5px 8px 5px 5px;
+  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  border: var(--el-border-w) solid var(--el-outline); border-radius: var(--el-radius-md);
+  box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.18); }
+.nav-btn:hover { filter: brightness(1.08); }
+.nav-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(4,9,28,0.55); }
+.nav-ico { width: clamp(30px, 5.6dvmin, 40px); height: clamp(30px, 5.6dvmin, 40px); flex: 0 0 auto;
+  border-radius: 11px; border: 2.5px solid var(--el-outline); display: flex; align-items: center;
+  justify-content: center; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 4px rgba(4,9,28,0.35); }
+.nav-ico .el-icon { width: 62%; height: 62%; fill: #fff; color: #fff; }
+.nav-btn .lbl { color: #fff; font-weight: 900; font-size: clamp(10.5px, 2dvmin, 13.5px); letter-spacing: 0.6px; }
+.ico-orange { background: linear-gradient(180deg, #ffb35c, var(--el-orange) 55%, var(--el-orange-dark)); }
+.ico-cyan { background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
+.ico-purple { background: linear-gradient(180deg, #b28aff, var(--el-purple) 55%, var(--el-purple-dark)); }
+.ico-blue { background: linear-gradient(180deg, #6fb7ff, var(--el-blue) 55%, var(--el-blue-dark)); }
+.ico-navy { background: linear-gradient(180deg, #3a5799, #22345f); }
+
+/* ---------- cartes événements (droite) ---------- */
+#right-stack { grid-area: right; display: flex; flex-direction: column; gap: clamp(6px, 1.4dvmin, 11px);
+  align-self: start; justify-self: end; margin-top: clamp(2px, 1dvmin, 8px);
+  width: clamp(150px, 26dvmin, 205px); }
+.event-card { position: relative; padding: 7px 10px; cursor: pointer; border-radius: var(--el-radius-md);
+  border: var(--el-border-w) solid var(--el-outline);
+  box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.22); }
+.event-card:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(4,9,28,0.55); }
+.event-card .t { color: #fff; font-weight: 900; font-size: clamp(10.5px, 2dvmin, 13px); letter-spacing: 0.6px; }
+.event-card .sub { margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+#card-event { background: linear-gradient(180deg, #9a68f7, var(--el-purple-dark)); }
+#card-event .pill { background: rgba(10,18,48,0.75); border: 2px solid var(--el-outline);
+  border-radius: 999px; padding: 2.5px 8px; color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
+#card-event .pill b { color: var(--el-gold); }
+#card-xp { background: linear-gradient(180deg, #f56cb0, var(--el-magenta-dark)); display: flex; align-items: center; gap: 9px; }
+#card-xp .hex { flex: 0 0 auto; width: clamp(28px, 5.4dvmin, 38px); height: clamp(28px, 5.4dvmin, 38px);
+  background: linear-gradient(180deg, #b28aff, var(--el-purple-dark));
+  border: 2.5px solid var(--el-outline); border-radius: 10px; transform: rotate(45deg);
+  display: flex; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35); }
+#card-xp .hex span { transform: rotate(-45deg); color: #fff; font-weight: 900; font-size: clamp(11px, 2dvmin, 14px); }
+#card-xp .txt .t { line-height: 1.1; }
+#card-xp .txt .pct { color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
+#card-chest { background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
+  display: flex; align-items: center; gap: 9px; }
+#card-chest .chest { flex: 0 0 auto; width: clamp(28px, 5.4dvmin, 38px); height: clamp(28px, 5.4dvmin, 38px);
+  border-radius: 10px; border: 2.5px solid var(--el-outline);
+  background: linear-gradient(180deg, #ffb35c, var(--el-orange-dark));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.35); }
+#card-chest .chest .el-icon { width: 62%; height: 62%; fill: #7a4a12; }
+#card-chest .ready { color: var(--el-success); font-weight: 900; font-size: 11px; }
+
+/* ---------- défi du jour (bas gauche) ---------- */
+#daily-card { grid-area: defi; align-self: end; display: flex; align-items: center; gap: 10px;
+  width: max-content; max-width: clamp(230px, 44dvmin, 330px); padding: 8px 12px;
+  background: linear-gradient(180deg, #2b6cd9, #1b4ea8); border: var(--el-border-w) solid var(--el-outline);
+  border-radius: var(--el-radius-md); box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.22); }
+#daily-card .gems { flex: 0 0 auto; width: clamp(30px, 5.8dvmin, 42px); height: clamp(30px, 5.8dvmin, 42px);
+  border-radius: 11px; border: 2.5px solid var(--el-outline);
+  background: linear-gradient(180deg, #7fe3ff, var(--el-cyan-dark));
+  display: flex; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
+#daily-card .gems .el-icon { width: 62%; height: 62%; fill: #0d5a86; }
+#daily-card .txt { display: flex; flex-direction: column; gap: 2px; }
+#daily-card .t { color: var(--el-gold); font-weight: 900; font-size: clamp(10.5px, 2dvmin, 13px); letter-spacing: 0.6px; }
+#daily-card .d1 { color: #fff; font-weight: 800; font-size: clamp(10px, 1.9dvmin, 12.5px); }
+#daily-card .d2 { color: var(--el-text-muted); font-weight: 700; font-size: clamp(9px, 1.7dvmin, 11px); }
+#daily-card .right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: 4px; }
+#daily-card .prog { color: #fff; font-weight: 900; font-size: clamp(12px, 2.3dvmin, 15px); }
+#daily-card .reward { background: linear-gradient(180deg, #b28aff, var(--el-purple-dark));
+  border: 2.5px solid var(--el-outline); border-radius: 999px; padding: 2.5px 8px;
+  color: #fff; font-weight: 900; font-size: 10.5px; display: flex; align-items: center; gap: 3px; }
+#daily-card .reward .el-icon { width: 11px; height: 11px; fill: var(--el-gold); }
+
+/* ---------- bouton JOUER (bas droite) ---------- */
+#play-btn { grid-area: play; align-self: end; justify-self: end; display: flex; align-items: center;
+  justify-content: center; gap: 12px; cursor: pointer;
+  width: clamp(200px, 36dvmin, 320px); padding: clamp(12px, 2.6dvmin, 20px) 0;
+  border-radius: 20px; border: 4px solid var(--el-outline);
+  background: linear-gradient(180deg, #ffe082 0%, var(--el-gold) 45%, var(--el-gold-dark) 100%);
+  box-shadow: 0 7px 0 #9a6d00, 0 12px 22px rgba(4,9,28,0.5), inset 0 3px 0 rgba(255,255,255,0.55);
+  transition: transform 0.06s, box-shadow 0.06s; }
+#play-btn:hover { filter: brightness(1.05); }
+#play-btn:active { transform: translateY(5px); box-shadow: 0 2px 0 #9a6d00, 0 6px 12px rgba(4,9,28,0.5), inset 0 3px 0 rgba(255,255,255,0.55); }
+#play-btn .tri { width: clamp(26px, 5dvmin, 38px); height: clamp(26px, 5dvmin, 38px); border-radius: 50%;
+  background: rgba(255,255,255,0.85); border: 3px solid var(--el-outline);
+  display: flex; align-items: center; justify-content: center; }
+#play-btn .tri .el-icon { width: 58%; height: 58%; fill: var(--el-orange-dark); margin-left: 2px; }
+#play-btn .lbl { color: #241a04; font-weight: 900; font-size: clamp(22px, 5dvmin, 34px);
+  letter-spacing: 1.5px; text-shadow: 0 1.5px 0 rgba(255,255,255,0.5); }
+
+/* ---------- toast « bientôt » ---------- */
+#toast { position: fixed; left: 50%; bottom: calc(16px + var(--safe-bottom)); transform: translateX(-50%);
+  z-index: 10; background: rgba(10,18,48,0.95); border: 3px solid var(--el-gold);
+  border-radius: 999px; color: var(--el-cream); font-weight: 900; font-size: 14px;
+  padding: 9px 18px; display: none; }
+#toast.show { display: block; }
+
+/* ---------- écrans bas (téléphone paysage) : tout se compacte pour que
+   la grille tienne SANS déborder (maquette : aucun scroll) ---------- */
+@media (max-height: 480px) {
+  #hud { gap: 5px; }
+  #player-card { padding: 4px 9px 4px 5px; gap: 7px; }
+  #player-card .avatar { width: 38px; height: 38px; }
+  .xp-track { height: 10px; width: 96px; }
+  #xp-chip { padding: 3px 7px; font-size: 10px; }
+  #side-nav { gap: 4px; }
+  .nav-btn { width: 122px; padding: 3px 6px 3px 4px; gap: 6px; }
+  .nav-ico { width: 26px; height: 26px; border-radius: 8px; }
+  .nav-btn .lbl { font-size: 9.5px; }
+  .badge { min-width: 17px; height: 17px; font-size: 10px; top: -6px; right: -6px; }
+  #right-stack { width: 150px; gap: 5px; }
+  .event-card { padding: 5px 8px; }
+  #daily-card { padding: 5px 9px; gap: 8px; }
+  #daily-card .gems { width: 28px; height: 28px; }
+  #play-btn { width: 190px; padding: 10px 0; gap: 9px; }
+  #play-btn .lbl { font-size: 21px; }
+  #play-btn .tri { width: 24px; height: 24px; }
+}
+
+/* ---------- rotation requise ---------- */
+#rotate-prompt { display: none; position: fixed; inset: 0; z-index: 90; background: var(--el-bg-deep);
+  color: var(--el-text-main); flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 10px; font-weight: 800; }
+@media (orientation: portrait) { #rotate-prompt { display: flex; } }
+</style>
+</head>
+<body>
+<canvas id="world-bg"></canvas>
+<canvas id="stage-canvas"></canvas>
+
+<div id="hud">
+  <!-- carte joueur -->
+  <div id="player-card" class="plate">
+    <div class="avatar">
+      <div class="face"></div>
+      <div class="hair"></div>
+      <div class="eye l"></div><div class="eye r"></div>
+      <div class="lvl-badge">✓</div>
+    </div>
+    <div class="who">
+      <span class="name">MAX</span>
+      <span class="lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 17</span>
+      <div class="xp-track"><div class="xp-fill"></div><span class="xp-num">1250/2000</span></div>
+    </div>
+    <div id="xp-chip">XP</div>
+  </div>
+
+  <!-- monnaies + menu -->
+  <div id="top-right">
+    <div class="capsule" id="coin-capsule">
+      <svg class="el-icon"><use href="#icon-coin"></use></svg>
+      <span class="val">12 450</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div class="capsule" id="gem-capsule">
+      <svg class="el-icon"><use href="#icon-gem"></use></svg>
+      <span class="val">480</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div id="burger" data-soon>
+      <svg class="el-icon"><use href="#icon-menu"></use></svg>
+      <span class="badge">3</span>
+    </div>
+  </div>
+
+  <!-- navigation -->
+  <div id="side-nav">
+    <div class="nav-btn" data-href="./spike3d-menu.html">
+      <span class="nav-ico ico-orange"><svg class="el-icon"><use href="#icon-avatar"></use></svg></span>
+      <span class="lbl">PERSONNAGE</span>
+      <span class="badge">!</span>
+    </div>
+    <div class="nav-btn" data-soon>
+      <span class="nav-ico ico-cyan"><svg class="el-icon"><use href="#icon-paw"></use></svg></span>
+      <span class="lbl">PETS</span>
+      <span class="badge">5</span>
+    </div>
+    <div class="nav-btn" data-soon>
+      <span class="nav-ico ico-purple"><svg class="el-icon"><use href="#icon-gift"></use></svg></span>
+      <span class="lbl">RÉCOMPENSES</span>
+      <span class="badge">2</span>
+    </div>
+    <div class="nav-btn" data-soon>
+      <span class="nav-ico ico-blue"><svg class="el-icon"><use href="#icon-book"></use></svg></span>
+      <span class="lbl">QUÊTES</span>
+    </div>
+    <div class="nav-btn" data-soon>
+      <span class="nav-ico ico-navy"><svg class="el-icon"><use href="#icon-addPerson"></use></svg></span>
+      <span class="lbl">SOCIAL</span>
+    </div>
+  </div>
+
+  <!-- cartes événements -->
+  <div id="right-stack">
+    <div class="event-card" id="card-event" data-soon>
+      <div class="t">ÉVÉNEMENT</div>
+      <div class="sub"><span class="pill">Fin dans : <b id="event-timer">1h 24min</b></span></div>
+      <span class="badge">!</span>
+    </div>
+    <div class="event-card" id="card-xp" data-soon>
+      <div class="hex"><span>2x</span></div>
+      <div class="txt">
+        <div class="t">DOUBLE XP</div>
+        <div class="pct">+100%</div>
+      </div>
+    </div>
+    <div class="event-card" id="card-chest" data-soon>
+      <div class="chest"><svg class="el-icon"><use href="#icon-gift"></use></svg></div>
+      <div class="txt">
+        <div class="t">COFFRE GRATUIT</div>
+        <div class="ready">Prêt !</div>
+      </div>
+      <span class="badge">!</span>
+    </div>
+  </div>
+
+  <!-- défi du jour -->
+  <div id="daily-card" data-href="./spike3d-arena.html">
+    <div class="gems"><svg class="el-icon"><use href="#icon-gem"></use></svg></div>
+    <div class="txt">
+      <div class="t">DÉFI DU JOUR</div>
+      <div class="d1">Fractions · CM1-CM2</div>
+      <div class="d2">Termine 3 parties</div>
+    </div>
+    <div class="right">
+      <span class="prog">2/3</span>
+      <span class="reward">+50 <svg class="el-icon"><use href="#icon-star"></use></svg></span>
+    </div>
+  </div>
+
+  <!-- JOUER -->
+  <div id="play-btn" data-href="./spike3d-arena.html">
+    <span class="tri"><svg class="el-icon"><use href="#icon-play"></use></svg></span>
+    <span class="lbl">JOUER</span>
+  </div>
+</div>
+
+<div id="toast">✨ Bientôt disponible !</div>
+<div id="rotate-prompt">
+  <div style="font-size:40px">📱↺</div>
+  <div>Tourne ton téléphone en mode paysage&nbsp;!</div>
+</div>
+
+<script src="ui/icons.js"></script>
+<script>
+// navigation + placeholders
+document.querySelectorAll('[data-href]').forEach(el =>
+  el.addEventListener('click', () => { location.href = el.dataset.href; }));
+let toastTimer = 0;
+document.querySelectorAll('[data-soon]').forEach(el =>
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }));
+// compte à rebours de l'événement (purement visuel, 1h24 au chargement)
+{
+  let secs = (1 * 60 + 24) * 60;
+  const el = document.getElementById('event-timer');
+  setInterval(() => {
+    secs = Math.max(0, secs - 1);
+    const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60);
+    el.textContent = h > 0 ? `${h}h ${String(m).padStart(2, '0')}min` : `${m}min ${String(secs % 60).padStart(2, '0')}s`;
+  }, 1000);
+}
+
+// ---------- fond peint : monde coloré façon maquette ----------
+{
+  const c = document.getElementById('world-bg');
+  const paint = () => {
+    const w = c.width = innerWidth * Math.min(devicePixelRatio, 2);
+    const h = c.height = innerHeight * Math.min(devicePixelRatio, 2);
+    const x = ctxFrac => ctxFrac * w, y = f => f * h;
+    const ctx = c.getContext('2d');
+    // ciel
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#3f9df8'); sky.addColorStop(0.45, '#6db9ff'); sky.addColorStop(0.75, '#a8d8ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    // soleil doux
+    const sun = ctx.createRadialGradient(x(0.72), y(0.16), 0, x(0.72), y(0.16), Math.min(w, h) * 0.3);
+    sun.addColorStop(0, 'rgba(255,240,190,0.8)'); sun.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = sun; ctx.fillRect(0, 0, w, h);
+    // nuages cartoon
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const cloud = (cx, cy, s) => {
+      [[0, 0, 1], [-1.1, 0.18, 0.7], [1.1, 0.2, 0.75], [0.4, -0.4, 0.6], [-0.5, -0.35, 0.55]].forEach(([dx, dy, r]) => {
+        ctx.beginPath(); ctx.arc(x(cx) + dx * s, y(cy) + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
+      });
+    };
+    cloud(0.15, 0.14, w * 0.030); cloud(0.55, 0.09, w * 0.023); cloud(0.87, 0.24, w * 0.026);
+    // ruines violettes lointaines (silhouettes)
+    ctx.fillStyle = 'rgba(138,85,245,0.42)';
+    const tower = (cx, base, tw2, th2) => {
+      ctx.fillRect(x(cx) - tw2 / 2, y(base) - th2, tw2, th2);
+      ctx.beginPath(); ctx.moveTo(x(cx) - tw2 * 0.72, y(base) - th2);
+      ctx.lineTo(x(cx), y(base) - th2 - tw2 * 0.9); ctx.lineTo(x(cx) + tw2 * 0.72, y(base) - th2);
+      ctx.closePath(); ctx.fill();
+    };
+    tower(0.09, 0.62, w * 0.045, h * 0.20); tower(0.2, 0.63, w * 0.03, h * 0.13);
+    tower(0.86, 0.60, w * 0.05, h * 0.24); tower(0.95, 0.62, w * 0.03, h * 0.12);
+    ctx.fillStyle = 'rgba(111,216,255,0.5)';
+    const crystal = (cx, base, s) => {
+      ctx.beginPath(); ctx.moveTo(x(cx), y(base) - s * 2.6);
+      ctx.lineTo(x(cx) + s, y(base)); ctx.lineTo(x(cx) - s, y(base)); ctx.closePath(); ctx.fill();
+    };
+    crystal(0.3, 0.62, w * 0.012); crystal(0.75, 0.6, w * 0.016); crystal(0.68, 0.63, w * 0.009);
+    // collines
+    const hill = (cy, col) => {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, h);
+      for (let i = 0; i <= 24; i++) {
+        const px = i / 24 * w;
+        ctx.lineTo(px, y(cy) + Math.sin(i * 0.9) * h * 0.03);
+      }
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+    };
+    hill(0.66, '#8a55f5'); hill(0.74, '#6a34d6'); hill(0.84, '#53386e');
+    // touffes fleuries
+    for (let i = 0; i < 40; i++) {
+      const fx = Math.random() * w, fy = y(0.7 + Math.random() * 0.28);
+      ctx.fillStyle = ['#ef4e9b', '#ffc928', '#20cff3'][i % 3] + 'aa';
+      ctx.beginPath(); ctx.arc(fx, fy, w * 0.0035, 0, Math.PI * 2); ctx.fill();
+    }
+    // vignette
+    const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(14,22,56,0.5)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+  };
+  paint();
+  addEventListener('resize', paint);
+}
+</script>
+
+<script type="importmap">
+{ "imports": { "three": "./vendor/three/three.module.js", "three/addons/": "./vendor/three/addons/" } }
+</script>
+<script type="module">
+// ---------- scène centrale : Max (GLB) + pet chien + plateforme ----------
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+const canvas = document.getElementById('stage-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 60);
+scene.add(new THREE.AmbientLight(0xffffff, 1.35));
+const key = new THREE.DirectionalLight(0xfff2dc, 2.1);
+key.position.set(2.5, 5, 5); scene.add(key);
+const rim = new THREE.DirectionalLight(0x9fd6ff, 0.9);
+rim.position.set(-3, 2, -4); scene.add(rim);
+
+function resize() {
+  renderer.setSize(innerWidth, innerHeight, false);
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+
+// plateforme de pierre rose (comme la maquette)
+const platform = new THREE.Group();
+{
+  const texC = document.createElement('canvas'); texC.width = texC.height = 256;
+  const tc = texC.getContext('2d');
+  tc.fillStyle = '#c98ba0'; tc.beginPath(); tc.arc(128, 128, 128, 0, Math.PI * 2); tc.fill();
+  // dalles rayonnantes rose/beige
+  for (let i = 0; i < 10; i++) {
+    const a0 = i / 10 * Math.PI * 2, a1 = (i + 0.9) / 10 * Math.PI * 2;
+    tc.fillStyle = i % 2 ? '#e0aa9a' : '#d193a8';
+    tc.beginPath(); tc.moveTo(128, 128); tc.arc(128, 128, 124, a0, a1); tc.closePath(); tc.fill();
+    tc.strokeStyle = 'rgba(70,30,45,0.5)'; tc.lineWidth = 4; tc.stroke();
+  }
+  tc.fillStyle = '#e8c8b0'; tc.beginPath(); tc.arc(128, 128, 44, 0, Math.PI * 2); tc.fill();
+  tc.strokeStyle = 'rgba(70,30,45,0.55)'; tc.lineWidth = 5; tc.stroke();
+  // matériaux séparés : la texture UNIQUEMENT sur le dessus (étirée sur le
+  // flanc, son contour sombre faisait une bande noire)
+  const sideMat = new THREE.MeshLambertMaterial({ color: 0xd193a8 });
+  const topMat = new THREE.MeshLambertMaterial({ color: 0xffffff, map: new THREE.CanvasTexture(texC) });
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(1.55, 1.7, 0.42, 24), [sideMat, topMat, sideMat]);
+  platform.add(top);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.85, 0.3, 24),
+    new THREE.MeshLambertMaterial({ color: 0xb87d92 }));
+  base.position.y = -0.34; platform.add(base);
+  const shadow = new THREE.Mesh(new THREE.CircleGeometry(2.1, 32),
+    new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.22, depthWrite: false }));
+  shadow.rotation.x = -Math.PI / 2; shadow.position.y = -0.52; platform.add(shadow);
+}
+platform.position.y = -1.15;
+scene.add(platform);
+
+// pet chien orange (procédural, style toon)
+const dog = new THREE.Group();
+{
+  const fur = new THREE.MeshLambertMaterial({ color: 0xffa63e });
+  const furLight = new THREE.MeshLambertMaterial({ color: 0xffd9a0 });
+  const dark = new THREE.MeshLambertMaterial({ color: 0x2a2019 });
+  const body = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 12), fur);
+  body.scale.set(1, 0.85, 1.25); body.position.y = 0.34; dog.add(body);
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.27, 16, 12), fur);
+  head.position.set(0, 0.68, 0.3); dog.add(head);
+  const muzzle = new THREE.Mesh(new THREE.SphereGeometry(0.13, 12, 10), furLight);
+  muzzle.scale.set(1, 0.8, 1); muzzle.position.set(0, 0.6, 0.5); dog.add(muzzle);
+  const nose = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), dark);
+  nose.position.set(0, 0.65, 0.6); dog.add(nose);
+  [-0.11, 0.11].forEach(dx => {
+    const eye = new THREE.Mesh(new THREE.SphereGeometry(0.045, 8, 8), dark);
+    eye.position.set(dx, 0.74, 0.51); dog.add(eye);
+    const ear = new THREE.Mesh(new THREE.ConeGeometry(0.1, 0.22, 8), fur);
+    ear.position.set(dx * 1.7, 0.92, 0.22); ear.rotation.x = -0.25; dog.add(ear);
+    const innerEar = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.12, 8), furLight);
+    innerEar.position.set(dx * 1.7, 0.9, 0.25); innerEar.rotation.x = -0.25; dog.add(innerEar);
+  });
+  // collier vert — sous la tête, pas dans la gueule
+  const collar = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.04, 8, 18),
+    new THREE.MeshLambertMaterial({ color: 0x2ea882 }));
+  collar.position.set(0, 0.46, 0.26); collar.rotation.x = Math.PI / 2.1; dog.add(collar);
+  // pattes
+  [[-0.16, 0.42], [0.16, 0.42], [-0.16, -0.3], [0.16, -0.3]].forEach(([dx, dz]) => {
+    const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.09, 0.26, 10), fur);
+    leg.position.set(dx, 0.12, dz); dog.add(leg);
+    const pawM = new THREE.Mesh(new THREE.SphereGeometry(0.09, 8, 8), furLight);
+    pawM.scale.y = 0.6; pawM.position.set(dx, 0.03, dz + 0.02); dog.add(pawM);
+  });
+  // queue touffue
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.11, 0.42, 10), fur);
+  tail.position.set(0, 0.55, -0.42); tail.rotation.x = 0.9; dog.userData.tail = tail; dog.add(tail);
+  const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), furLight);
+  tailTip.position.set(0, 0.72, -0.55); dog.userData.tailTip = tailTip; dog.add(tailTip);
+}
+dog.position.set(0.95, -1.15 + 0.21, 0.35);
+dog.rotation.y = -0.5;
+scene.add(dog);
+
+// Max (le vrai modèle 3D du jeu)
+let maxModel = null;
+new GLTFLoader().load('models/max-character.glb', (gltf) => {
+  const model = gltf.scene;
+  model.traverse((node) => {
+    if (node.isMesh && node.material) {
+      const mats = Array.isArray(node.material) ? node.material : [node.material];
+      mats.forEach((m) => { m.emissiveMap = null; m.emissive?.set(0, 0, 0); m.needsUpdate = true; });
+    }
+  });
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  model.position.sub(center);
+  const g = new THREE.Group();
+  g.add(model);
+  const s = 2.3 / size.y; // ~2,3 unités de haut sur la plateforme
+  g.scale.setScalar(s);
+  g.position.set(-0.35, -1.15 + 0.21 + (size.y * s) / 2, 0);
+  scene.add(g);
+  maxModel = g;
+}, undefined, err => console.error('Chargement de Max échoué :', err));
+
+camera.position.set(0, 0.6, 7.2);
+camera.lookAt(0, -0.1, 0);
+resize();
+
+const clock = new THREE.Clock();
+(function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+  // Max : léger balancement « vivant » (pas de toupie sur la home)
+  if (maxModel) maxModel.rotation.y = Math.sin(t * 0.6) * 0.25;
+  // chien : queue qui frétille + petit hochement
+  if (dog.userData.tail) {
+    dog.userData.tail.rotation.z = Math.sin(t * 7) * 0.3;
+    dog.userData.tailTip.position.x = Math.sin(t * 7) * 0.1;
+    dog.rotation.y = -0.5 + Math.sin(t * 0.9) * 0.1;
+  }
+  renderer.render(scene, camera);
+})();
+</script>
+</body>
 </html>
