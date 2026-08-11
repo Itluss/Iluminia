@@ -3231,15 +3231,10 @@ function updateOffscreenIndicator(key, worldX, worldZ, colorHex, glyph) {
 // non éliminées, seulement celles hors écran (updateOffscreenIndicator
 // masque/enlève l'élément dès que la cible entre dans le viewport). --------
 function updateOffscreenIndicators() {
-  if (luminState === 'AVAILABLE' && currentLumin) {
-    updateOffscreenIndicator('dragon', currentLumin.position.x, currentLumin.position.z, 0xffdc4a, '🐉');
-  } else if (luminState === 'CARRIED' && luminOwnerId && luminOwnerId !== player) {
-    // -------- V4 §17 : dragon porté par un ADVERSAIRE → l'indicateur suit
-    // le porteur (guidage « vers le dragon / porteur ») --------
-    updateOffscreenIndicator('dragon', luminOwnerId.position.x, luminOwnerId.position.z, 0xffdc4a, '🐉');
-  } else {
-    removeOffscreenEl('dragon');
-  }
+  // -------- badge 🐉 de bord d'écran SUPPRIMÉ (décision Camille
+  // 2026-08-11) : les doubles chevrons au sol + le badge de distance
+  // suffisent — une seule signalétique de guidage à l'écran --------
+  removeOffscreenEl('dragon');
   // -------- V4 §10/§12 : JAMAIS deux directions simultanées, et le joueur
   // ne voit pas la position des 4 zones — les badges de zones sont
   // supprimés ; seule la flèche-boussole vers SA zone choisie guide --------
