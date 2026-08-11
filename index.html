@@ -61,9 +61,10 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 
 /* ---------- carte joueur (haut gauche) ---------- */
 #player-card { grid-area: tl; display: flex; align-items: center; gap: 9px;
-  padding: clamp(4px, 1.4dvh, 8px) 24px clamp(4px, 1.4dvh, 8px) clamp(4px, 1.4dvh, 8px); width: max-content; position: relative; }
+  padding: clamp(4px, 1.4dvh, 8px) 14px clamp(4px, 1.4dvh, 8px) clamp(4px, 1.4dvh, 8px); width: max-content; position: relative; }
 #player-card .avatar { width: clamp(34px, 11dvh, 56px); height: clamp(34px, 11dvh, 56px);
-  border-radius: 14px; border: 3px solid var(--el-outline); position: relative; flex: 0 0 auto;
+  border-radius: 50%; border: 3px solid var(--el-purple); position: relative; flex: 0 0 auto;
+  box-shadow: 0 0 0 2px rgba(10,18,48,0.8);
   background: radial-gradient(circle at 35% 30%, #6fb7ff, #258cff 70%); overflow: hidden; }
 .avatar .hair { position: absolute; top: -6%; left: 8%; right: 8%; height: 52%;
   background: #5a3d28; border-radius: 50% 50% 42% 42%; }
@@ -71,13 +72,13 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   background: #ffd9b0; border-radius: 46%; }
 .avatar .eye { position: absolute; top: 56%; width: 9%; height: 13%; background: #26221f; border-radius: 50%; }
 .avatar .eye.l { left: 34%; } .avatar .eye.r { right: 34%; }
-.avatar .lvl-badge { position: absolute; bottom: -4%; left: -4%; width: 40%; height: 40%;
+.avatar .lvl-badge { position: absolute; bottom: -2%; left: -2%; width: 38%; height: 38%;
   background: linear-gradient(180deg, var(--el-success), var(--el-success-dark));
   border: 2.5px solid var(--el-outline); border-radius: 50%; display: flex; align-items: center;
   justify-content: center; color: #fff; font-weight: 900; font-size: 55%; }
 #player-card .who { display: flex; flex-direction: column; gap: 3px; }
 #player-card .name { color: #fff; font-weight: 900; font-size: min(18px, 4.4dvh); letter-spacing: 0.5px; }
-#player-card .lvl { color: var(--el-gold); font-weight: 800; font-size: min(13px, 3.2dvh);
+#player-card .lvl { color: #fff; font-weight: 800; font-size: min(13px, 3.2dvh);
   display: flex; align-items: center; gap: 4px; }
 #player-card .lvl .el-icon { width: 12px; height: 12px; fill: var(--el-gold); }
 .xp-track { width: clamp(90px, 26dvh, 150px); height: clamp(8px, 2.6dvh, 12px); border-radius: 999px;
@@ -86,10 +87,10 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
 .xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 900; font-size: 8.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
-#xp-chip { position: absolute; top: -9px; right: -13px; background: linear-gradient(180deg, #5fc0ff, #1c72c9);
-  border: 3px solid var(--el-outline); border-radius: 12px; color: #fff; font-weight: 900;
-  font-size: clamp(10px, 2dvmin, 13px); padding: 4px 9px;
-  box-shadow: 0 3px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.3); }
+#xp-chip { position: absolute; top: 4px; right: calc(-14px - 5.4dvh); background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
+  border: 2.5px solid rgba(10,18,48,0.9); border-radius: 12px; color: #fff; font-weight: 900;
+  font-size: min(13px, 3.2dvh); padding: min(6px, 1.6dvh) min(11px, 2.6dvh);
+  box-shadow: inset 0 -3px 0 #114a8c, inset 0 2px 0 rgba(255,255,255,0.4), 0 3px 8px rgba(10,18,48,0.4); }
 
 /* ---------- monnaies + menu (haut droite) ---------- */
 #top-right { grid-area: tr; display: flex; align-items: flex-start; gap: clamp(6px, 1.4dvmin, 12px); justify-self: end; }
@@ -116,6 +117,8 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #burger:active { transform: translateY(2px); box-shadow: inset 0 -2px 0 #0d1834, inset 0 2px 0 rgba(255,255,255,0.2), 0 1px 4px rgba(10,18,48,0.4); }
 
 /* ---------- badge notification (rond rouge) ---------- */
+.badge-green { background: linear-gradient(180deg, #7fe08a 20%, var(--el-success) 60%, var(--el-success-dark)) !important;
+  border-color: #1d6b1f !important; }
 .badge { position: absolute; top: -6px; right: -6px; min-width: min(19px, 4.6dvh); height: min(19px, 4.6dvh); padding: 0 5px;
   background: linear-gradient(180deg, #ff8290 20%, var(--el-danger) 60%, var(--el-danger-dark));
   border: 2px solid #8f1622; border-radius: 999px; color: #fff; font-weight: 900;
@@ -152,7 +155,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 .nav-btn .lbl { color: #fff; font-weight: 900; font-size: min(11.5px, 3.1dvh); letter-spacing: 0.3px;
   text-shadow: 0 1px 0 rgba(10,18,48,0.45); }
 .plate-orange { --pl-top: #ffc169; --pl-mid: var(--el-orange); --pl-lip: #cf6a06; --pl-ico: var(--el-orange-dark); }
-.plate-cyan { --pl-top: #8fe9ff; --pl-mid: var(--el-cyan); --pl-lip: #0d93ad; --pl-ico: var(--el-cyan-dark); }
+.plate-cyan { --pl-top: #7fe8cf; --pl-mid: #23b898; --pl-lip: #0e7a63; --pl-ico: #0e8a70; }
 .plate-purple { --pl-top: #bb95ff; --pl-mid: var(--el-purple); --pl-lip: #5c28c4; --pl-ico: var(--el-purple-dark); }
 /* maquette : QUÊTES et SOCIAL sont des plates SOMBRES désaturées —
    la hiérarchie visuelle met les 3 premières en avant */
@@ -179,13 +182,13 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #card-event .pill { background: rgba(10,18,48,0.75); border: 2px solid var(--el-outline);
   border-radius: 999px; padding: 2.5px 8px; color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
 #card-event .pill b { color: var(--el-gold); }
-#card-xp { background: linear-gradient(160deg, #9a68f7, var(--el-magenta) 70%, var(--el-magenta-dark)); display: flex; align-items: center; gap: 9px; }
+#card-xp { background: linear-gradient(165deg, #a273f8 0%, var(--el-purple) 55%, #b04ac8 100%); display: flex; align-items: center; gap: 9px; }
 #card-xp .hex { flex: 0 0 auto; width: min(38px, 8.4dvh); height: min(38px, 8.4dvh);
-  background: linear-gradient(180deg, #ffe993, var(--el-gold) 62%, var(--el-gold));
-  border: 2px solid rgba(10,18,48,0.8); border-radius: 26%; transform: rotate(45deg);
+  background: linear-gradient(180deg, #a678f8, var(--el-purple-dark) 70%);
+  border: 2.5px solid var(--el-gold); border-radius: 26%; transform: rotate(45deg);
   display: flex; align-items: center; justify-content: center;
-  box-shadow: inset 0 -3px 0 #e09b00, inset 0 2px 0 rgba(255,255,255,0.5); }
-#card-xp .hex span { transform: rotate(-45deg); color: #5a2f8f; font-weight: 900; font-size: clamp(11px, 2dvmin, 14px); }
+  box-shadow: inset 0 -3px 0 #4a1e9e, inset 0 2px 0 rgba(255,255,255,0.35), 0 0 0 1.5px rgba(10,18,48,0.7); }
+#card-xp .hex span { transform: rotate(-45deg); color: var(--el-gold); font-weight: 900; font-size: clamp(11px, 2dvmin, 14px); }
 #card-xp .txt .t { line-height: 1.1; }
 #card-xp .txt .pct { color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
 #card-chest { background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
@@ -204,22 +207,21 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   background: linear-gradient(180deg, #2f74e0, #1d55b4 62%, #1d55b4); border: 2.5px solid rgba(10,18,48,0.9);
   border-radius: clamp(12px, 3.6dvh, 16px);
   box-shadow: inset 0 -4px 0 #123a80, inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 10px rgba(10,18,48,0.4); }
-#daily-card .gems { flex: 0 0 auto; width: min(42px, 9dvh); height: min(42px, 9dvh);
-  border-radius: 26%; border: 2px solid rgba(10,18,48,0.8);
-  background: linear-gradient(180deg, #8fe9ff, var(--el-cyan) 62%, var(--el-cyan));
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: inset 0 -3px 0 #0d93ad, inset 0 2px 0 rgba(255,255,255,0.5); }
-#daily-card .gems .el-icon { width: 62%; height: 62%; fill: #0d5a86; }
+#daily-card .gems { flex: 0 0 auto; width: min(44px, 9.4dvh); height: min(44px, 9.4dvh);
+  display: flex; align-items: center; justify-content: center; }
+#daily-card .gems .el-icon { width: 100%; height: 100%; fill: #4fc7f0;
+  filter: drop-shadow(0 3px 0 rgba(10,18,48,0.45)) drop-shadow(0 0 5px rgba(79,199,240,0.6)); }
 #daily-card .txt { display: flex; flex-direction: column; gap: 2px; }
 #daily-card .t { color: var(--el-gold); font-weight: 900; font-size: min(13px, 3.2dvh); letter-spacing: 0.6px; white-space: nowrap; }
 #daily-card .d1 { color: #fff; font-weight: 800; font-size: min(12.5px, 3dvh); white-space: nowrap; }
 #daily-card .d2 { color: var(--el-text-muted); font-weight: 700; font-size: min(11px, 2.7dvh); white-space: nowrap; }
 #daily-card .right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: 4px; }
 #daily-card .prog { color: #fff; font-weight: 900; font-size: min(15px, 3.6dvh); }
-#daily-card .reward { background: linear-gradient(180deg, #b28aff, var(--el-purple-dark));
-  border: 2.5px solid var(--el-outline); border-radius: 999px; padding: 2.5px 8px;
-  color: #fff; font-weight: 900; font-size: 10.5px; display: flex; align-items: center; gap: 3px; }
-#daily-card .reward .el-icon { width: 11px; height: 11px; fill: var(--el-gold); }
+#daily-card .reward { background: linear-gradient(180deg, #17234a, #0d1834);
+  border: 2px solid rgba(10,18,48,0.9); border-radius: 999px; padding: 3px 9px;
+  color: #fff; font-weight: 900; font-size: 10.5px; display: flex; align-items: center; gap: 4px;
+  box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.15); }
+#daily-card .reward .el-icon { width: 12px; height: 12px; fill: #b06ef5; }
 
 /* ---------- bouton JOUER (bas droite) ---------- */
 #play-btn { grid-area: play; align-self: end; justify-self: end; display: flex; align-items: center;
@@ -270,7 +272,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
       <div class="face"></div>
       <div class="hair"></div>
       <div class="eye l"></div><div class="eye r"></div>
-      <div class="lvl-badge">✓</div>
+      <div class="lvl-badge">+</div>
     </div>
     <div class="who">
       <span class="name">MAX</span>
@@ -308,7 +310,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
     <div class="nav-btn plate-cyan" data-soon>
       <span class="nav-ico"><svg class="el-icon"><use href="#icon-paw"></use></svg></span>
       <span class="lbl">PETS</span>
-      <span class="badge">5</span>
+      <span class="badge badge-green">5</span>
     </div>
     <div class="nav-btn plate-purple" data-soon>
       <span class="nav-ico"><svg class="el-icon"><use href="#icon-gift"></use></svg></span>
@@ -330,7 +332,6 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
     <div class="event-card" id="card-event" data-soon>
       <div class="t">ÉVÉNEMENT</div>
       <div class="sub"><span class="pill">Fin dans : <b id="event-timer">1h 24min</b></span></div>
-      <span class="badge">!</span>
     </div>
     <div class="event-card" id="card-xp" data-soon>
       <div class="hex"><span>2x</span></div>
