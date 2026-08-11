@@ -50,9 +50,9 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 
 /* ---------- carte joueur (haut gauche) ---------- */
 #player-card { grid-area: tl; display: flex; align-items: center; gap: 10px;
-  padding: 7px 12px 7px 8px; width: max-content; }
+  padding: 7px 26px 7px 8px; width: max-content; position: relative; }
 #player-card .avatar { width: clamp(44px, 9dvmin, 58px); height: clamp(44px, 9dvmin, 58px);
-  border-radius: 50%; border: 3px solid var(--el-outline); position: relative; flex: 0 0 auto;
+  border-radius: 14px; border: 3px solid var(--el-outline); position: relative; flex: 0 0 auto;
   background: radial-gradient(circle at 35% 30%, #6fb7ff, #258cff 70%); overflow: hidden; }
 .avatar .hair { position: absolute; top: -6%; left: 8%; right: 8%; height: 52%;
   background: #5a3d28; border-radius: 50% 50% 42% 42%; }
@@ -75,9 +75,9 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
 .xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 900; font-size: 8.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
-#xp-chip { align-self: flex-start; margin-left: 2px; background: linear-gradient(180deg, #5fc0ff, #1c72c9);
+#xp-chip { position: absolute; top: -9px; right: -13px; background: linear-gradient(180deg, #5fc0ff, #1c72c9);
   border: 3px solid var(--el-outline); border-radius: 12px; color: #fff; font-weight: 900;
-  font-size: clamp(10px, 2dvmin, 13px); padding: 5px 9px;
+  font-size: clamp(10px, 2dvmin, 13px); padding: 4px 9px;
   box-shadow: 0 3px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.3); }
 
 /* ---------- monnaies + menu (haut droite) ---------- */
@@ -110,29 +110,34 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   box-shadow: 0 2px 0 rgba(4,9,28,0.4); }
 
 /* ---------- navigation verticale (gauche) ---------- */
-#side-nav { grid-area: nav; display: flex; flex-direction: column; gap: clamp(5px, 1.2dvmin, 10px);
-  align-self: start; margin-top: clamp(2px, 1dvmin, 8px); }
+#side-nav { grid-area: nav; display: flex; flex-direction: column; gap: clamp(7px, 1.6dvmin, 12px);
+  align-self: start; margin-top: clamp(8px, 2.4dvmin, 20px); }
+/* maquette : chaque bouton est une PLATE PLEINE COULEUR, coins très
+   arrondis, contour épais, lèvre d'ombre colorée — l'icône vit dans une
+   tuile crème arrondie à gauche */
 .nav-btn { position: relative; display: flex; align-items: center; gap: 8px; cursor: pointer;
-  width: clamp(128px, 22dvmin, 172px); padding: 5px 8px 5px 5px;
-  background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
-  border: var(--el-border-w) solid var(--el-outline); border-radius: var(--el-radius-md);
-  box-shadow: 0 4px 0 rgba(4,9,28,0.55), inset 0 2px 0 rgba(255,255,255,0.18); }
-.nav-btn:hover { filter: brightness(1.08); }
-.nav-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(4,9,28,0.55); }
+  width: clamp(132px, 23dvmin, 178px); padding: 4px 10px 4px 4px;
+  border: 3.5px solid var(--el-outline); border-radius: 16px;
+  background: linear-gradient(180deg, var(--pl-top), var(--pl-mid) 55%, var(--pl-bot));
+  box-shadow: 0 4px 0 var(--pl-lip), 0 7px 10px rgba(4,9,28,0.35), inset 0 2px 0 rgba(255,255,255,0.35); }
+.nav-btn:hover { filter: brightness(1.07); }
+.nav-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 var(--pl-lip), inset 0 2px 0 rgba(255,255,255,0.35); }
 .nav-ico { width: clamp(30px, 5.6dvmin, 40px); height: clamp(30px, 5.6dvmin, 40px); flex: 0 0 auto;
-  border-radius: 11px; border: 2.5px solid var(--el-outline); display: flex; align-items: center;
-  justify-content: center; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35), inset 0 -3px 4px rgba(4,9,28,0.35); }
-.nav-ico .el-icon { width: 62%; height: 62%; fill: #fff; color: #fff; }
-.nav-btn .lbl { color: #fff; font-weight: 900; font-size: clamp(10.5px, 2dvmin, 13.5px); letter-spacing: 0.6px; }
-.ico-orange { background: linear-gradient(180deg, #ffb35c, var(--el-orange) 55%, var(--el-orange-dark)); }
-.ico-cyan { background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
-.ico-purple { background: linear-gradient(180deg, #b28aff, var(--el-purple) 55%, var(--el-purple-dark)); }
-.ico-blue { background: linear-gradient(180deg, #6fb7ff, var(--el-blue) 55%, var(--el-blue-dark)); }
-.ico-navy { background: linear-gradient(180deg, #3a5799, #22345f); }
+  border-radius: 11px; border: 2.5px solid var(--el-outline); background: linear-gradient(180deg, #fffdf2, var(--el-cream));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -3px 0 rgba(160,120,60,0.35); }
+.nav-ico .el-icon { width: 64%; height: 64%; fill: var(--pl-ico); color: var(--pl-ico); }
+.nav-btn .lbl { color: #fff; font-weight: 900; font-size: clamp(10.5px, 2dvmin, 13.5px); letter-spacing: 0.7px;
+  text-shadow: 0 1.5px 0 rgba(10,18,48,0.55); }
+.plate-orange { --pl-top: #ffb35c; --pl-mid: var(--el-orange); --pl-bot: var(--el-orange-dark); --pl-lip: #a04d04; --pl-ico: var(--el-orange-dark); }
+.plate-cyan { --pl-top: #7fe3ff; --pl-mid: var(--el-cyan); --pl-bot: var(--el-cyan-dark); --pl-lip: #086b80; --pl-ico: var(--el-cyan-dark); }
+.plate-purple { --pl-top: #b28aff; --pl-mid: var(--el-purple); --pl-bot: var(--el-purple-dark); --pl-lip: #45208f; --pl-ico: var(--el-purple-dark); }
+.plate-blue { --pl-top: #6fb7ff; --pl-mid: var(--el-blue); --pl-bot: var(--el-blue-dark); --pl-lip: #0d3f85; --pl-ico: var(--el-blue-dark); }
+.plate-navy { --pl-top: #3a5799; --pl-mid: #2a4076; --pl-bot: #1c2c55; --pl-lip: #0a1230; --pl-ico: #2a4076; }
 
 /* ---------- cartes événements (droite) ---------- */
 #right-stack { grid-area: right; display: flex; flex-direction: column; gap: clamp(6px, 1.4dvmin, 11px);
-  align-self: start; justify-self: end; margin-top: clamp(2px, 1dvmin, 8px);
+  align-self: start; justify-self: end; margin-top: clamp(14px, 6dvh, 44px);
   width: clamp(150px, 26dvmin, 205px); }
 .event-card { position: relative; padding: 7px 10px; cursor: pointer; border-radius: var(--el-radius-md);
   border: var(--el-border-w) solid var(--el-outline);
@@ -144,12 +149,12 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #card-event .pill { background: rgba(10,18,48,0.75); border: 2px solid var(--el-outline);
   border-radius: 999px; padding: 2.5px 8px; color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
 #card-event .pill b { color: var(--el-gold); }
-#card-xp { background: linear-gradient(180deg, #f56cb0, var(--el-magenta-dark)); display: flex; align-items: center; gap: 9px; }
+#card-xp { background: linear-gradient(160deg, #9a68f7, var(--el-magenta) 70%, var(--el-magenta-dark)); display: flex; align-items: center; gap: 9px; }
 #card-xp .hex { flex: 0 0 auto; width: clamp(28px, 5.4dvmin, 38px); height: clamp(28px, 5.4dvmin, 38px);
-  background: linear-gradient(180deg, #b28aff, var(--el-purple-dark));
+  background: linear-gradient(180deg, #ffe082, var(--el-gold) 55%, var(--el-gold-dark));
   border: 2.5px solid var(--el-outline); border-radius: 10px; transform: rotate(45deg);
   display: flex; align-items: center; justify-content: center; box-shadow: inset 0 2px 0 rgba(255,255,255,0.35); }
-#card-xp .hex span { transform: rotate(-45deg); color: #fff; font-weight: 900; font-size: clamp(11px, 2dvmin, 14px); }
+#card-xp .hex span { transform: rotate(-45deg); color: #5a2f8f; font-weight: 900; font-size: clamp(11px, 2dvmin, 14px); }
 #card-xp .txt .t { line-height: 1.1; }
 #card-xp .txt .pct { color: var(--el-cream); font-weight: 800; font-size: 10.5px; }
 #card-chest { background: linear-gradient(180deg, var(--el-bg-panel-light), var(--el-bg-panel));
@@ -193,12 +198,13 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   transition: transform 0.06s, box-shadow 0.06s; }
 #play-btn:hover { filter: brightness(1.05); }
 #play-btn:active { transform: translateY(5px); box-shadow: 0 2px 0 #9a6d00, 0 6px 12px rgba(4,9,28,0.5), inset 0 3px 0 rgba(255,255,255,0.55); }
-#play-btn .tri { width: clamp(26px, 5dvmin, 38px); height: clamp(26px, 5dvmin, 38px); border-radius: 50%;
-  background: rgba(255,255,255,0.85); border: 3px solid var(--el-outline);
+#play-btn .tri { width: clamp(24px, 4.6dvmin, 34px); height: clamp(24px, 4.6dvmin, 34px);
   display: flex; align-items: center; justify-content: center; }
-#play-btn .tri .el-icon { width: 58%; height: 58%; fill: var(--el-orange-dark); margin-left: 2px; }
-#play-btn .lbl { color: #241a04; font-weight: 900; font-size: clamp(22px, 5dvmin, 34px);
-  letter-spacing: 1.5px; text-shadow: 0 1.5px 0 rgba(255,255,255,0.5); }
+#play-btn .tri .el-icon { width: 100%; height: 100%; fill: #fff;
+  filter: drop-shadow(0 2px 0 rgba(10,18,48,0.55)); }
+#play-btn .lbl { color: #fff; font-weight: 900; font-size: clamp(24px, 5.4dvmin, 36px);
+  letter-spacing: 2px; -webkit-text-stroke: 1.5px rgba(10,18,48,0.65);
+  text-shadow: 0 2.5px 0 rgba(10,18,48,0.55); }
 
 /* ---------- toast « bientôt » ---------- */
 #toast { position: fixed; left: 50%; bottom: calc(16px + var(--safe-bottom)); transform: translateX(-50%);
@@ -277,27 +283,27 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 
   <!-- navigation -->
   <div id="side-nav">
-    <div class="nav-btn" data-href="./spike3d-menu.html">
-      <span class="nav-ico ico-orange"><svg class="el-icon"><use href="#icon-avatar"></use></svg></span>
+    <div class="nav-btn plate-orange" data-href="./spike3d-menu.html">
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-avatar"></use></svg></span>
       <span class="lbl">PERSONNAGE</span>
       <span class="badge">!</span>
     </div>
-    <div class="nav-btn" data-soon>
-      <span class="nav-ico ico-cyan"><svg class="el-icon"><use href="#icon-paw"></use></svg></span>
+    <div class="nav-btn plate-cyan" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-paw"></use></svg></span>
       <span class="lbl">PETS</span>
       <span class="badge">5</span>
     </div>
-    <div class="nav-btn" data-soon>
-      <span class="nav-ico ico-purple"><svg class="el-icon"><use href="#icon-gift"></use></svg></span>
+    <div class="nav-btn plate-purple" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-gift"></use></svg></span>
       <span class="lbl">RÉCOMPENSES</span>
       <span class="badge">2</span>
     </div>
-    <div class="nav-btn" data-soon>
-      <span class="nav-ico ico-blue"><svg class="el-icon"><use href="#icon-book"></use></svg></span>
+    <div class="nav-btn plate-blue" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-book"></use></svg></span>
       <span class="lbl">QUÊTES</span>
     </div>
-    <div class="nav-btn" data-soon>
-      <span class="nav-ico ico-navy"><svg class="el-icon"><use href="#icon-addPerson"></use></svg></span>
+    <div class="nav-btn plate-navy" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-addPerson"></use></svg></span>
       <span class="lbl">SOCIAL</span>
     </div>
   </div>
@@ -501,7 +507,14 @@ const platform = new THREE.Group();
   shadow.rotation.x = -Math.PI / 2; shadow.position.y = -0.52; platform.add(shadow);
 }
 platform.position.y = -1.15;
-scene.add(platform);
+// -------- stageGroup (retour Camille 2026-08-11) : toute la scène dans un
+// groupe REMONTÉ et légèrement réduit — Max pile au centre de l'écran, et
+// la plateforme ne passe plus DERRIÈRE les cartes du bas (superposition). --------
+const stageGroup = new THREE.Group();
+stageGroup.add(platform);
+stageGroup.position.y = 0.42;
+stageGroup.scale.setScalar(0.9);
+scene.add(stageGroup);
 
 // pet chien orange (procédural, style toon)
 const dog = new THREE.Group();
@@ -542,9 +555,9 @@ const dog = new THREE.Group();
   const tailTip = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), furLight);
   tailTip.position.set(0, 0.72, -0.55); dog.userData.tailTip = tailTip; dog.add(tailTip);
 }
-dog.position.set(0.95, -1.15 + 0.21, 0.35);
+dog.position.set(1.05, -1.15 + 0.21, 0.35);
 dog.rotation.y = -0.5;
-scene.add(dog);
+stageGroup.add(dog);
 
 // Max (le vrai modèle 3D du jeu)
 let maxModel = null;
@@ -564,8 +577,9 @@ new GLTFLoader().load('models/max-character.glb', (gltf) => {
   g.add(model);
   const s = 2.3 / size.y; // ~2,3 unités de haut sur la plateforme
   g.scale.setScalar(s);
-  g.position.set(-0.35, -1.15 + 0.21 + (size.y * s) / 2, 0);
-  scene.add(g);
+  // Max PILE au centre horizontal de l'écran (le chien à sa droite)
+  g.position.set(-0.12, -1.15 + 0.21 + (size.y * s) / 2, 0);
+  stageGroup.add(g);
   maxModel = g;
 }, undefined, err => console.error('Chargement de Max échoué :', err));
 
