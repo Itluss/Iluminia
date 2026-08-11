@@ -34,8 +34,8 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #world-bg { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; }
 /* héros pré-rendu (Max + chien + plateforme) : une IMAGE — s'affiche
    partout, sur tous les navigateurs, toujours pile au centre */
-#hero { position: fixed; left: 50%; bottom: clamp(46px, 13dvh, 90px);
-  transform: translateX(-50%); height: min(60dvh, 46dvw); z-index: 1;
+#hero { position: fixed; left: 50%; bottom: clamp(8px, 3dvh, 22px);
+  transform: translateX(-50%); height: min(72dvh, 52dvw); z-index: 1;
   pointer-events: none; filter: drop-shadow(0 12px 20px rgba(10,18,48,0.4));
   animation: heroFloat 5s ease-in-out infinite alternate; }
 @keyframes heroFloat { from { transform: translateX(-50%) translateY(0); }
@@ -108,12 +108,12 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 .capsule .add:active { transform: translateY(1px); }
 #coin-capsule .el-icon { fill: var(--el-gold); }
 #gem-capsule .el-icon { fill: var(--el-purple); }
-#burger { position: relative; width: min(52px, 11dvh); height: min(52px, 11dvh);
-  border-radius: 15px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+#burger { position: relative; width: min(76px, 16dvh); height: min(46px, 10dvh);
+  border-radius: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center;
   background: linear-gradient(180deg, #2c4380, #1a2b58 62%, #1a2b58);
   border: 2.5px solid rgba(10,18,48,0.95);
   box-shadow: inset 0 -4px 0 #0d1834, inset 0 2px 0 rgba(255,255,255,0.2), 0 4px 10px rgba(10,18,48,0.4); }
-#burger .el-icon { width: 55%; height: 55%; color: #fff; }
+#burger .el-icon { width: 44%; height: 78%; color: #fff; }
 #burger:active { transform: translateY(2px); box-shadow: inset 0 -2px 0 #0d1834, inset 0 2px 0 rgba(255,255,255,0.2), 0 1px 4px rgba(10,18,48,0.4); }
 
 /* ---------- badge notification (rond rouge) ---------- */
@@ -203,33 +203,33 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 
 /* ---------- défi du jour (bas gauche) ---------- */
 #daily-card { grid-area: defi; align-self: end; display: flex; align-items: center; gap: 9px;
-  width: max-content; max-width: min(48dvw, 330px); padding: clamp(4px, 1.6dvh, 9px) 12px;
+  width: max-content; max-width: min(52dvw, 420px); padding: clamp(7px, 2.4dvh, 14px) clamp(12px, 2dvw, 20px);
   background: linear-gradient(180deg, #2f74e0, #1d55b4 62%, #1d55b4); border: 2.5px solid rgba(10,18,48,0.9);
   border-radius: clamp(12px, 3.6dvh, 16px);
   box-shadow: inset 0 -4px 0 #123a80, inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 10px rgba(10,18,48,0.4); }
-#daily-card .gems { flex: 0 0 auto; width: min(44px, 9.4dvh); height: min(44px, 9.4dvh);
+#daily-card .gems { flex: 0 0 auto; width: min(54px, 11.4dvh); height: min(54px, 11.4dvh);
   display: flex; align-items: center; justify-content: center; }
 #daily-card .gems .el-icon { width: 100%; height: 100%; fill: #4fc7f0;
   filter: drop-shadow(0 3px 0 rgba(10,18,48,0.45)) drop-shadow(0 0 5px rgba(79,199,240,0.6)); }
 #daily-card .txt { display: flex; flex-direction: column; gap: 2px; }
-#daily-card .t { color: var(--el-gold); font-weight: 900; font-size: min(13px, 3.2dvh); letter-spacing: 0.6px; white-space: nowrap; }
-#daily-card .d1 { color: #fff; font-weight: 800; font-size: min(12.5px, 3dvh); white-space: nowrap; }
-#daily-card .d2 { color: var(--el-text-muted); font-weight: 700; font-size: min(11px, 2.7dvh); white-space: nowrap; }
+#daily-card .t { color: var(--el-gold); font-weight: 900; font-size: min(15px, 3.8dvh); letter-spacing: 0.6px; white-space: nowrap; }
+#daily-card .d1 { color: #fff; font-weight: 800; font-size: min(14px, 3.4dvh); white-space: nowrap; }
+#daily-card .d2 { color: var(--el-text-muted); font-weight: 700; font-size: min(12.5px, 3dvh); white-space: nowrap; }
 #daily-card .right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: 4px; }
-#daily-card .prog { color: #fff; font-weight: 900; font-size: min(15px, 3.6dvh); }
+#daily-card .prog { color: #fff; font-weight: 900; font-size: min(18px, 4.4dvh); }
 #daily-card .reward { background: linear-gradient(180deg, #17234a, #0d1834);
-  border: 2px solid rgba(10,18,48,0.9); border-radius: 999px; padding: 3px 9px;
-  color: #fff; font-weight: 900; font-size: 10.5px; display: flex; align-items: center; gap: 4px;
+  border: 2px solid rgba(10,18,48,0.9); border-radius: 999px; padding: 4px 11px;
+  color: #fff; font-weight: 900; font-size: min(12px, 3dvh); display: flex; align-items: center; gap: 4px;
   box-shadow: inset 0 1.5px 0 rgba(255,255,255,0.15); }
 #daily-card .reward .el-icon { width: 12px; height: 12px; fill: #b06ef5; }
 
 /* ---------- bouton JOUER (bas droite) ---------- */
 #play-btn { grid-area: play; align-self: end; justify-self: end; display: flex; align-items: center;
   justify-content: center; gap: 12px; cursor: pointer; position: relative;
-  width: clamp(180px, 52dvh, 320px); padding: clamp(9px, 3.2dvh, 21px) 0;
+  width: clamp(210px, 34dvw, 360px); padding: clamp(11px, 4.2dvh, 26px) 0;
   border-radius: clamp(14px, 4.6dvh, 22px); border: 3px solid #2c1f08;
   background: linear-gradient(180deg, #ffe993 0%, var(--el-gold) 58%, var(--el-gold) 100%);
-  box-shadow: inset 0 -7px 0 #e09b00, inset 0 3px 0 rgba(255,255,255,0.6),
+  box-shadow: inset 0 -9px 0 #e09b00, inset 0 3px 0 rgba(255,255,255,0.6),
     0 6px 14px rgba(10,18,48,0.45);
   transition: transform 0.06s, box-shadow 0.06s; }
 #play-btn::after { content: ""; position: absolute; left: 4px; right: 4px; top: 3px; height: 46%;
@@ -239,11 +239,11 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #play-btn:hover { filter: brightness(1.04); }
 #play-btn:active { transform: translateY(3px); box-shadow: inset 0 -4px 0 #e09b00,
   inset 0 3px 0 rgba(255,255,255,0.6), 0 2px 6px rgba(10,18,48,0.45); }
-#play-btn .tri { width: min(34px, 7.4dvh); height: min(34px, 7.4dvh);
+#play-btn .tri { width: min(40px, 8.8dvh); height: min(40px, 8.8dvh);
   display: flex; align-items: center; justify-content: center; }
 #play-btn .tri .el-icon { width: 100%; height: 100%; fill: #fff;
   filter: drop-shadow(0 2px 0 rgba(10,18,48,0.55)); }
-#play-btn .lbl { color: #fff; font-weight: 900; font-size: min(36px, 8dvh);
+#play-btn .lbl { color: #fff; font-weight: 900; font-size: min(42px, 9.6dvh);
   letter-spacing: 1.2px; -webkit-text-stroke: 1.2px rgba(44,31,8,0.75);
   text-shadow: 0 2px 0 rgba(44,31,8,0.45); }
 
