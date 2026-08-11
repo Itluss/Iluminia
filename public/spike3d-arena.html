@@ -1173,105 +1173,222 @@ scene.add(rimLight);
 // cristalline), liseré doré autour de la ZONE JOUABLE et médaillon
 // runique central. Tout est dessiné en canvas → zéro asset externe. --------
 function makeGroundTexture() {
-  // 2048 : à 1024, la magnification (≈ 4 px écran / texel) rendait tout
-  // le sol flou (revue DA 2026-08-10 « annule le travail du damier »)
+  // -------- V2 « illustration peinte » (retour Camille 2026-08-10 :
+  // « même en 2D tu devrais être capable de faire mieux ») : fini le
+  // damier uniforme — le sol est une VRAIE scène 2D : place centrale en
+  // mosaïque rayonnante, chemins de grès CHAUD qui structurent la carte
+  // (contraste chaud/froid façon Clash Royale), massifs de mousse
+  // sauvage, bassins de cristal lumineux, et pavés peints un à un avec
+  // leur lumière. RAPPEL exposition : la lumière de la scène multiplie
+  // l'albédo par ≈ 1,8 — toutes les couleurs sont peintes ~40 % plus
+  // sombres que la teinte voulue à l'écran. --------
   const w = 2048, h = Math.round(2048 * (FULL_D / FULL_W));
   const c = document.createElement('canvas'); c.width = w; c.height = h;
   const ctx = c.getContext('2d');
   const wx = x => (x + FULL_W) / (2 * FULL_W) * w;   // monde → canvas
   const wz = z => (z + FULL_D) / (2 * FULL_D) * h;
+  const wu = u => u / (2 * FULL_W) * w;              // longueur monde → px
+  const k = w / 1024;
+  const rand = (a, b) => a + Math.random() * (b - a);
 
-  // damier : dalles ~3,4 u — deux violets francs qui alternent, jitter
-  // de teinte par dalle pour casser la répétition
-  const cols = 22, rows = Math.round(cols * (FULL_D / FULL_W));
-  const tw = w / cols, th = h / rows;
-  // IMPORTANT : la lumière de la scène (ambiante + soleil ≈ ×1,8 sur un
-  // sol horizontal) SURESPOSE l'albédo — les couleurs sont donc peintes
-  // ~40 % plus sombres que la teinte voulue À L'ÉCRAN (constat capture
-  // 2026-08-10 : peintes « justes », elles rendaient pastel délavé)
-  const k = w / 1024; // facteur d'échelle des traits (canvas 2048)
-  ctx.fillStyle = '#191134'; ctx.fillRect(0, 0, w, h); // fond = joints
-  for (let r = 0; r < rows; r++) {
-    for (let q = 0; q < cols; q++) {
-      const checker = (r + q) % 2 === 0;
-      const jitter = 0.93 + Math.random() * 0.14;
-      // contraste FRANC entre les deux tons (revue DA : « variation trop
-      // timide ») + dalles « accent » bleu nuit rapprochées du damier
-      const accent = Math.random() < 0.045;
-      const base = accent ? [0x27, 0x22, 0x6e] : checker ? [0x55, 0x3c, 0x9a] : [0x1f, 0x13, 0x44];
-      ctx.fillStyle = `rgb(${Math.round(base[0] * jitter)},${Math.round(base[1] * jitter)},${Math.round(base[2] * jitter)})`;
-      const x = q * tw + 1.5 * k, y = r * th + 1.5 * k, cw = tw - 3 * k, ch = th - 3 * k;
-      ctx.fillRect(x, y, cw, ch);
-      // cadre intérieur discret
-      ctx.strokeStyle = 'rgba(10,6,30,0.18)'; ctx.lineWidth = 2 * k;
-      ctx.strokeRect(x + 3.5 * k, y + 3.5 * k, cw - 7 * k, ch - 7 * k);
-      // biseau cartoon : arête claire en haut, ombre en bas
-      ctx.fillStyle = 'rgba(255,255,255,0.16)'; ctx.fillRect(x, y, cw, 3 * k);
-      ctx.fillStyle = 'rgba(0,0,0,0.26)'; ctx.fillRect(x, y + ch - 3 * k, cw, 3 * k);
-      // lueur intérieure cyan des dalles accent (revue : sans elle, la
-      // dalle lisait comme un decal plaqué)
-      if (accent) {
-        ctx.strokeStyle = 'rgba(111,216,255,0.22)'; ctx.lineWidth = 3 * k;
-        ctx.strokeRect(x + 6 * k, y + 6 * k, cw - 12 * k, ch - 12 * k);
-      }
-      const roll = Math.random();
-      if (!accent && roll >= 0.19 && roll < 0.225) {
-        // dalle-rune : glyphe cyan lumineux discret (identité Eluminia)
-        ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.scale(k, k);
-        ctx.rotate((Math.floor(Math.random() * 4)) * Math.PI / 2);
-        ctx.strokeStyle = 'rgba(111,216,255,0.4)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
-        ctx.shadowColor = '#6fd8ff'; ctx.shadowBlur = 4;
-        const glyph = Math.floor(Math.random() * 3);
-        ctx.beginPath();
-        if (glyph === 0) { ctx.moveTo(-6, 6); ctx.lineTo(0, -7); ctx.lineTo(6, 6); ctx.moveTo(-3, 1); ctx.lineTo(3, 1); }
-        else if (glyph === 1) { ctx.arc(0, 0, 6, 0.6, Math.PI * 2 - 0.6); ctx.moveTo(0, -2); ctx.lineTo(0, 4); }
-        else { ctx.moveTo(-6, -6); ctx.lineTo(6, -6); ctx.lineTo(-2, 7); ctx.moveTo(-6, 0); ctx.lineTo(2, 0); }
-        ctx.stroke(); ctx.restore();
-        ctx.shadowBlur = 0;
-      }
-      if (roll < 0.045) {          // losange doré ASSUMÉ (revue : cœur
-        // clair + contour sombre, sinon « tache beige ») — plus rare
-        ctx.save(); ctx.translate(x + cw / 2, y + ch / 2); ctx.rotate(Math.PI / 4);
-        ctx.fillStyle = 'rgba(96,64,20,0.55)'; ctx.fillRect(-5.5 * k, -5.5 * k, 11 * k, 11 * k);
-        ctx.fillStyle = 'rgba(255,211,92,0.5)'; ctx.fillRect(-4 * k, -4 * k, 8 * k, 8 * k);
-        ctx.fillStyle = 'rgba(255,244,200,0.6)'; ctx.fillRect(-1.6 * k, -1.6 * k, 3.2 * k, 3.2 * k);
-        ctx.restore();
-      } else if (roll < 0.10) {    // fissure gravée (2 passes : ombre +
-        // arête claire décalée — revue : « cheveux collés » avant)
-        const steps = [];
-        let px = x + cw * (0.25 + Math.random() * 0.5), py = y + 4 * k;
-        steps.push([px, py]);
-        for (let s = 0; s < 3; s++) { px += (Math.random() - 0.5) * 26 * k; py += ch / 3.4; steps.push([px, py]); }
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = 'rgba(255,255,255,0.10)'; ctx.lineWidth = 2.6 * k;
-        ctx.beginPath(); steps.forEach(([a, b], i) => i ? ctx.lineTo(a + 1.6 * k, b + 1.6 * k) : ctx.moveTo(a + 1.6 * k, b + 1.6 * k)); ctx.stroke();
-        ctx.strokeStyle = 'rgba(14,8,32,0.6)'; ctx.lineWidth = 2.6 * k;
-        ctx.beginPath(); steps.forEach(([a, b], i) => i ? ctx.lineTo(a, b) : ctx.moveTo(a, b)); ctx.stroke();
-      } else if (roll < 0.16) {    // mousse cristalline (coin de dalle)
-        const mx = x + (Math.random() < 0.5 ? 4 * k : cw - 4 * k), my = y + (Math.random() < 0.5 ? 4 * k : ch - 4 * k);
-        const col = Math.random() < 0.5 ? '142,240,201' : '111,216,255';
-        for (let b = 0; b < 4; b++) {
-          ctx.fillStyle = `rgba(${col},${0.10 + Math.random() * 0.14})`;
-          ctx.beginPath();
-          ctx.arc(mx + (Math.random() - 0.5) * 20 * k, my + (Math.random() - 0.5) * 20 * k, (2.5 + Math.random() * 3.5) * k, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
+  // ---------- 1. fond : pavés violets peints un à un ----------
+  ctx.fillStyle = '#150e2e'; ctx.fillRect(0, 0, w, h); // joints
+  const cell = wu(2.1); // pavé ≈ 2,1 u
+  for (let y = 0; y < h + cell; y += cell) {
+    const offset = (Math.round(y / cell) % 2) * cell * 0.5; // quinconce
+    for (let x = -cell; x < w + cell; x += cell) {
+      const px = x + offset + rand(-1.5, 1.5) * k, py = y + rand(-1.5, 1.5) * k;
+      const pw = cell * rand(0.86, 0.96), ph = cell * rand(0.82, 0.94);
+      const t = Math.random();
+      const base = t < 0.45 ? [0x4e, 0x38, 0x92] : t < 0.85 ? [0x37, 0x25, 0x6b] : [0x27, 0x18, 0x52];
+      const j = rand(0.9, 1.12);
+      ctx.fillStyle = `rgb(${Math.round(base[0] * j)},${Math.round(base[1] * j)},${Math.round(base[2] * j)})`;
+      roundRect(ctx, px, py, pw, ph, 4.5 * k); ctx.fill();
+      // lumière peinte : arête haute claire + assise sombre
+      ctx.fillStyle = 'rgba(255,255,255,0.13)';
+      roundRect(ctx, px, py, pw, 3 * k, 2 * k); ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,0.28)';
+      roundRect(ctx, px, py + ph - 3 * k, pw, 3 * k, 2 * k); ctx.fill();
     }
   }
 
-  // hiérarchie de valeurs (revue DA) : centre légèrement plus clair et
-  // chaud, bords nettement plus sombres — AVANT le liseré et le
-  // médaillon pour ne pas les éteindre
+  // ---------- 2. massifs de mousse sauvage (organique, casse la grille) ----------
+  const mossPatches = [
+    { x: -27, z: -17, r: 8 }, { x: 27, z: 17, r: 8.5 },
+    { x: 28, z: -16, r: 6.5 }, { x: -28, z: 16, r: 6.5 },
+    { x: -8, z: 19, r: 4.2 }, { x: 9, z: -19.5, r: 4.2 },
+  ];
+  mossPatches.forEach(p => {
+    const cxp = wx(p.x), cyp = wz(p.z), R = wu(p.r);
+    // nappe : blobs plus petits, verts foncés et francs (l'exposition
+    // ×1,8 les remonte — la 1re passe rendait « nuage menthe » délavé)
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * R * 0.78;
+      const br = R * rand(0.16, 0.32);
+      ctx.fillStyle = Math.random() < 0.55 ? 'rgba(14,46,32,0.92)' : 'rgba(22,64,42,0.88)';
+      ctx.beginPath(); ctx.arc(cxp + Math.cos(a) * d, cyp + Math.sin(a) * d * 0.8, br, 0, Math.PI * 2); ctx.fill();
+    }
+    // cœur encore plus sombre pour donner du volume à la masse
+    for (let i = 0; i < 10; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * R * 0.4;
+      ctx.fillStyle = 'rgba(8,30,20,0.6)';
+      ctx.beginPath(); ctx.arc(cxp + Math.cos(a) * d, cyp + Math.sin(a) * d * 0.8, R * rand(0.14, 0.24), 0, Math.PI * 2); ctx.fill();
+    }
+    // brins : petites touffes claires en arcs
+    ctx.strokeStyle = 'rgba(84,168,120,0.5)'; ctx.lineWidth = 1.6 * k; ctx.lineCap = 'round';
+    for (let i = 0; i < 34; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * R * 0.8;
+      const bx2 = cxp + Math.cos(a) * d, by2 = cyp + Math.sin(a) * d * 0.8;
+      ctx.beginPath(); ctx.arc(bx2, by2, rand(2, 4) * k, Math.PI * rand(0.9, 1.1), Math.PI * rand(1.7, 1.95)); ctx.stroke();
+    }
+    // fleurs de cristal : points roses/dorés
+    for (let i = 0; i < 12; i++) {
+      const a = Math.random() * Math.PI * 2, d = Math.random() * R * 0.7;
+      ctx.fillStyle = Math.random() < 0.5 ? 'rgba(224,138,201,0.75)' : 'rgba(230,190,90,0.7)';
+      ctx.beginPath(); ctx.arc(cxp + Math.cos(a) * d, cyp + Math.sin(a) * d * 0.8, rand(1.4, 2.6) * k, 0, Math.PI * 2); ctx.fill();
+    }
+  });
+
+  // ---------- 3. chemins de grès chaud : anneau + 4 connecteurs ----------
+  function paintPath(points, width, closed) {
+    // 3 passes : ombre du creux, corps sable, cœur clair — lineJoin round
+    const passes = [
+      { w: width + 5 * k, col: 'rgba(30,18,10,0.85)' },
+      { w: width, col: 'rgb(112,88,56)' },
+      { w: width * 0.62, col: 'rgb(133,108,72)' },
+    ];
+    passes.forEach(p => {
+      ctx.strokeStyle = p.col; ctx.lineWidth = p.w; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+      ctx.beginPath();
+      points.forEach(([a, b], i) => i ? ctx.lineTo(wx(a), wz(b)) : ctx.moveTo(wx(a), wz(b)));
+      if (closed) ctx.closePath();
+      ctx.stroke();
+    });
+  }
+  const ringPts = [];
+  const RX = 21, RZ = 13; // demi-étendues de l'anneau
+  for (let i = 0; i < 40; i++) {
+    const a = i / 40 * Math.PI * 2;
+    // super-ellipse pour des angles doux
+    const co = Math.cos(a), si = Math.sin(a);
+    const f = 1 / Math.pow(Math.pow(Math.abs(co), 3) + Math.pow(Math.abs(si), 3), 1 / 3);
+    ringPts.push([co * f * RX, si * f * RZ]);
+  }
+  paintPath(ringPts, wu(3.6), true);
+  paintPath([[0, -RZ], [0, -FULL_D + 2.2]], wu(2.6), false);
+  paintPath([[0, RZ], [0, FULL_D - 2.2]], wu(2.6), false);
+  paintPath([[-RX, 0], [-FULL_W + 2.2, 0]], wu(2.6), false);
+  paintPath([[RX, 0], [FULL_W - 2.2, 0]], wu(2.6), false);
+  // pavés du chemin : galets sable dessinés par-dessus le corps
+  const stoneOnPath = (px, py) => {
+    ctx.fillStyle = `rgba(${Math.round(rand(140, 168))},${Math.round(rand(112, 136))},${Math.round(rand(74, 92))},0.55)`;
+    ctx.beginPath(); ctx.ellipse(px, py, rand(4, 8) * k, rand(3, 6) * k, Math.random() * Math.PI, 0, Math.PI * 2); ctx.fill();
+  };
+  ringPts.forEach(([a, b]) => {
+    for (let i = 0; i < 3; i++) stoneOnPath(wx(a) + rand(-14, 14) * k, wz(b) + rand(-10, 10) * k);
+  });
+  for (let i = 0; i < 46; i++) {
+    const vertical = Math.random() < 0.5;
+    if (vertical) { const s = Math.random() < 0.5 ? -1 : 1; stoneOnPath(wx(rand(-0.9, 0.9)), wz(s * rand(RZ, FULL_D - 2.4))); }
+    else { const s = Math.random() < 0.5 ? -1 : 1; stoneOnPath(wx(s * rand(RX, FULL_W - 2.4)), wz(rand(-0.9, 0.9))); }
+  }
+
+  // ---------- 4. bassins de cristal lumineux ----------
+  [{ x: -13.5, z: 8.5, r: 3.4 }, { x: 13.5, z: -8.5, r: 3.4 }].forEach(p => {
+    const cxp = wx(p.x), cyp = wz(p.z), R = wu(p.r);
+    // margelle de pierre
+    ctx.fillStyle = 'rgb(58,44,96)';
+    ctx.beginPath(); ctx.ellipse(cxp, cyp, R * 1.18, R * 0.92, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
+    ctx.beginPath(); ctx.ellipse(cxp, cyp - 2 * k, R * 1.18, R * 0.9, 0, Math.PI, Math.PI * 2); ctx.fill();
+    // eau de cristal : dégradé profond → turquoise lumineux
+    const gw = ctx.createRadialGradient(cxp, cyp, 0, cxp, cyp, R);
+    gw.addColorStop(0, 'rgb(64,178,190)'); gw.addColorStop(0.55, 'rgb(28,104,138)'); gw.addColorStop(1, 'rgb(14,48,92)');
+    ctx.fillStyle = gw;
+    ctx.beginPath(); ctx.ellipse(cxp, cyp, R, R * 0.76, 0, 0, Math.PI * 2); ctx.fill();
+    // reflets : arcs clairs + étincelles croix
+    ctx.strokeStyle = 'rgba(190,246,255,0.6)'; ctx.lineWidth = 1.8 * k;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(cxp + rand(-R, R) * 0.4, cyp + rand(-R, R) * 0.3, R * rand(0.16, 0.34), R * rand(0.08, 0.16), 0, Math.PI * rand(1.05, 1.2), Math.PI * rand(1.6, 1.9));
+      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(230,255,255,0.85)'; ctx.lineWidth = 1.4 * k;
+    for (let i = 0; i < 3; i++) {
+      const sx = cxp + rand(-R, R) * 0.5, sy = cyp + rand(-R, R) * 0.35, s = rand(3, 5) * k;
+      ctx.beginPath(); ctx.moveTo(sx - s, sy); ctx.lineTo(sx + s, sy); ctx.moveTo(sx, sy - s); ctx.lineTo(sx, sy + s); ctx.stroke();
+    }
+    // cristaux de berge
+    for (let i = 0; i < 5; i++) {
+      const a = Math.random() * Math.PI * 2;
+      const bx2 = cxp + Math.cos(a) * R * 1.14, by2 = cyp + Math.sin(a) * R * 0.9;
+      ctx.fillStyle = Math.random() < 0.5 ? 'rgba(111,216,255,0.8)' : 'rgba(201,138,255,0.8)';
+      ctx.save(); ctx.translate(bx2, by2); ctx.rotate(rand(0, Math.PI));
+      ctx.beginPath(); ctx.moveTo(0, -rand(4, 7) * k); ctx.lineTo(2.4 * k, 2 * k); ctx.lineTo(-2.4 * k, 2 * k); ctx.closePath(); ctx.fill();
+      ctx.restore();
+    }
+  });
+
+  // ---------- 5. place centrale : mosaïque rayonnante + médaillon ----------
+  const cx = wx(0), cy = wz(0), RP = wu(7.6);
+  // disque de fond
+  const gp = ctx.createRadialGradient(cx, cy, 0, cx, cy, RP);
+  gp.addColorStop(0, 'rgb(84,62,148)'); gp.addColorStop(1, 'rgb(52,38,104)');
+  ctx.fillStyle = gp;
+  ctx.beginPath(); ctx.ellipse(cx, cy, RP, RP * 0.78, 0, 0, Math.PI * 2); ctx.fill();
+  // rayons de mosaïque : secteurs alternés
+  for (let i = 0; i < 16; i++) {
+    if (i % 2) continue;
+    const a0 = i / 16 * Math.PI * 2, a1 = (i + 1) / 16 * Math.PI * 2;
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.ellipse(cx, cy, RP, RP * 0.78, 0, a0, a1); ctx.closePath(); ctx.fill();
+  }
+  // anneaux de pierre concentriques
+  [1, 0.72, 0.45].forEach((f, i) => {
+    ctx.strokeStyle = i === 1 ? 'rgba(111,216,255,0.55)' : 'rgba(20,12,44,0.7)';
+    ctx.lineWidth = (i === 1 ? 2.6 : 4) * k;
+    ctx.beginPath(); ctx.ellipse(cx, cy, RP * f, RP * f * 0.78, 0, 0, Math.PI * 2); ctx.stroke();
+  });
+  // médaillon d'or (cœur de la place)
+  ctx.lineWidth = 6 * k; ctx.strokeStyle = 'rgba(74,50,14,0.9)';
+  ctx.beginPath(); ctx.ellipse(cx, cy, wu(4.6), wu(4.6) * 0.78, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 3.4 * k; ctx.strokeStyle = 'rgba(255,211,92,0.9)';
+  ctx.beginPath(); ctx.ellipse(cx, cy, wu(4.6), wu(4.6) * 0.78, 0, 0, Math.PI * 2); ctx.stroke();
+  for (let a = 0; a < 8; a++) {
+    const ang = a * Math.PI / 4;
+    const sx = cx + Math.cos(ang) * wu(4.6) * 0.99, sy = cy + Math.sin(ang) * wu(4.6) * 0.78;
+    ctx.save(); ctx.translate(sx, sy); ctx.rotate(ang + Math.PI / 4);
+    ctx.fillStyle = 'rgba(74,50,14,0.9)'; ctx.fillRect(-4.6 * k, -4.6 * k, 9.2 * k, 9.2 * k);
+    ctx.fillStyle = 'rgba(255,211,92,0.9)'; ctx.fillRect(-3.2 * k, -3.2 * k, 6.4 * k, 6.4 * k);
+    ctx.fillStyle = 'rgba(255,246,210,0.9)'; ctx.fillRect(-1.2 * k, -1.2 * k, 2.4 * k, 2.4 * k);
+    ctx.restore();
+  }
+  // dragon stylisé au centre (spirale + tête triangle, discret)
+  ctx.strokeStyle = 'rgba(255,211,92,0.5)'; ctx.lineWidth = 2.6 * k; ctx.lineCap = 'round';
+  ctx.beginPath();
+  for (let i = 0; i <= 40; i++) {
+    const a = i / 40 * Math.PI * 3.2, r2 = wu(0.4) + i / 40 * wu(2.4);
+    const sx = cx + Math.cos(a) * r2, sy = cy + Math.sin(a) * r2 * 0.78;
+    i ? ctx.lineTo(sx, sy) : ctx.moveTo(sx, sy);
+  }
+  ctx.stroke();
+
+  // ---------- 6. finitions globales ----------
+  // éclats de cristal épars sur les pavés (hors chemins, léger)
+  for (let i = 0; i < 60; i++) {
+    const px = Math.random() * w, py = Math.random() * h;
+    ctx.fillStyle = Math.random() < 0.5 ? 'rgba(111,216,255,0.25)' : 'rgba(201,138,255,0.22)';
+    ctx.beginPath(); ctx.arc(px, py, rand(1.2, 2.4) * k, 0, Math.PI * 2); ctx.fill();
+  }
+  // hiérarchie de valeurs : centre chaud, bords froids sombres
   const warm = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.min(w, h) * 0.55);
   warm.addColorStop(0, 'rgba(255,220,180,0.10)'); warm.addColorStop(1, 'rgba(255,220,180,0)');
   ctx.fillStyle = warm; ctx.fillRect(0, 0, w, h);
   const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.30, w / 2, h / 2, Math.max(w, h) * 0.70);
-  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(10,4,28,0.55)');
+  vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(10,4,28,0.5)');
   ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
-
-  // bande d'occlusion au pied des remparts (revue : la jonction muret /
-  // dalles était une couture brute)
+  // occlusion au pied des remparts
   const ao = 26 * k, aoCol = 'rgba(8,4,20,0.45)';
   let g1 = ctx.createLinearGradient(0, 0, 0, ao);
   g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
@@ -1285,42 +1402,28 @@ function makeGroundTexture() {
   g1 = ctx.createLinearGradient(w, 0, w - ao, 0);
   g1.addColorStop(0, aoCol); g1.addColorStop(1, 'rgba(8,4,20,0)');
   ctx.fillStyle = g1; ctx.fillRect(w - ao, 0, ao, h);
-
-  // liseré doré INCRUSTÉ autour de la zone jouable (revue : contour
-  // sombre + cœur clair pour lire comme de l'or, pas un trait pâle)
-  const bx = wx(-PLAY_W), by = wz(-PLAY_D), bw = wx(PLAY_W) - bx, bh = wz(PLAY_D) - by;
+  // liseré doré incrusté de la zone jouable (au-dessus de tout)
+  const bx = wx(-PLAY_W), by = wz(-PLAY_D), bw2 = wx(PLAY_W) - bx, bh2 = wz(PLAY_D) - by;
   ctx.strokeStyle = 'rgba(74,50,14,0.85)'; ctx.lineWidth = 7 * k;
-  ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeRect(bx, by, bw2, bh2);
   ctx.strokeStyle = 'rgba(255,211,92,0.85)'; ctx.lineWidth = 3.4 * k;
-  ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeRect(bx, by, bw2, bh2);
   ctx.strokeStyle = 'rgba(255,244,200,0.7)'; ctx.lineWidth = 1.2 * k;
-  ctx.strokeRect(bx, by, bw, bh);
-
-  // médaillon runique central AFFIRMÉ (revue : « fantomatique » avant) :
-  // disque légèrement plus sombre + anneaux or opaques + studs éclatants
-  const cx = wx(0), cy = wz(0), R = wx(4.6) - wx(0);
-  ctx.fillStyle = 'rgba(12,8,30,0.28)';
-  ctx.beginPath(); ctx.arc(cx, cy, R + 4 * k, 0, Math.PI * 2); ctx.fill();
-  ctx.lineWidth = 6 * k; ctx.strokeStyle = 'rgba(74,50,14,0.8)';
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
-  ctx.lineWidth = 3.4 * k; ctx.strokeStyle = 'rgba(255,211,92,0.8)';
-  ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
-  ctx.lineWidth = 2.4 * k; ctx.strokeStyle = 'rgba(111,216,255,0.6)';
-  ctx.beginPath(); ctx.arc(cx, cy, R * 0.72, 0, Math.PI * 2); ctx.stroke();
-  ctx.lineWidth = 2 * k; ctx.strokeStyle = 'rgba(255,211,92,0.5)';
-  ctx.beginPath(); ctx.arc(cx, cy, R * 0.45, 0, Math.PI * 2); ctx.stroke();
-  for (let a = 0; a < 4; a++) {
-    const ang = a * Math.PI / 2 + Math.PI / 4;
-    ctx.save(); ctx.translate(cx + Math.cos(ang) * R * 0.86, cy + Math.sin(ang) * R * 0.86); ctx.rotate(ang);
-    ctx.fillStyle = 'rgba(74,50,14,0.8)'; ctx.fillRect(-5 * k, -5 * k, 10 * k, 10 * k);
-    ctx.fillStyle = 'rgba(255,211,92,0.85)'; ctx.fillRect(-3.5 * k, -3.5 * k, 7 * k, 7 * k);
-    ctx.fillStyle = 'rgba(255,244,200,0.8)'; ctx.fillRect(-1.4 * k, -1.4 * k, 2.8 * k, 2.8 * k);
-    ctx.restore();
-  }
+  ctx.strokeRect(bx, by, bw2, bh2);
 
   const tex = new THREE.CanvasTexture(c);
   tex.anisotropy = 8;
   return tex;
+}
+// helper : rectangle arrondi (pavés peints)
+function roundRect(ctx, x, y, w2, h2, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w2, y, x + w2, y + h2, r);
+  ctx.arcTo(x + w2, y + h2, x, y + h2, r);
+  ctx.arcTo(x, y + h2, x, y, r);
+  ctx.arcTo(x, y, x + w2, y, r);
+  ctx.closePath();
 }
 const groundTex = makeGroundTexture();
 const groundMat = new THREE.MeshToonMaterial({ map: groundTex, gradientMap: coolGradient });

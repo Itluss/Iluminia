@@ -1,52 +1,45 @@
-# Fiche d'itération — refonte DA de l'arène (« rivaliser avec Clash Royale »)
+# Fiche d'itération — sol V2 « illustration peinte »
 
-Demande Camille (2026-08-10) : « je veux que les décors rivalisent avec
-un Clash Royale ». Identité « caverne de cristal » violette conservée,
-caméra/UI/gameplay intouchés, zéro asset externe (tout en canvas 2D +
-géométrie toon).
+Retour Camille (2026-08-10) : « c'est mieux mais pas encore ça — même
+en 2D tu devrais être capable de faire mieux en 2026. » Le damier
+uniforme ne suffisait pas : le sol est désormais une VRAIE scène 2D
+peinte, avec des lieux différenciés partout où la caméra passe.
 
-## Changements (public/spike3d-arena.html)
+## Le nouveau sol (public/spike3d-arena.html, makeGroundTexture V2)
 
-1. **Sol entièrement refait** : damier de grandes dalles violettes à
-   fort contraste (clair 0x553c9a / sombre 0x1f1344, peints ~40 % plus
-   sombres que la teinte voulue car la lumière de la scène surexpose
-   ×1,8), biseaux cartoon, joints sombres, dalles accent bleu nuit à
-   lueur cyan, dalles-runes (3 glyphes, rotations aléatoires), losanges
-   d'or sertis (contour sombre + cœur clair), fissures gravées 2 passes
-   (ombre + arête claire), mousse cristalline. Texture 2048 px (à 1024,
-   la magnification rendait tout flou) + anisotropy 8.
-2. **Hiérarchie de valeurs** : centre plus clair et chaud, vignette
-   sombre marquée aux bords, bande d'occlusion au pied des remparts.
-3. **Liseré doré incrusté** autour de la zone jouable (contour brun-or
-   sombre + cœur clair) ; **médaillon runique central** affirmé (disque
-   sombre + anneaux or opaques + 4 studs éclatants + anneau cyan).
-4. **Remparts crénelés** beige sur les 4 côtés + **4 tours d'angle**
-   (fût pierre, couronne, toit violet, pointe dorée émissive, drapeau
-   cyan qui claque) + **12 torches** à flamme vacillante ET halo chaud
-   au sol (pulse synchronisé) + **7 arbres-champignons** luminescents.
-5. **Ombres portées réparées** : la shadow camera (±14) ne couvrait
-   qu'une fraction de l'arène — élargie à tout le plateau (±46,
-   map 2048) : chaque personnage est ancré au sol.
-6. **Lumière** : ambiante 1,05 → 0,78, soleil 1,3 → 1,18 et plus chaud
-   (0xfff2dc) — fini le rendu pastel délavé.
+1. **Pavés peints un à un** : quinconce irrégulier, 3 tons de violet +
+   jitter, coins arrondis, arête claire / assise sombre par pavé — fini
+   la grille mécanique.
+2. **Chemins de grès chaud** : grand anneau en super-ellipse + 4
+   connecteurs vers les bords, peints en 3 passes (creux sombre, corps
+   sable, cœur clair) + galets épars — le contraste chaud/froid qui
+   structure les arènes Clash Royale.
+3. **Place centrale en mosaïque** : disque rayonnant à 16 secteurs,
+   anneaux de pierre + anneau cyan, médaillon d'or à 8 studs sertis,
+   spirale-dragon gravée au centre.
+4. **2 bassins de cristal** : margelle de pierre, eau en dégradé
+   turquoise profond → lumineux, reflets en arcs, étincelles-croix,
+   cristaux de berge violets/cyan.
+5. **6 massifs de mousse sauvage** : blobs organiques verts foncés
+   (2 passes + cœur sombre pour le volume), touffes en arcs clairs,
+   fleurs de cristal roses/dorées.
+6. Conservés de la V1 : liseré doré incrusté, vignette + centre chaud,
+   bande d'occlusion au pied des remparts, remparts/tours/torches/
+   arbres-champignons, ombres portées plein plateau.
 
-## Cycle de revue
+Toutes les couleurs restent peintes ~40 % plus sombres que la teinte
+cible (l'éclairage de la scène multiplie l'albédo par ≈ 1,8).
 
-Sous-agent DA senior (références Clash Royale/Brawl Stars) sur 2
-captures → TOP 3 appliqué : ancrage lumière (ombres + AO + halos de
-torche), hiérarchie de valeurs (gradient central + vignette ×2 +
-contraste dalles), nettoyage micro-détails (fissures gravées, losanges
-sertis, médaillon opaque, accent intégré au damier, netteté 2048).
+## Vérifié (0 erreur console)
 
-## Vérifié
-
-- 0 erreur console sur toutes les captures (desktop + téléphone).
-- Damier net (plus de flou), médaillon lisible à la première seconde,
-  ombres sous les personnages, halos de torche visibles au bord.
+- Captures centre / bassin / mousse : chaque écran de jeu traverse au
+  moins deux « matériaux » différents (pavés + chemin, mousse, bassin,
+  place) — plus aucun plan monotone.
+- Correction en cours de route : la mousse V1 rendait « nuage menthe »
+  délavé → verts foncés, blobs plus petits, cœur sombre.
 
 ## À surveiller (téléphone réel)
 
-- FPS avec texture 2048 + shadow map 2048 : si ça rame chez Camille,
-  redescendre `sun.shadow.mapSize` à 1024 et la texture à 1024.
-- Étincelles ✨ blanches : la revue les trouve « taches grises » — leur
-  sort (réaffecter/retirer) est une décision gameplay en attente.
+- FPS : texture 2048 + shadow map 2048 (redescendre à 1024 si besoin).
+- Les bassins/mousse sont purement visuels (aucune collision) — dire si
+  ça prête à confusion en jeu.
