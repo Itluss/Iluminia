@@ -8,9 +8,14 @@
 # L'Account ID n'est pas sensible, il est défini en clair ci-dessous.
 name: Deploy to Cloudflare Pages
 
-# Test manuel UNIQUEMENT (2026-08-11) : Netlify a épuisé son quota — on
-# re-tente Cloudflare (compte suspendu le 09/08, peut-être levé depuis).
+# Test ciblé (2026-08-11) : Netlify a épuisé son quota — on re-tente
+# Cloudflare (compte suspendu le 09/08, peut-être levé depuis). Ne se
+# déclenche QUE sur modification du marqueur .cloudflare-test (le
+# dispatch manuel est refusé au bot GitHub).
 on:
+  push:
+    branches: [main]
+    paths: ['.cloudflare-test']
   workflow_dispatch:
 
 concurrency:
