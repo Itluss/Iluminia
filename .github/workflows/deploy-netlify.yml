@@ -8,9 +8,10 @@
 #     (app.netlify.com → User settings → Applications → New access token)
 name: Deploy to Netlify
 
+# En pause (2026-08-11) : quota de crédits Netlify épuisé — les pushs ne
+# déclenchent plus rien (mails d'échec en boucle sinon). Réactivable en
+# remettant le déclencheur push si le quota revient.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 concurrency:
