@@ -143,6 +143,12 @@
   #question-block.qb-center #qb-bar { display: block; }
   #qb-bar-fill { height: 100%; width: 100%; border-radius: 4px;
          background: linear-gradient(90deg, #ffd35c, #ff8a3c); }
+  /* compteur de réponses pendant la phase question */
+  #qb-count { display: none; text-align: center; color: #ffd35c;
+         font-weight: 900; font-size: 12.5px; margin: 3px 0 1px; }
+  #question-block.qb-center #qb-count { display: block; }
+  #qb-count.bump { animation: qbCountBump 0.3s ease-out; }
+  @keyframes qbCountBump { 0% { transform: scale(1.35); } 100% { transform: scale(1); } }
   /* chrono de manche : pilule discrète en haut au centre */
   #manche-timer { position: fixed; top: max(8px, var(--safe-top) + 4px);
          left: 50%; transform: translateX(-50%); z-index: 14;
@@ -635,6 +641,9 @@
   <div class="qb-head"><span class="qb-qmark">?</span><span id="qb-text"></span><span id="qb-min">—</span></div>
   <!-- barre de décompte de la phase question (boucle V5, spec §2) -->
   <div id="qb-bar"><div id="qb-bar-fill"></div></div>
+  <!-- compteur de réponses « ⚡ 2/4 ont répondu » (2026-08-11 : pousser à
+       la course — la manche démarre dès que le joueur a répondu) -->
+  <div id="qb-count"></div>
   <div id="qb-answers"></div>
 </div>
 <div id="qb-reopen">?</div>
@@ -1058,11 +1067,15 @@ function selectAnswerZone(letter) {
   // une réponse déjà testée (❌) ne peut pas être re-choisie (spec V5 §14)
   if ((player.userData.eliminatedLetters || []).includes(letter)) return;
   if (manchePhase === 'QUESTION') {
-    // phase question : on peut changer d'avis jusqu'à la fin du décompte —
-    // le panneau reste affiché, il disparaît au lancement de la manche
+    // phase question : le panneau reste affiché ; dès que le joueur a
+    // répondu, la manche démarre 0,7 s plus tard (2026-08-11 : « démarrer
+    // le jeu dès que le joueur a répondu ») — fenêtre pendant laquelle on
+    // peut encore corriger son tap
     selectedZoneLetter = letter;
     document.querySelectorAll('.qa-row').forEach(c =>
       c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
+    updateAnswerCount();
+    questionPhaseEndsAt = Math.min(questionPhaseEndsAt, performance.now() + 700);
     return;
   }
   if (selectedZoneLetter) return; // en action : choix verrouillé (V4 §5)
@@ -3500,7 +3513,13 @@ function startQuestionPhase() {
     e.userData.luminTargetZone = null;
   });
   startDragonQuestion(); // question + zones + rendu du panneau
-  bots.forEach(b => botPickAnswer(b)); // réponses INDIVIDUELLES (spec §23)
+  // -------- course à la réponse (2026-08-11) : les bots répondent en
+  // DÉCALÉ pendant le décompte (0,8-5 s) — le compteur « 2/4 ont
+  // répondu » monte sous les yeux du joueur et le pousse à répondre vite
+  // (réponses INDIVIDUELLES, spec §23 : le choix reste botPickAnswer) --------
+  bots.forEach(b => { b.userData.answerAt = performance.now() + (800 + Math.random() * 4200); });
+  lastAnswerCount = -1;
+  updateAnswerCount();
   document.getElementById('question-block').classList.add('qb-center');
   showQuestionBlock();
   questionPhaseEndsAt = performance.now() + LUMIN_CONFIG.questionCountdown * 1000;
@@ -3508,8 +3527,21 @@ function startQuestionPhase() {
   const fill = document.getElementById('qb-bar-fill');
   if (fill) fill.style.width = '100%';
 }
+let lastAnswerCount = -1;
+function updateAnswerCount() {
+  const total = 1 + bots.length;
+  const n = (selectedZoneLetter ? 1 : 0) + bots.filter(b => b.userData.selectedLetter).length;
+  const el = document.getElementById('qb-count');
+  el.textContent = `⚡ ${n}/${total} ont répondu`;
+  if (n !== lastAnswerCount) {
+    el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump');
+    lastAnswerCount = n;
+  }
+}
 function endQuestionPhase() {
   manchePhase = 'PLAYING';
+  // filet : les bots qui « réfléchissaient » encore répondent maintenant
+  bots.forEach(b => { if (!b.userData.selectedLetter) botPickAnswer(b); });
   document.getElementById('question-block').classList.remove('qb-center');
   hideQuestionBlock(); // la pilule « ? » reste si aucune réponse (spec §3)
   mancheTimeLeft = LUMIN_CONFIG.mancheDuration;
@@ -5297,6 +5329,13 @@ function animate() {
         const left = Math.max(0, questionPhaseEndsAt - performance.now());
         const fill = document.getElementById('qb-bar-fill');
         if (fill) fill.style.width = `${(left / (LUMIN_CONFIG.questionCountdown * 1000)) * 100}%`;
+        // bots : réponses décalées → le compteur « n/4 » monte en direct
+        bots.forEach(b => {
+          if (!b.userData.selectedLetter && b.userData.answerAt && performance.now() >= b.userData.answerAt) {
+            botPickAnswer(b);
+          }
+        });
+        updateAnswerCount();
         if (left <= 0) endQuestionPhase();
       } else if (manchePhase === 'PLAYING' && dragonQuestionActive) {
         mancheTimeLeft -= dt;
