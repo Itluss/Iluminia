@@ -1080,15 +1080,27 @@ function ensureCompassArrow() {
   // traînée de 3 chevrons (planche Camille 2026-08-10) qui ondulent vers la
   // zone choisie — matériaux séparés pour le pulse séquentiel
   const g = new THREE.Group();
+  // DOUBLES chevrons « » » au sol (retour Camille 2026-08-11) : chaque
+  // marqueur est une paire de V en bandes plates, gros et lumineux —
+  // lecture immédiate du sens, même sur téléphone
   g.userData.chevrons = [0, 1, 2].map(i => {
-    const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 });
-    const head = new THREE.Mesh(new THREE.ConeGeometry(0.19 + i * 0.035, 0.4 + i * 0.06, 4), mat);
-    head.rotation.x = Math.PI / 2; // pointe vers +Z local
-    head.rotation.y = Math.PI / 4; // arête vers le haut : silhouette nette vue de dessus
-    head.position.z = i * 0.62;
-    addOutline(head, 1.1);
-    g.add(head);
-    return head;
+    const marker = new THREE.Group();
+    const mats = [];
+    const armLen = 1.0 + i * 0.12, armTh = 0.22, gap = 0.42;
+    [0, -gap].forEach(zOff => {
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
+      mats.push(mat);
+      [[-1, Math.PI / 4], [1, -Math.PI / 4]].forEach(([side, rot]) => {
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(armTh, 0.08, armLen), mat);
+        arm.rotation.y = rot;
+        arm.position.set(side * armLen * 0.35, 0, zOff - armLen * 0.35);
+        marker.add(arm);
+      });
+    });
+    marker.userData.mats = mats;
+    marker.position.z = i * 1.55;
+    g.add(marker);
+    return marker;
   });
   g.visible = false;
   scene.add(g);
@@ -5138,29 +5150,47 @@ function animate() {
           }
         });
         const arrow = ensureCompassArrow();
-        // V4 §8/§10 : la flèche n'existe que si JE porte le dragon ET que
-        // j'ai choisi — jamais en même temps que l'indicateur dragon
-        const zoneSel = selectedZoneLetter && dragonQuestionActive && luminOwnerId === player
-          ? zones.find(z => z.letter === selectedZoneLetter && !z.eliminated) : null;
-        if (zoneSel && !player.userData.eliminated) {
-          const ang = Math.atan2(zoneSel.pos.x - player.position.x, zoneSel.pos.z - player.position.z);
+        // -------- guidage SÉQUENTIEL au sol (demande Camille 2026-08-11 :
+        // « le dragon PUIS la direction de la réponse indiqués au sol par
+        // des chevrons lumineux ») — une seule cible à la fois :
+        // 1) je ne porte pas le dragon → chevrons DORÉS vers le dragon
+        //    (libre) ou son porteur adverse ;
+        // 2) je porte + réponse choisie → chevrons couleur de MA zone. --------
+        let guideTarget = null, guideColor = null;
+        if (!player.userData.eliminated && manchePhase === 'PLAYING') {
+          if (luminOwnerId === player && selectedZoneLetter && dragonQuestionActive) {
+            const zoneSel = zones.find(z => z.letter === selectedZoneLetter);
+            if (zoneSel) { guideTarget = { x: zoneSel.pos.x, z: zoneSel.pos.z }; guideColor = ZONE_COLORS[zoneSel.letter]; }
+          } else if (luminState === 'AVAILABLE' && currentLumin) {
+            guideTarget = { x: currentLumin.position.x, z: currentLumin.position.z }; guideColor = 0xffdc4a;
+          } else if (luminState === 'CARRIED' && luminOwnerId && luminOwnerId !== player) {
+            guideTarget = { x: luminOwnerId.position.x, z: luminOwnerId.position.z }; guideColor = 0xffdc4a;
+          }
+        }
+        // à moins de 5 u la cible est sous les yeux — la traînée (désormais
+        // longue de ~5,7 u) deviendrait du bruit et chevaucherait la cible
+        if (guideTarget && Math.hypot(guideTarget.x - player.position.x, guideTarget.z - player.position.z) < 5) {
+          guideTarget = null;
+        }
+        if (guideTarget) {
+          const ang = Math.atan2(guideTarget.x - player.position.x, guideTarget.z - player.position.z);
           // départ à 2,1 u : à l'angle iso, plus près le premier chevron
           // chevauchait visuellement la tête du personnage (vu en capture)
           arrow.position.set(player.position.x + Math.sin(ang) * 2.1, 0.2, player.position.z + Math.cos(ang) * 2.1);
           arrow.rotation.y = ang;
-          const col = ZONE_COLORS[zoneSel.letter];
           arrow.userData.chevrons.forEach((c, i) => {
-            c.material.color.setHex(col);
-            c.material.opacity = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(performance.now() * 0.008 - i * 1.1));
+            const pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(performance.now() * 0.008 - i * 1.1));
+            c.userData.mats.forEach(m => { m.color.setHex(guideColor); m.opacity = pulse; });
           });
           arrow.visible = true;
           // marqueur de distance au bout de la traînée (planche 2026-08-10)
           const distEl = document.getElementById('compass-dist');
-          const tipX = player.position.x + Math.sin(ang) * 4.0;
-          const tipZ = player.position.z + Math.cos(ang) * 4.0;
+          // badge au bout de la traînée agrandie (chevrons ×2, 2026-08-11)
+          const tipX = player.position.x + Math.sin(ang) * 6.2;
+          const tipZ = player.position.z + Math.cos(ang) * 6.2;
           const sp = screenPosOf(tipX, tipZ);
-          distEl.textContent = `${Math.round(Math.hypot(zoneSel.pos.x - player.position.x, zoneSel.pos.z - player.position.z))} m`;
-          distEl.style.borderColor = hexCss(col);
+          distEl.textContent = `${Math.round(Math.hypot(guideTarget.x - player.position.x, guideTarget.z - player.position.z))} m`;
+          distEl.style.borderColor = hexCss(guideColor);
           distEl.style.left = `${sp.x}px`;
           distEl.style.top = `${sp.y}px`;
           distEl.style.display = 'block';
