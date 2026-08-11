@@ -111,32 +111,34 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 
 /* ---------- menu vertical gauche : x30, départ y200 ---------- */
 #side-nav { position: absolute; left: 30px; top: 200px; display: flex; flex-direction: column; gap: 16px; }
-.nav-btn { position: relative; display: flex; align-items: center; gap: 12px; cursor: pointer;
-  height: 66px; width: max-content; padding: 0 20px 0 7px;
-  border: 4px solid rgba(10,18,48,0.9); border-radius: 18px;
-  background: linear-gradient(180deg, var(--pl-top) 0%, var(--pl-mid) 62%, var(--pl-mid) 100%);
-  box-shadow: inset 0 -7px 0 var(--pl-lip), inset 0 3px 0 rgba(255,255,255,0.5),
+.nav-btn { position: relative; display: flex; align-items: center; gap: 14px; cursor: pointer;
+  height: 82px; width: 280px; padding: 0 15px 0 12px;
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 20px;
+  background: linear-gradient(180deg, #22375f, #14224a);
+  box-shadow: inset 0 -6px 0 rgba(10,18,48,0.32), inset 0 3px 0 rgba(255,255,255,0.3),
     0 6px 14px rgba(10,18,48,0.4); }
-.nav-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 46%;
-  border-radius: 13px 13px 46% 46%;
-  background: linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.16));
+.nav-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 44%;
+  border-radius: 14px 14px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0.1));
   pointer-events: none; }
 .nav-btn:hover { filter: brightness(1.06); }
-.nav-btn:active { transform: translateY(3px); box-shadow: inset 0 -4px 0 var(--pl-lip),
-  inset 0 3px 0 rgba(255,255,255,0.5), 0 2px 6px rgba(10,18,48,0.4); }
-.nav-ico { width: 48px; height: 48px; flex: 0 0 auto;
-  border-radius: 22%; border: 3px solid rgba(10,18,48,0.75);
-  background: linear-gradient(180deg, #ffffff, var(--el-cream));
+.nav-btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 rgba(10,18,48,0.32),
+  inset 0 3px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(10,18,48,0.4); }
+/* tuile d'icône : STYLE EXACT de la tuile du coffre (gradient coloré,
+   contour marine, lèvre foncée intégrée, icône en teinte sombre) */
+.nav-ico { width: 58px; height: 58px; flex: 0 0 auto;
+  border-radius: 22%; border: 3px solid rgba(10,18,48,0.8);
+  background: linear-gradient(180deg, var(--tile-top), var(--tile-mid) 62%, var(--tile-mid));
   display: flex; align-items: center; justify-content: center;
-  box-shadow: inset 0 -3px 0 rgba(150,110,60,0.25); }
-.nav-ico .el-icon { width: 80%; height: 80%; fill: var(--pl-ico); color: var(--pl-ico); }
+  box-shadow: inset 0 -4px 0 var(--tile-lip), inset 0 3px 0 rgba(255,255,255,0.5); }
+.nav-ico .el-icon { width: 62%; height: 62%; fill: var(--tile-ico); color: var(--tile-ico); }
 .nav-btn .lbl { color: #fff; font-weight: 900; font-size: 20px; letter-spacing: 0.5px;
   text-shadow: 0 2px 0 rgba(10,18,48,0.45); position: relative; z-index: 1; }
-.plate-orange { --pl-top: #ffc169; --pl-mid: var(--el-orange); --pl-lip: #cf6a06; --pl-ico: var(--el-orange-dark); }
-.plate-cyan { --pl-top: #7fe8cf; --pl-mid: #23b898; --pl-lip: #0e7a63; --pl-ico: #0e8a70; }
-.plate-purple { --pl-top: #bb95ff; --pl-mid: var(--el-purple); --pl-lip: #5c28c4; --pl-ico: var(--el-purple-dark); }
-.plate-blue { --pl-top: #5a80c4; --pl-mid: #33518f; --pl-lip: #1e3563; --pl-ico: #33518f; }
-.plate-navy { --pl-top: #46587f; --pl-mid: #2c3a5c; --pl-lip: #1a2440; --pl-ico: #2c3a5c; }
+.plate-orange { --tile-top: #ffc169; --tile-mid: var(--el-orange); --tile-lip: #cf6a06; --tile-ico: #7a4a12; }
+.plate-cyan { --tile-top: #7fe8cf; --tile-mid: #23b898; --tile-lip: #0e7a63; --tile-ico: #084d3e; }
+.plate-purple { --tile-top: #bb95ff; --tile-mid: var(--el-purple); --tile-lip: #5c28c4; --tile-ico: #35156e; }
+.plate-blue { --tile-top: #6fb7ff; --tile-mid: var(--el-blue); --tile-lip: #0d3f85; --tile-ico: #0d3364; }
+.plate-navy { --tile-top: #8fa3cd; --tile-mid: #5a6d95; --tile-lip: #34446b; --tile-ico: #17234a; }
 
 /* ---------- colonne droite : x fixé au bord, départ y215 ---------- */
 #right-stack { position: absolute; right: 30px; top: 215px; display: flex; flex-direction: column;
