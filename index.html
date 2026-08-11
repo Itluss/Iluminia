@@ -17,6 +17,7 @@
    Coordonnées mesurées sur la planche (zone écran ~1005×550) puis
    converties ×1,528 / ×1,571 vers 1536×864.
    ===================================================================== */
+:root { --sal: env(safe-area-inset-left, 0px); }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
 html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hidden;
   overscroll-behavior: none; font-family: var(--el-font); background: var(--el-bg-deep); }
@@ -37,7 +38,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   to { transform: translateX(-50%) translateY(-9px); } }
 
 /* ---------- carte joueur (haut gauche) : x30 y26 ---------- */
-#player-card { position: absolute; left: 30px; top: 26px; height: 110px;
+#player-card { position: absolute; left: calc(30px - var(--edge-x, 0px)); top: 26px; height: 110px;
   display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 12px;
   background: linear-gradient(180deg, #22375f, #14224a 65%, #14224a);
   border: 4px solid rgba(10,18,48,0.95); border-radius: 24px;
@@ -68,7 +69,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 .xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
   color: #fff; font-weight: 900; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
 /* bouton XP bleu INDÉPENDANT, à droite de la carte */
-#xp-chip { position: absolute; left: 390px; top: 34px; padding: 12px 20px;
+#xp-chip { position: absolute; left: calc(390px - var(--edge-x, 0px)); top: 34px; padding: 12px 20px;
   background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
   border: 4px solid rgba(10,18,48,0.9); border-radius: 18px; color: #fff; font-weight: 900;
   font-size: 21px; cursor: pointer;
@@ -76,7 +77,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #xp-chip:active { transform: translateY(3px); }
 
 /* ---------- monnaies + menu (haut, alignés droite) ---------- */
-#top-right { position: absolute; right: 30px; top: 26px; display: flex; align-items: center; gap: 20px; }
+#top-right { position: absolute; right: calc(30px - var(--edge-x, 0px)); top: 26px; display: flex; align-items: center; gap: 20px; }
 .capsule { display: flex; align-items: center; gap: 10px; height: 62px;
   background: linear-gradient(180deg, #1c2b58, #101c3e);
   border: 4px solid rgba(10,18,48,0.95); border-radius: 999px; padding: 0 10px 0 16px;
@@ -110,7 +111,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   border-color: #1d6b1f !important; }
 
 /* ---------- menu vertical gauche : x30, départ y200 ---------- */
-#side-nav { position: absolute; left: 30px; top: 200px; display: flex; flex-direction: column; gap: 16px; }
+#side-nav { position: absolute; left: calc(30px - var(--edge-x, 0px)); top: 200px; display: flex; flex-direction: column; gap: 16px; }
 .nav-btn { position: relative; display: flex; align-items: center; gap: 14px; cursor: pointer;
   height: 82px; width: 280px; padding: 0 15px 0 12px;
   border: 4px solid rgba(10,18,48,0.9); border-radius: 20px;
@@ -141,7 +142,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 .plate-navy { --tile-top: #8fa3cd; --tile-mid: #5a6d95; --tile-lip: #34446b; --tile-ico: #17234a; }
 
 /* ---------- colonne droite : x fixé au bord, départ y215 ---------- */
-#right-stack { position: absolute; right: 30px; top: 215px; display: flex; flex-direction: column;
+#right-stack { position: absolute; right: calc(30px - var(--edge-x, 0px)); top: 215px; display: flex; flex-direction: column;
   gap: 18px; width: 268px; }
 .event-card { position: relative; padding: 12px 15px; cursor: pointer;
   border-radius: 20px; border: 4px solid rgba(10,18,48,0.9);
@@ -179,7 +180,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #card-chest .ready { color: var(--el-success); font-weight: 900; font-size: 17px; }
 
 /* ---------- défi du jour (bas gauche) : x30, bas 30 ---------- */
-#daily-card { position: absolute; left: 30px; bottom: 30px; height: 132px; width: 560px;
+#daily-card { position: absolute; left: calc(30px - var(--edge-x, 0px)); bottom: 30px; height: 132px; width: 560px;
   display: flex; align-items: center; gap: 16px; padding: 0 22px;
   background: linear-gradient(180deg, #2f74e0, #1d55b4 62%, #1d55b4);
   border: 4px solid rgba(10,18,48,0.9); border-radius: 22px; cursor: pointer;
@@ -201,7 +202,7 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
 #daily-card .reward .el-icon { width: 18px; height: 18px; fill: #b06ef5; }
 
 /* ---------- bouton JOUER (bas droite) : très grand ---------- */
-#play-btn { position: absolute; right: 30px; bottom: 30px; width: 520px; height: 168px;
+#play-btn { position: absolute; right: calc(30px - var(--edge-x, 0px)); bottom: 30px; width: 520px; height: 168px;
   display: flex; align-items: center; justify-content: center; gap: 20px; cursor: pointer;
   border-radius: 30px; border: 5px solid #17234a;
   background: linear-gradient(180deg, #ffe993 0%, var(--el-gold) 58%, var(--el-gold) 100%);
@@ -367,6 +368,12 @@ html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hid
   const fit = () => {
     const s = Math.min(innerWidth / 1536, innerHeight / 864);
     stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+    // écrans plus allongés que 16:9 (iPhone) : les colonnes gauche/droite
+    // s'ancrent aux VRAIS bords de l'écran au lieu du cadre 16:9 centré
+    // (retour Camille 2026-08-12 : « trop au centre ») — safe areas incluses
+    const sl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sal')) || 0;
+    const extra = Math.max(0, (innerWidth / s - 1536) / 2 - sl / s);
+    stage.style.setProperty('--edge-x', `${extra}px`);
   };
   fit();
   addEventListener('resize', fit);
