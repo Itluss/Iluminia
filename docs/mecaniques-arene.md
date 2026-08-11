@@ -5,16 +5,46 @@ petit peu les mécaniques »). Toutes les valeurs sont dans
 `public/spike3d-arena.html` (`ENERGY`, `LUMIN_CONFIG`, `KO_CONFIG`,
 `PET_DEFINITIONS`, `SPARK_CONFIG`, `ENERGY_CRYSTAL_CONFIG`).
 
-## Boucle principale (GAMEPLAY V4, spec Camille 2026-08-10)
+## Boucle principale (BOUCLE V5, spec Camille 2026-08-11)
 
-**La question est visible dès le top départ** (pas d'attente de capture),
-sans timer de réponse — la pression vient du jeu. Le joueur peut choisir
-sa réponse À TOUT MOMENT (avant ou après la capture) ; le choix est
-VERROUILLÉ pour la tentative. Guidage SÉQUENTIEL : tant qu'on ne porte
-pas le dragon → indicateur 🐉 (vers le dragon libre OU son porteur) ;
-une fois porteur + réponse choisie → chevrons + distance vers SA zone.
-Jamais deux directions à l'écran. Les badges de zones sont supprimés ;
-seule la colonne de lumière de la zone choisie s'allume.
+**La question se traite AVANT l'action — jamais pendant.** Machine
+d'état de la manche : `QUESTION` → `PLAYING` → fin de manche.
+
+1. **Phase QUESTION** (`questionCountdown` = 6 s) : question + réponses
+   EN GRAND au centre, barre de décompte, personne ne bouge (joueur,
+   bots, pas de compétences), pas de dragon. Chacun choisit — le choix
+   est modifiable jusqu'à la fin du décompte, INDIVIDUEL (bots compris,
+   précision `botAnswerAccuracy`). Sans réponse : la partie démarre
+   quand même, pilule « ? » pour choisir en cours d'action (et la
+   capture sans réponse rouvre le petit panneau latéral).
+2. **PLAYING** : la question disparaît totalement, le dragon apparaît,
+   chrono de MANCHE visible (`mancheDuration` = 45 s, pilule 🐉 en haut
+   au centre). Pur gameplay : course, vol, compétences. Porteur +
+   réponse choisie → chevrons vers SA zone (celle de SON choix, sans
+   révéler si elle est juste).
+3. **Fins de manche** : bonne zone déposée → +100, fin immédiate. OU
+   chrono à 0 → **le porteur actuel gagne la manche** (+100), même sans
+   la bonne réponse — garder le dragon reste un objectif quand on
+   doute. Dragon au sol à 0 : personne ne marque (choix simple).
+4. **Mauvaise zone** : la zone refuse, ❌ MAUVAISE RÉPONSE, le dragon
+   est LÂCHÉ sur place (récupérable par tous), le fautif est GELÉ
+   (`wrongFreezeSeconds` = 2 s) et — pour le joueur — la question
+   revient en grand avec les réponses déjà testées BARRÉES ❌
+   (incliquables). Il doit re-choisir lui-même. L'élimination est
+   INDIVIDUELLE : la zone reste active pour les autres, et les erreurs
+   d'un adversaire ne sont pas révélées. Les bots re-choisissent à la
+   fin de leur gel parmi leurs réponses restantes. La partie ne
+   s'arrête JAMAIS pour les autres.
+
+Réglages : `LUMIN_CONFIG.questionCountdown / mancheDuration /
+wrongFreezeSeconds`. Le chrono du MATCH global (podium) est distinct et
+continue en permanence.
+
+### Boucle V4 (pour mémoire, remplacée le 2026-08-11)
+
+Question visible dès le top départ pendant l'action, choix verrouillé
+par tentative, élimination de zone GLOBALE — abandonnée : lire une
+question en jouant = double tâche impossible (retour Camille).
 
 ### Ancienne boucle (pré-V4, pour mémoire)
 

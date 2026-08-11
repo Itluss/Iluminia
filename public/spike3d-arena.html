@@ -119,6 +119,41 @@
   .qa-row.selected { background: var(--chip-c, #fff); color: #101226;
          box-shadow: 0 0 14px var(--chip-c, #fff); }
   .qa-row.selected .qa-letter { border-color: #101226; color: #101226; }
+  /* réponse déjà testée (boucle V5 §11/§14) : visible mais barrée ❌ */
+  .qa-row.qa-dead { opacity: 0.45; pointer-events: none;
+         text-decoration: line-through; border-color: #e25b4a; }
+  .qa-row.qa-dead .qa-letter { border-color: #e25b4a; color: #e25b4a; }
+  /* -------- boucle V5 : phase QUESTION — le panneau vient au CENTRE en
+     grand (personne ne bouge, pas de conflit d'attention), puis retourne
+     en latéral compact uniquement pour la pilule « ? » / le retry --------- */
+  #question-block.qb-center { top: 50%; right: 50%;
+         transform: translate(50%, -50%);
+         z-index: 30; /* au-dessus des boutons (inactifs pendant la phase) */
+         width: min(430px, 72dvw); max-height: 86dvh;
+         border-right: 2px solid rgba(96,190,255,0.55); border-radius: 16px;
+         padding: 12px 14px;
+         box-shadow: 0 12px 40px rgba(4,9,28,0.7), 0 0 24px rgba(96,190,255,0.3); }
+  #question-block.qb-center #qb-text { font-size: 16px; }
+  #question-block.qb-center .qa-row { font-size: 16px; padding: 8px 10px; margin-top: 7px; }
+  #question-block.qb-center .qa-row .qa-letter { width: 24px; height: 24px; font-size: 13px; }
+  #question-block.qb-center #qb-min { display: none; } /* pas de repli en phase question */
+  /* barre de décompte de la phase question */
+  #qb-bar { display: none; height: 7px; border-radius: 4px; margin: 6px 0 2px;
+         background: rgba(255,255,255,0.12); overflow: hidden; }
+  #question-block.qb-center #qb-bar { display: block; }
+  #qb-bar-fill { height: 100%; width: 100%; border-radius: 4px;
+         background: linear-gradient(90deg, #ffd35c, #ff8a3c); }
+  /* chrono de manche : pilule discrète en haut au centre */
+  #manche-timer { position: fixed; top: max(8px, var(--safe-top) + 4px);
+         left: 50%; transform: translateX(-50%); z-index: 14;
+         background: rgba(10,14,26,0.9); border: 2px solid rgba(255,211,92,0.55);
+         border-radius: 12px; padding: 3px 12px; color: #ffd35c;
+         font-weight: 900; font-size: 15px; display: none; pointer-events: none; }
+  #manche-timer.show { display: block; }
+  #manche-timer.urgent { color: #ff6a5c; border-color: rgba(255,106,92,0.7);
+         animation: mancheUrgent 0.5s ease-in-out infinite alternate; }
+  @keyframes mancheUrgent { from { transform: translateX(-50%) scale(1); }
+         to { transform: translateX(-50%) scale(1.12); } }
   /* écrans bas (téléphone paysage) : rangées compactées pour que la
      question + 4 réponses tiennent ENTIÈREMENT, jamais de défilement
      (retour Camille 2026-08-10). ATTENTION : ce bloc doit rester APRÈS
@@ -598,9 +633,13 @@
      (le bandeau ne sert plus qu'aux annonces). -------- -->
 <div id="question-block">
   <div class="qb-head"><span class="qb-qmark">?</span><span id="qb-text"></span><span id="qb-min">—</span></div>
+  <!-- barre de décompte de la phase question (boucle V5, spec §2) -->
+  <div id="qb-bar"><div id="qb-bar-fill"></div></div>
   <div id="qb-answers"></div>
 </div>
 <div id="qb-reopen">?</div>
+<!-- chrono de MANCHE (boucle V5, spec §19) — à 0, le porteur gagne -->
+<div id="manche-timer"></div>
 <div id="compass-dist"></div>
 <div id="question-banner"><span id="question-text"></span><span class="qtimer" id="question-timer"></span></div>
 <!-- -------- barre du bas (planche ChatGPT fournie par Camille, 2026-08-07)
@@ -941,6 +980,11 @@ const LUMIN_CONFIG = {
   stealImmunitySeconds: 1,  // anti ping-pong : vol refusé juste après une prise
   respawnShieldSeconds: 1.5, // filet anti re-K.O. instantané à la réapparition
   botAnswerAccuracy: 0.5,   // probabilité qu'un bot « réponde » juste (V4, 2026-08-10)
+  // -------- BOUCLE V5 (spec Camille 2026-08-11 : « sans question pendant
+  // l'action ») — les 3 réglages demandés au §26, à ajuster librement --------
+  questionCountdown: 6,     // QUESTION_COUNTDOWN — durée de la phase question (s)
+  mancheDuration: 45,       // ROUND_DURATION de la MANCHE (s) — à 0, le porteur gagne
+  wrongFreezeSeconds: 2,    // WRONG_ANSWER_FREEZE_DURATION — gel après mauvaise zone (s)
   // -------- fuite du dragon libre (idée Camille 2026-08-10 : « le dragon
   // essaye de nous échapper à chaque fois que personne ne le possède ») —
   // TOUJOURS rattrapable : nettement plus lent que les joueurs (4,4 u/s) --------
@@ -979,6 +1023,16 @@ const ZONE_COLORS = { A: 0x4fb3f7, B: 0xffd35c, C: 0xb06ef5, D: 0x6fe08a };
 // 2026-08-10 : « l'utilisateur sélectionne la réponse et une flèche devant
 // le personnage, comme une boussole, lui affiche la direction ») --------
 let selectedZoneLetter = null;
+// -------- BOUCLE V5 (spec 2026-08-11) : machine d'état de la MANCHE.
+// 'QUESTION' = question centrée + décompte, tout le monde figé, pas de
+// dragon ; 'PLAYING' = action pure (dragon actif, chrono de manche) ;
+// 'IDLE' = transition entre deux manches. Par entité (userData) :
+// selectedLetter (bots — le joueur garde selectedZoneLetter),
+// eliminatedLetters [] (réponses déjà testées, INDIVIDUELLES),
+// frozenUntil (gel, déjà respecté par le déplacement et updateBot). --------
+let manchePhase = 'IDLE'; // 'IDLE' | 'QUESTION' | 'PLAYING'
+let questionPhaseEndsAt = 0;
+let mancheTimeLeft = 0;
 // -------- cycle de vie du bloc de question — GAMEPLAY V4 (spec Camille
 // 2026-08-10) : question visible dès le GO, AUCUN timer de réponse (la
 // pression vient du jeu), panneau rétractable (« — » pour réduire, « ? »
@@ -1000,10 +1054,22 @@ function hideQuestionBlock() {
   document.body.classList.remove('q-open');
 }
 function selectAnswerZone(letter) {
-  if (!letter || selectedZoneLetter || !dragonQuestionActive) return; // choix verrouillé (V4 §5)
+  if (!letter || !dragonQuestionActive) return;
+  // une réponse déjà testée (❌) ne peut pas être re-choisie (spec V5 §14)
+  if ((player.userData.eliminatedLetters || []).includes(letter)) return;
+  if (manchePhase === 'QUESTION') {
+    // phase question : on peut changer d'avis jusqu'à la fin du décompte —
+    // le panneau reste affiché, il disparaît au lancement de la manche
+    selectedZoneLetter = letter;
+    document.querySelectorAll('.qa-row').forEach(c =>
+      c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
+    return;
+  }
+  if (selectedZoneLetter) return; // en action : choix verrouillé (V4 §5)
   selectedZoneLetter = letter;
   document.querySelectorAll('.qa-row').forEach(c =>
     c.classList.toggle('selected', c.dataset.letter === selectedZoneLetter));
+  document.getElementById('question-block').classList.remove('qb-center');
   hideQuestionBlock();
   spawnFloatingText(player.position.clone().add(new THREE.Vector3(0, 1.9, 0)),
     `Réponse choisie : ${letter}`, hexCss(ZONE_COLORS[letter]));
@@ -2331,7 +2397,11 @@ const ABILITY_DEFINITIONS = {
 };
 function activateAbility(entity, family) {
   const ready = abilityReadyState(entity);
-  if (entity.userData.eliminated || performance.now() < ready[family]) {
+  // boucle V5 : pas de compétence pendant la phase question ni pendant un
+  // gel (mauvaise réponse, spec §17)
+  if (entity.userData.eliminated || performance.now() < ready[family]
+      || (LUMIN_MODE && manchePhase === 'QUESTION')
+      || performance.now() < (entity.userData.frozenUntil || 0)) {
     if (entity === player && abilityButtons[family]) {
       const btn = abilityButtons[family];
       btn.classList.remove('denied'); void btn.offsetWidth; btn.classList.add('denied');
@@ -3201,10 +3271,8 @@ function spawnLumin() {
   spawnBurst(currentLumin.position.clone(), 0xffdc4a, 20);
   // popup « UN DRAGON EST APPARU ! » supprimé (décision Camille 2026-08-10) —
   // le burst + l'indicateur 🐉 de bord d'écran suffisent
-  // -------- GAMEPLAY V4 (§1-2) : la question démarre EN MÊME TEMPS que le
-  // dragon (top départ et chaque nouvelle manche) — plus d'attente de la
-  // 1re capture, pas de phase vide --------
-  if (!dragonQuestionActive) startDragonQuestion();
+  // boucle V5 : la question est déjà traitée par startQuestionPhase — le
+  // dragon n'apparaît QU'À la fin de la phase question (spec §4/§6)
 }
 // -------- halo du porteur — anneau lumineux ajouté en enfant de l'entité,
 // créé une seule fois et réutilisé (comme iceShell/shieldMesh). --------
@@ -3276,10 +3344,11 @@ function captureLumin(entity) {
   spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.6, 0)),
     entity === player ? 'Dragon capturé !' : `${entity.userData.name} a le dragon !`, '#ffdc4a');
   shakeCamera(0.14);
-  if (!dragonQuestionActive) startDragonQuestion(); // filet (la question part normalement au spawn, V4)
   // -------- V4 §7/§9 : feedback local de capture (vibration si dispo — pas
-  // de flash plein écran, interdit par la règle DA) + STATE 2 : capture
-  // sans réponse choisie → le panneau question se rouvre automatiquement --------
+  // de flash plein écran, interdit par la règle DA). Boucle V5 §7 : on ne
+  // RÉAFFICHE PAS la question au porteur qui a déjà répondu — seule
+  // exception (spec §3) : capture SANS réponse choisie → le petit panneau
+  // latéral se rouvre pour pouvoir enfin choisir. --------
   if (entity === player) {
     if (navigator.vibrate) { try { navigator.vibrate(80); } catch {} }
     if (!selectedZoneLetter) showQuestionBlock();
@@ -3387,14 +3456,84 @@ function renderLuminQuestionBanner() {
   // le bandeau du haut ne sert plus qu'aux annonces — la question et les
   // réponses cliquables vivent dans le panneau de droite --------
   questionBannerEl.classList.remove('show');
-  const rows = zones.filter(z => !z.eliminated)
-    .map(z => `<button type="button" class="qa-row${z.letter === selectedZoneLetter ? ' selected' : ''}" data-letter="${z.letter}" style="--chip-c:${hexCss(ZONE_COLORS[z.letter])}"><span class="qa-letter">${z.letter}</span><span>${z.answer.text}</span></button>`)
+  // V5 §11 : les réponses déjà testées PAR LE JOUEUR restent visibles mais
+  // barrées ❌ et désactivées — il voit ce qu'il a déjà essayé
+  const dead = player.userData.eliminatedLetters || [];
+  const rows = zones
+    .map(z => {
+      const isDead = dead.includes(z.letter);
+      return `<button type="button" class="qa-row${z.letter === selectedZoneLetter ? ' selected' : ''}${isDead ? ' qa-dead' : ''}" data-letter="${z.letter}" style="--chip-c:${hexCss(ZONE_COLORS[z.letter])}"><span class="qa-letter">${z.letter}</span><span>${isDead ? '❌ ' : ''}${z.answer.text}</span></button>`;
+    })
     .join('');
   document.getElementById('qb-text').textContent = currentLuminQuestion.questionText;
   document.getElementById('qb-answers').innerHTML = rows;
   document.querySelectorAll('#qb-answers .qa-row').forEach(btn =>
     btn.addEventListener('pointerdown', e => { e.stopPropagation(); selectAnswerZone(btn.dataset.letter); }));
   // l'affichage (et la barre de 5 s) est piloté par showQuestionBlock()
+}
+// -------- BOUCLE V5 (spec 2026-08-11) : la question se traite AVANT
+// l'action. startQuestionPhase = question centrée + barre de décompte,
+// tout le monde figé, bots choisissent leur réponse ; endQuestionPhase =
+// panneau masqué, dragon spawné, chrono de manche lancé. --------
+function botPickAnswer(botObj) {
+  const remaining = zones.filter(z => !(botObj.userData.eliminatedLetters || []).includes(z.letter));
+  if (!remaining.length) return;
+  const correctZone = remaining.find(z => z.correct);
+  const wrongs = remaining.filter(z => !z.correct);
+  const pick = (correctZone && (Math.random() < LUMIN_CONFIG.botAnswerAccuracy || !wrongs.length))
+    ? correctZone : wrongs[Math.floor(Math.random() * wrongs.length)];
+  botObj.userData.selectedLetter = pick.letter;
+  botObj.userData.luminTargetZone = pick;
+}
+function startQuestionPhase() {
+  manchePhase = 'QUESTION';
+  allEntities().forEach(e => {
+    e.userData.eliminatedLetters = [];
+    e.userData.selectedLetter = null;
+    e.userData.luminTargetZone = null;
+  });
+  startDragonQuestion(); // question + zones + rendu du panneau
+  bots.forEach(b => botPickAnswer(b)); // réponses INDIVIDUELLES (spec §23)
+  document.getElementById('question-block').classList.add('qb-center');
+  showQuestionBlock();
+  questionPhaseEndsAt = performance.now() + LUMIN_CONFIG.questionCountdown * 1000;
+  document.getElementById('qb-bar').style.display = '';
+  const fill = document.getElementById('qb-bar-fill');
+  if (fill) fill.style.width = '100%';
+}
+function endQuestionPhase() {
+  manchePhase = 'PLAYING';
+  document.getElementById('question-block').classList.remove('qb-center');
+  hideQuestionBlock(); // la pilule « ? » reste si aucune réponse (spec §3)
+  mancheTimeLeft = LUMIN_CONFIG.mancheDuration;
+  updateMancheTimer();
+  document.getElementById('manche-timer').classList.add('show');
+  spawnLumin(); // le dragon n'apparaît qu'ici (spec §4/§6)
+}
+function updateMancheTimer() {
+  const el = document.getElementById('manche-timer');
+  const s = Math.max(0, Math.ceil(mancheTimeLeft));
+  el.textContent = `🐉 ${s} s`;
+  el.classList.toggle('urgent', s <= 10);
+}
+// -------- chrono de manche à 0 (spec §9B/§19) : le PORTEUR gagne la
+// manche, même sans la bonne réponse — « garder le dragon » reste un
+// objectif quand on doute. Dragon au sol à 0 : personne ne marque
+// (choix le plus simple, signalé à Camille §19). --------
+function resolveMancheTimeout() {
+  if (luminState === 'CARRIED' && luminOwnerId) {
+    const holder = luminOwnerId;
+    if (holder === player) addScore(LUMIN_CONFIG.scoreCorrect); else addBotScore(holder, LUMIN_CONFIG.scoreCorrect);
+    spawnFloatingText(holder.position.clone().add(new THREE.Vector3(0, 1.4, 0)),
+      `⏱ +${LUMIN_CONFIG.scoreCorrect}`, '#ffd35c');
+    spawnBurst(holder.position.clone().add(new THREE.Vector3(0, 1, 0)), 0xffd35c, 24);
+    showLuminAnnouncement(holder === player
+      ? '⏱ Temps écoulé — tu gardes le dragon !'
+      : `⏱ Temps écoulé — ${holder.userData.name} garde le dragon !`, 1.6);
+  } else {
+    showLuminAnnouncement('⏱ Temps écoulé — personne n\'a le dragon !', 1.6);
+  }
+  endLuminRound();
 }
 function startDragonQuestion() {
   dragonQuestionActive = true;
@@ -3421,7 +3560,7 @@ function startDragonQuestion() {
     return zone;
   });
   renderLuminQuestionBanner();
-  showQuestionBlock();
+  // l'affichage du panneau est piloté par startQuestionPhase (V5)
 }
 // -------- bonne zone : +100, fin de manche, transition courte puis
 // countdown 3-2-1 et nouveau dragon (spec §11, §14). --------
@@ -3439,23 +3578,45 @@ function resolveCorrectZone(entity) {
 // visuellement, knockback + stun bref réutilisant frozenUntil (déjà
 // respecté par le déplacement joueur ET updateBot). --------
 function resolveWrongZone(entity, zone) {
-  zone.eliminated = true;
-  eliminateZoneVisual(zone);
-  // -------- V4 §16 : après une mauvaise tentative DU JOUEUR (ou si sa
-  // zone choisie vient d'être éliminée par un autre), selectedAnswer est
-  // remis à zéro et le panneau redevient accessible pour re-choisir --------
-  const mustRechoose = entity === player || selectedZoneLetter === zone.letter;
-  if (mustRechoose) selectedZoneLetter = null;
-  renderLuminQuestionBanner();
-  if (mustRechoose) showQuestionBlock();
-  spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.2, 0)), 'Faux !', '#e25b4a');
+  // -------- BOUCLE V5 (spec §10/§15) : l'élimination est INDIVIDUELLE —
+  // la zone reste active pour les autres joueurs, chacun mémorise SES
+  // réponses testées dans userData.eliminatedLetters. Conséquences :
+  // ❌ feedback, dragon lâché, gel wrongFreezeSeconds, re-question (pour
+  // le joueur) / nouveau choix automatique (pour un bot) à la fin du gel. --------
+  (entity.userData.eliminatedLetters = entity.userData.eliminatedLetters || []).push(zone.letter);
+  spawnFloatingText(entity.position.clone().add(new THREE.Vector3(0, 1.4, 0)), '❌ MAUVAISE RÉPONSE', '#e25b4a');
   spawnBurst(entity.position.clone().add(new THREE.Vector3(0, 0.6, 0)), 0xe25b4a, 14);
   const away = new THREE.Vector3(entity.position.x - zone.pos.x, 0, entity.position.z - zone.pos.z);
   if (away.lengthSq() < 0.0001) away.set(0, 0, 1); else away.normalize();
   entity.position.addScaledVector(away, LUMIN_CONFIG.wrongKnockback);
   clampToArena(entity.position);
-  entity.userData.frozenUntil = performance.now() + LUMIN_CONFIG.wrongStunSeconds * 1000;
+  entity.userData.frozenUntil = performance.now() + LUMIN_CONFIG.wrongFreezeSeconds * 1000;
   squashPunch(entity, false);
+  if (entity === player) {
+    selectedZoneLetter = null;
+    eliminateZoneVisual(zone); // vue JOUEUR uniquement : zone grisée (spec §15)
+    renderLuminQuestionBanner(); // réponses barrées ❌ à jour
+    // question réaffichée en GRAND pendant le gel (spec §11/§17) — sans la
+    // barre de décompte (réservée à la phase question)
+    document.getElementById('qb-bar').style.display = 'none';
+    document.getElementById('question-block').classList.add('qb-center');
+    showQuestionBlock();
+    // fin du gel sans nouveau choix → repli en pilule « ? » (jamais de
+    // gros QCM pendant l'action, spec §21)
+    setTimeout(() => {
+      if (manchePhase === 'PLAYING' && !selectedZoneLetter) {
+        document.getElementById('question-block').classList.remove('qb-center');
+        hideQuestionBlock();
+      }
+    }, LUMIN_CONFIG.wrongFreezeSeconds * 1000);
+  } else {
+    // bot : il « réfléchit » pendant le gel puis choisit une NOUVELLE
+    // réponse parmi celles qu'il n'a pas encore testées (spec §12/§23)
+    entity.userData.selectedLetter = null;
+    entity.userData.luminTargetZone = null;
+    setTimeout(() => { if (manchePhase === 'PLAYING' && running) botPickAnswer(entity); },
+      LUMIN_CONFIG.wrongFreezeSeconds * 1000);
+  }
   // -------- BUG corrigé (2026-08-07, trouvé en testant) : le dragon tombait
   // à la position de l'entité APRÈS son knockback, c'est-à-dire à distance 0
   // — recapture instantanée garantie par la même entité, aucune fenêtre
@@ -3497,6 +3658,9 @@ function runLuminCountdown(onDone) {
 }
 function endLuminRound() {
   dragonQuestionActive = false;
+  manchePhase = 'IDLE'; // boucle V5
+  document.getElementById('manche-timer').classList.remove('show');
+  document.getElementById('question-block').classList.remove('qb-center');
   currentLuminQuestion = null;
   luminMagnet = null;
   selectedZoneLetter = null;
@@ -3507,7 +3671,9 @@ function endLuminRound() {
   if (currentLumin) { if (currentLumin.parent) currentLumin.parent.remove(currentLumin); currentLumin = null; }
   clearLuminHolder();
   luminState = 'NONE';
-  setTimeout(() => { if (running) runLuminCountdown(spawnLumin); }, LUMIN_CONFIG.roundRestartDelay * 1000);
+  // boucle V5 : la PHASE QUESTION est la respiration entre 2 manches —
+  // plus de 3-2-1 intermédiaire (la barre de décompte joue ce rôle)
+  setTimeout(() => { if (running) startQuestionPhase(); }, LUMIN_CONFIG.roundRestartDelay * 1000);
 }
 
 // -------- étincelles — mécanique de recharge des pets (itération
@@ -4119,6 +4285,10 @@ function startRound() {
     allEntities().forEach(e => { if (e.userData.luminHalo) e.userData.luminHalo.visible = false; });
     luminState = 'NONE'; luminOwnerId = null;
     dragonQuestionActive = false; currentLuminQuestion = null;
+    // boucle V5 : reset de la machine d'état de manche entre 2 parties
+    manchePhase = 'IDLE';
+    document.getElementById('manche-timer').classList.remove('show');
+    document.getElementById('question-block').classList.remove('qb-center');
     questionBannerEl.classList.remove('show');
     hideQuestionBlock();
     renderQbb(null);
@@ -4202,10 +4372,10 @@ function runCountdown() {
       running = true;
       nextQuestionIn = 1 + Math.random() * 0.8; // urgence immédiate, zéro temps mort après le départ (ancien système)
       setTimeout(() => { countdownEl.classList.remove('show'); rosterEl.classList.remove('show'); }, 550);
-      // -------- LUMIN V2 (spec §1) : « il ne doit plus y avoir de longue
-      // phase de combat libre sans objectif » — le dragon apparaît dès le
-      // top départ, pas de délai. --------
-      if (LUMIN_MODE) spawnLumin();
+      // -------- boucle V5 (spec §2) : le top départ ouvre la PHASE
+      // QUESTION (question centrée + décompte, personne ne bouge) — le
+      // dragon n'apparaît qu'à la fin de cette phase. --------
+      if (LUMIN_MODE) startQuestionPhase();
     }
   }
   tick();
@@ -4532,6 +4702,8 @@ function updateLeaderboard() {
 // -------- PNJ : va vers la caisse/pastille/caisse dorée la plus proche --------
 function updateBot(botObj, dt) {
   if (botObj.userData.eliminated) return;
+  // boucle V5 §2 : personne ne bouge pendant la phase question
+  if (LUMIN_MODE && manchePhase === 'QUESTION') { return; }
   const now = performance.now();
   const frozen = now < botObj.userData.frozenUntil;
   const slowed = now < botObj.userData.slowUntil;
@@ -4561,17 +4733,12 @@ function updateBot(botObj, dt) {
     const threat = allEntities().some(e => e !== botObj && !e.userData.eliminated
       && Math.hypot(e.position.x - botObj.position.x, e.position.z - botObj.position.z) < 3.2);
     if (threat && Math.random() < dt * 0.5) activateAbility(botObj, 'defense');
-    if (!botObj.userData.luminTargetZone || botObj.userData.luminTargetZone.eliminated) {
-      const options = zones.filter(z => !z.eliminated);
-      // -------- « réponse » du bot (V4, développé le 2026-08-10) : il
-      // choisit la BONNE zone avec une probabilité botAnswerAccuracy,
-      // sinon une mauvaise au hasard — plus crédible qu'un tirage uniforme --------
-      const correctZone = options.find(z => z.correct);
-      const wrongZones = options.filter(z => !z.correct);
-      botObj.userData.luminTargetZone =
-        (correctZone && (Math.random() < LUMIN_CONFIG.botAnswerAccuracy || !wrongZones.length))
-          ? correctZone
-          : wrongZones[Math.floor(Math.random() * wrongZones.length)];
+    // boucle V5 §23 : la réponse du bot est choisie PENDANT la phase
+    // question (botPickAnswer, précision botAnswerAccuracy) et rechoisie
+    // à la fin de son gel après une erreur — ici on ne fait que suivre.
+    // Filet : s'il n'a pas de cible (gel en cours), il erre sans déposer.
+    if (!botObj.userData.luminTargetZone && botObj.userData.selectedLetter) {
+      botObj.userData.luminTargetZone = zones.find(z => z.letter === botObj.userData.selectedLetter) || null;
     }
     target = botObj.userData.luminTargetZone?.pos || null;
   } else if (LUMIN_MODE && luminState === 'AVAILABLE' && currentLumin) {
@@ -4670,7 +4837,9 @@ function animate() {
     // (règle CLAUDE.md : jamais de teinte/vignette plein écran — un flou
     // optique temporaire lié à un effet de jeu précis est différent). --------
     renderer.domElement.style.filter = playerBlind ? 'blur(6px)' : '';
-    const iv = (playerFrozen || player.userData.eliminated) ? { x: 0, z: 0 } : inputVector();
+    // boucle V5 §2 : le joueur ne peut pas se déplacer pendant la phase question
+    const iv = (playerFrozen || player.userData.eliminated
+      || (LUMIN_MODE && manchePhase === 'QUESTION')) ? { x: 0, z: 0 } : inputVector();
     const boosted = performance.now() < boostUntil;
     const speed = (boosted ? 6.4 : 4.4) * dt * (playerSlowed ? player.userData.slowFactor : 1);
     if (iv.x || iv.z) {
@@ -5086,7 +5255,10 @@ function animate() {
           const chosenLetter = luminOwnerId === player
             ? selectedZoneLetter
             : luminOwnerId.userData.luminTargetZone?.letter;
-          const hitZone = chosenLetter ? zones.find(z => z.letter === chosenLetter && !z.eliminated
+          // V5 : plus de zone « éliminée » globale — chosenLetter ne peut
+          // jamais pointer une zone déjà testée par CETTE entité (le retry
+          // l'interdit), la zone reste valide pour les autres
+          const hitZone = chosenLetter ? zones.find(z => z.letter === chosenLetter
             && Math.hypot(z.pos.x - luminOwnerId.position.x, z.pos.z - luminOwnerId.position.z) < LUMIN_CONFIG.zoneRadius) : null;
           if (hitZone) {
             if (hitZone.correct) resolveCorrectZone(luminOwnerId);
@@ -5094,9 +5266,21 @@ function animate() {
           }
         }
       }
+      // -------- boucle V5 : barre de décompte de la phase question, puis
+      // chrono de MANCHE (spec §19) — à 0, le porteur gagne. --------
+      if (manchePhase === 'QUESTION') {
+        const left = Math.max(0, questionPhaseEndsAt - performance.now());
+        const fill = document.getElementById('qb-bar-fill');
+        if (fill) fill.style.width = `${(left / (LUMIN_CONFIG.questionCountdown * 1000)) * 100}%`;
+        if (left <= 0) endQuestionPhase();
+      } else if (manchePhase === 'PLAYING' && dragonQuestionActive) {
+        mancheTimeLeft -= dt;
+        updateMancheTimer();
+        if (mancheTimeLeft <= 0) resolveMancheTimeout();
+      }
     }
 
-    // minuteur de manche
+    // minuteur du MATCH global (podium à 0) — distinct du chrono de manche
     timeLeft -= dt;
     timerBadge.textContent = `⏱ ${Math.max(0, Math.ceil(timeLeft))}`;
     if (timeLeft <= 0) endRound();
@@ -5370,14 +5554,25 @@ window.__arenaDebug = {
   // (même code que le vrai jeu, voir animate()). --------
   forceLuminAnswer: (correct = true) => {
     if (!luminOwnerId || luminState !== 'CARRIED') return;
-    const zone = correct ? zones.find(z => z.correct && !z.eliminated) : zones.find(z => !z.correct && !z.eliminated);
+    // V5 : on évite les réponses déjà testées PAR LE PORTEUR (élimination
+    // individuelle) — le hook « choisit » la zone puis y téléporte
+    const tested = luminOwnerId.userData.eliminatedLetters || [];
+    const zone = zones.find(z => (correct ? z.correct : !z.correct) && !tested.includes(z.letter));
     if (!zone) return;
-    // V4 §13 : seule la zone CHOISIE valide — le hook « choisit » donc la
-    // zone avant d'y téléporter le porteur
     if (luminOwnerId === player) selectedZoneLetter = zone.letter;
-    else luminOwnerId.userData.luminTargetZone = zone;
+    else { luminOwnerId.userData.selectedLetter = zone.letter; luminOwnerId.userData.luminTargetZone = zone; }
     luminOwnerId.position.set(zone.pos.x, 0, zone.pos.z);
   },
+  // -------- boucle V5 : sauter la phase question / forcer la fin du
+  // chrono de manche (tests des scénarios §27) --------
+  forceEndQuestionPhase: () => { if (manchePhase === 'QUESTION') endQuestionPhase(); },
+  forceMancheTimeout: () => { if (manchePhase === 'PLAYING') { mancheTimeLeft = 0.01; } },
+  getMancheState: () => ({ manchePhase, mancheTimeLeft: +mancheTimeLeft.toFixed(1),
+    selectedZoneLetter, playerEliminatedLetters: (player.userData.eliminatedLetters || []).slice(),
+    playerFrozen: performance.now() < (player.userData.frozenUntil || 0),
+    bots: bots.map(b => ({ name: b.userData.name, letter: b.userData.selectedLetter,
+      eliminated: (b.userData.eliminatedLetters || []).slice() })) }),
+  forcePlayerAnswer: (letter) => selectAnswerZone(letter),
   // -------- V3 (2026-08-08) : téléporte le JOUEUR loin du dragon actuel
   // (coin opposé de la map) — pour tester rapidement les indicateurs
   // hors-écran/la caméra suiveuse sans attendre une vraie course. --------

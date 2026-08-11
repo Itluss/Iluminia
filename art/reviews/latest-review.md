@@ -1,45 +1,50 @@
-# Fiche d'itération — sol V2 « illustration peinte »
+# Fiche d'itération — BOUCLE V5 : la question AVANT l'action
 
-Retour Camille (2026-08-10) : « c'est mieux mais pas encore ça — même
-en 2D tu devrais être capable de faire mieux en 2026. » Le damier
-uniforme ne suffisait pas : le sol est désormais une VRAIE scène 2D
-peinte, avec des lieux différenciés partout où la caméra passe.
+Spec complète Camille 2026-08-11 (« FLUIDE, SIMPLE, SANS QUESTION
+PENDANT L'ACTION ») — voir docs/mecaniques-arene.md pour la boucle
+détaillée.
 
-## Le nouveau sol (public/spike3d-arena.html, makeGroundTexture V2)
+## Machine d'état (public/spike3d-arena.html)
 
-1. **Pavés peints un à un** : quinconce irrégulier, 3 tons de violet +
-   jitter, coins arrondis, arête claire / assise sombre par pavé — fini
-   la grille mécanique.
-2. **Chemins de grès chaud** : grand anneau en super-ellipse + 4
-   connecteurs vers les bords, peints en 3 passes (creux sombre, corps
-   sable, cœur clair) + galets épars — le contraste chaud/froid qui
-   structure les arènes Clash Royale.
-3. **Place centrale en mosaïque** : disque rayonnant à 16 secteurs,
-   anneaux de pierre + anneau cyan, médaillon d'or à 8 studs sertis,
-   spirale-dragon gravée au centre.
-4. **2 bassins de cristal** : margelle de pierre, eau en dégradé
-   turquoise profond → lumineux, reflets en arcs, étincelles-croix,
-   cristaux de berge violets/cyan.
-5. **6 massifs de mousse sauvage** : blobs organiques verts foncés
-   (2 passes + cœur sombre pour le volume), touffes en arcs clairs,
-   fleurs de cristal roses/dorées.
-6. Conservés de la V1 : liseré doré incrusté, vignette + centre chaud,
-   bande d'occlusion au pied des remparts, remparts/tours/torches/
-   arbres-champignons, ombres portées plein plateau.
+`manchePhase` : 'IDLE' → 'QUESTION' → 'PLAYING' → (fin) 'IDLE'.
+Par entité (userData) : `selectedLetter` (bots ; le joueur garde
+`selectedZoneLetter`), `eliminatedLetters []` (réponses testées,
+INDIVIDUELLES), `frozenUntil` (gel).
 
-Toutes les couleurs restent peintes ~40 % plus sombres que la teinte
-cible (l'éclairage de la scène multiplie l'albédo par ≈ 1,8).
+- `startQuestionPhase()` : question + zones + panneau CENTRÉ (classe
+  `qb-center`) + barre de décompte, gel général, bots choisissent
+  (`botPickAnswer`, précision `botAnswerAccuracy`).
+- `endQuestionPhase()` : panneau masqué (pilule « ? » si sans réponse),
+  dragon spawné, chrono de manche affiché (pilule 🐉 haut centre).
+- `resolveWrongZone()` réécrite : élimination INDIVIDUELLE (plus de
+  zone morte globale), ❌ + drop du dragon + gel 2 s + re-question
+  centrée avec réponses barrées (`qa-dead`) pour le joueur / re-choix
+  automatique post-gel pour les bots.
+- `resolveMancheTimeout()` : chrono à 0 → porteur gagne (+100) ; dragon
+  au sol → personne ne marque (signalé, choix le plus simple).
+- Gates : déplacement joueur, updateBot et activateAbility bloqués en
+  phase QUESTION ; compétences bloquées pendant un gel.
 
-## Vérifié (0 erreur console)
+## Réglages (LUMIN_CONFIG)
 
-- Captures centre / bassin / mousse : chaque écran de jeu traverse au
-  moins deux « matériaux » différents (pavés + chemin, mousse, bassin,
-  place) — plus aucun plan monotone.
-- Correction en cours de route : la mousse V1 rendait « nuage menthe »
-  délavé → verts foncés, blobs plus petits, cœur sombre.
+- `questionCountdown` : 6 s (phase question)
+- `mancheDuration` : 45 s (chrono de manche)
+- `wrongFreezeSeconds` : 2 s (gel après erreur)
 
-## À surveiller (téléphone réel)
+## Vérifié (probes Playwright, 0 erreur console)
 
-- FPS : texture 2048 + shadow map 2048 (redescendre à 1024 si besoin).
-- Les bassins/mousse sont purement visuels (aucune collision) — dire si
-  ça prête à confusion en jeu.
+Scénario 1 complet : phase question centrée sans dragon → choix B →
+lancement (panneau disparu, dragon, chrono 45 s) → mauvaise zone
+(❌, lettre éliminée, gel actif, dragon libre, retry centré, réponse
+barrée incliquable) → nouveau choix (panneau se ferme) → fin du gel →
+re-capture → bonne zone → manche terminée → NOUVELLE phase question.
+Scénario 2 : bot porteur + chrono forcé à 0 → manche terminée.
+Transition naturelle de la phase question mesurée à 6,0 s pile.
+Captures téléphone : phase question / action pure / retry.
+
+## Signalé (§3/§19 de la spec)
+
+- Sans réponse au décompte : la partie démarre, pilule « ? » toujours
+  accessible, et la capture sans réponse rouvre le petit panneau.
+- Dragon au sol au chrono 0 : manche terminée sans vainqueur.
+- Le 3-2-1 inter-manches est remplacé par la phase question elle-même.
