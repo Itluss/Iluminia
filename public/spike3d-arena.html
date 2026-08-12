@@ -1825,6 +1825,161 @@ function makeBlob(bodyColor, hoodColor) {
   g.userData.outlineMeshes = [body.children[0], head.children[0]];
   return g;
 }
+// -------- ZEP (2026-08-12, planche « NOUVEAU PERSONNAGE ») : premier bot
+// remplacé par un vrai personnage. Modèle procédural toon fidèle à la
+// planche (cheveux blancs hérissés, bandeau or à éclair violet, casque
+// audio, écharpe violette, gilet or, hoverboard violet/or à patins cyan)
+// en attendant le GLB Meshy (models/zep-character.glb, chargé et substitué
+// automatiquement s'il existe). Zep ne MARCHE pas : il glisse — flottement,
+// inclinaison dans les virages et boost gérés par updateZepVisual(). --------
+function makeZep() {
+  const g = new THREE.Group();
+  const visual = new THREE.Group(); // sous-groupe animé (flottement/inclinaison)
+  g.add(visual);
+  g.userData.hoverVisual = visual;
+
+  // hoverboard : planche violette, bande éclair or, patins lumineux cyan
+  const board = new THREE.Group();
+  board.position.y = 0.26;
+  const deck = toon(new THREE.BoxGeometry(1.0, 0.09, 0.44), 0x7b3fd6, { outlineScale: 1.1 });
+  board.add(deck);
+  const stripe = toon(new THREE.BoxGeometry(0.98, 0.095, 0.13), 0xffc928, { outline: false });
+  stripe.rotation.y = 0.18;
+  board.add(stripe);
+  for (const side of [-1, 1]) {
+    const pad = emissive(new THREE.CylinderGeometry(0.13, 0.17, 0.07, 12), 0x66e8ff, 2.2);
+    pad.position.set(side * 0.3, -0.08, 0);
+    board.add(pad);
+    const glow = emissive(new THREE.CircleGeometry(0.24, 16), 0x66e8ff, 1.6);
+    glow.rotation.x = -Math.PI / 2;
+    glow.position.set(side * 0.3, -0.115, 0);
+    glow.material.transparent = true; glow.material.opacity = 0.5;
+    glow.material.depthWrite = false;
+    board.add(glow);
+  }
+  visual.add(board);
+
+  // jambes/baskets sur la planche
+  for (const side of [-1, 1]) {
+    const shoe = toon(new THREE.BoxGeometry(0.2, 0.12, 0.3), 0x7b3fd6, { outline: false });
+    shoe.position.set(side * 0.22, 0.37, 0.02);
+    visual.add(shoe);
+    const leg = toon(new THREE.CylinderGeometry(0.085, 0.095, 0.28, 8), 0x2a2733, { outline: false });
+    leg.position.set(side * 0.2, 0.56, 0);
+    visual.add(leg);
+  }
+  // corps : gilet or sur short sombre
+  const hips = toon(new THREE.CylinderGeometry(0.3, 0.34, 0.26, 10), 0x2a2733, { outline: false });
+  hips.position.y = 0.78;
+  visual.add(hips);
+  const body = toon(new THREE.CapsuleGeometry(0.34, 0.3, 4, 10), 0xf0a52c, { outlineScale: 1.08 });
+  body.position.y = 1.02;
+  visual.add(body);
+  // écharpe violette + pan flottant dans le dos
+  const scarf = toon(new THREE.TorusGeometry(0.27, 0.09, 8, 14), 0x7b3fd6, { outline: false });
+  scarf.rotation.x = Math.PI / 2;
+  scarf.position.y = 1.3;
+  visual.add(scarf);
+  const scarfTail = toon(new THREE.BoxGeometry(0.14, 0.38, 0.05), 0x7b3fd6, { outline: false });
+  scarfTail.position.set(-0.08, 1.12, -0.3);
+  scarfTail.rotation.x = 0.5;
+  visual.add(scarfTail);
+  g.userData.scarfTail = scarfTail;
+  // tête + bandeau or à éclair violet + casque audio
+  const head = toon(new THREE.SphereGeometry(0.4, 12, 10), 0xffd9b0, { outlineScale: 1.06 });
+  head.position.y = 1.66;
+  visual.add(head);
+  const band = toon(new THREE.CylinderGeometry(0.415, 0.415, 0.16, 14, 1, true), 0xffc928, { outline: false });
+  band.position.y = 1.72;
+  visual.add(band);
+  const emblem = emissive(new THREE.CircleGeometry(0.11, 12), 0x9a5cff, 1.8);
+  emblem.position.set(0, 1.74, 0.41);
+  visual.add(emblem);
+  for (const side of [-1, 1]) {
+    const cup = toon(new THREE.SphereGeometry(0.13, 8, 8), 0xffc928, { outline: false });
+    cup.position.set(side * 0.4, 1.66, 0);
+    visual.add(cup);
+  }
+  // chevelure blanche hérissée : couronne de cônes
+  const hairSpikes = [
+    [0, 0.32, 0.05, 0.35, 0.1], [-0.18, 0.28, 0.12, 0.3, -0.5], [0.18, 0.28, 0.1, 0.3, 0.5],
+    [-0.1, 0.3, -0.16, 0.32, -0.25], [0.1, 0.3, -0.16, 0.32, 0.25], [0, 0.26, -0.24, 0.26, 0],
+  ];
+  hairSpikes.forEach(([hx, hy, hz, len, tilt]) => {
+    const spike = toon(new THREE.ConeGeometry(0.13, len, 7), 0xf2f2f4, { outline: false });
+    spike.position.set(hx, 1.66 + hy, hz);
+    spike.rotation.z = -tilt;
+    spike.rotation.x = hz * -1.4;
+    visual.add(spike);
+  });
+  // yeux
+  const eyeGeo = new THREE.SphereGeometry(0.06, 6, 6);
+  for (const side of [-1, 1]) {
+    const eye = toon(eyeGeo, 0x2c2436, { outline: false });
+    eye.position.set(side * 0.14, 1.64, 0.36);
+    visual.add(eye);
+  }
+  g.userData.outlineMeshes = [body.children[0], head.children[0]];
+  g.userData.isZep = true;
+  return g;
+}
+// traînée de boost de Zep : disques émissifs violets/cyan qui s'estompent
+const zepTrail = [];
+function spawnZepTrailPuff(pos) {
+  const puff = emissive(new THREE.CircleGeometry(0.16 + Math.random() * 0.1, 10),
+    Math.random() < 0.5 ? 0x9a5cff : 0x66e8ff, 1.6);
+  puff.rotation.x = -Math.PI / 2;
+  puff.position.set(pos.x, 0.2, pos.z);
+  puff.material.transparent = true;
+  puff.material.depthWrite = false;
+  puff.userData.life = 1;
+  scene.add(puff);
+  zepTrail.push(puff);
+}
+// flottement + inclinaison + traînée — appelé chaque frame depuis animate()
+function updateZepVisual(bot, dt, now) {
+  const visual = bot.userData.hoverVisual;
+  if (!visual) return;
+  const last = bot.userData.zepLastPos || bot.position.clone();
+  const vel = bot.position.clone().sub(last);
+  bot.userData.zepLastPos = bot.position.clone();
+  const speed = dt > 0 ? vel.length() / dt : 0;
+  // flottement permanent du board (jamais de foulée : Zep glisse)
+  visual.position.y = 0.1 + Math.sin(now * 0.004) * 0.05;
+  // inclinaison : penche vers l'avant avec la vitesse, s'incline en virage
+  const targetPitch = Math.min(0.3, speed * 0.055);
+  const heading = Math.atan2(vel.x, vel.z);
+  let turnRate = 0;
+  if (speed > 0.4 && bot.userData.zepLastHeading !== undefined) {
+    let dh = heading - bot.userData.zepLastHeading;
+    while (dh > Math.PI) dh -= Math.PI * 2;
+    while (dh < -Math.PI) dh += Math.PI * 2;
+    turnRate = dh / Math.max(dt, 0.001);
+  }
+  if (speed > 0.4) bot.userData.zepLastHeading = heading;
+  const targetRoll = Math.max(-0.4, Math.min(0.4, -turnRate * 0.09));
+  visual.rotation.x += (targetPitch - visual.rotation.x) * Math.min(1, dt * 8);
+  visual.rotation.z += (targetRoll - visual.rotation.z) * Math.min(1, dt * 8);
+  // le pan d'écharpe se soulève avec la vitesse
+  if (bot.userData.scarfTail) bot.userData.scarfTail.rotation.x = 0.5 + Math.min(0.7, speed * 0.14);
+  // traînée : en boost (dash) ou glisse rapide
+  const boosting = (bot.userData.dashRemaining || 0) > 0 || speed > 3.4;
+  if (boosting && now > (bot.userData.zepNextPuff || 0)) {
+    spawnZepTrailPuff(bot.position);
+    bot.userData.zepNextPuff = now + 55;
+  }
+  // vieillissement de la traînée (partagé, peu d'éléments)
+  for (let i = zepTrail.length - 1; i >= 0; i--) {
+    const puff = zepTrail[i];
+    puff.userData.life -= dt * 2.2;
+    puff.material.opacity = Math.max(0, puff.userData.life) * 0.7;
+    puff.scale.setScalar(1 + (1 - puff.userData.life) * 1.6);
+    if (puff.userData.life <= 0) {
+      scene.remove(puff);
+      zepTrail.splice(i, 1);
+    }
+  }
+}
 // -------- clignotement bref du contour du personnage qui vient de
 // résoudre la bonne pastille — retour de Camille : « je ne sais pas qui
 // a remporté l'étiquette, des fois même pas si c'est moi ». Distinct de
@@ -2002,12 +2157,15 @@ function setMaxAction(action) {
 // -------- PNJ (3, pas 1) : plus de monde dans l'arène, plus de pression
 // compétitive — retour de Camille : « ce n'est pas un carton ». --------
 const BOT_DEFS = [
-  { name: 'Pixel', body: 0xe8834a, hood: 0xfff2e0, start: { x: 0, z: -6 } },
+  // Pixel remplacé par ZEP (2026-08-12) — « nous allons remplacer les bots
+  // par ses personnages au fur et à mesure » (Camille). Couleurs = palette
+  // de la planche (violet/or), utilisées par le HUD/scores.
+  { name: 'Zep', body: 0x7b3fd6, hood: 0xf2f2f4, start: { x: 0, z: -6 }, zep: true },
   { name: 'Nova', body: 0x8a6fd6, hood: 0xf5c99b, start: { x: 6, z: 3 } },
   { name: 'Ficelle', body: 0xe084b0, hood: 0xfff6de, start: { x: -6, z: 3 } },
 ];
 const bots = BOT_DEFS.map(def => {
-  const g = makeBlob(def.body, def.hood);
+  const g = def.zep ? makeZep() : makeBlob(def.body, def.hood);
   g.position.set(def.start.x, 0, def.start.z);
   g.userData.name = def.name;
   g.userData.body = def.body;
@@ -2031,6 +2189,42 @@ const bots = BOT_DEFS.map(def => {
   scene.add(g);
   return g;
 });
+// -------- GLB Meshy de Zep : substitué automatiquement au modèle procédural
+// dès que public/models/zep-character.glb existe (généré par
+// scripts/generate-3d-zep.mjs). En son absence (404), le Zep procédural
+// reste en place — aucun impact. Le sous-groupe animé (hoverVisual) est
+// remplacé pour que flottement/inclinaison s'appliquent au GLB tel quel. ----
+{
+  const zepBot = bots.find(b => b.userData.isZep);
+  if (zepBot) {
+    gltfLoader.load('models/zep-character.glb', (gltf) => {
+      const model = gltf.scene;
+      model.traverse((node) => {
+        if (node.isMesh && node.material) {
+          const mats = Array.isArray(node.material) ? node.material : [node.material];
+          mats.forEach((m) => {
+            m.emissiveMap = null; m.emissive?.set(0, 0, 0);
+            if (m.metalness !== undefined) m.metalness = 0;
+            if (m.roughness !== undefined) m.roughness = 0.75;
+            m.needsUpdate = true;
+          });
+        }
+      });
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      const center = box.getCenter(new THREE.Vector3());
+      const scale = 1.5 / size.y;
+      model.scale.setScalar(scale);
+      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+      const glbVisual = new THREE.Group();
+      glbVisual.add(model);
+      zepBot.userData.hoverVisual.visible = false;
+      zepBot.add(glbVisual);
+      zepBot.userData.hoverVisual = glbVisual;
+      console.info('Zep : GLB Meshy chargé.');
+    }, undefined, () => console.info('Zep : GLB absent, modèle procédural conservé.'));
+  }
+}
 
 // -------- déplacement temps réel : clavier + joystick tactile, PAS de
 // clic-pour-marcher (incompatible avec le rythme demandé). --------
@@ -4970,6 +5164,8 @@ function animate() {
       maxMixer.update(dt);
     }
     bots.forEach(b => updateBot(b, dt));
+    // Zep glisse sur son hoverboard : flottement/inclinaison/traînée (visuel pur)
+    bots.forEach(b => { if (b.userData.isZep) updateZepVisual(b, dt, performance.now()); });
 
     // pets : recharge passive automatique (base = pet.cooldown, ex-durée de
     // recharge à l'ancien système), accélérée par les étincelles ramassées
@@ -5722,6 +5918,7 @@ window.__arenaDebug = {
     clampToArena(player.position);
   },
   teleportPlayer: (x, z) => { player.position.set(x, 0, z); },
+  teleportBot: (name, x, z) => { const b = bots.find(b => b.userData.name === name); if (b) b.position.set(x, 0, z); },
   // -------- test des limites de map : envoie le joueur largement au-delà
   // du bord — clampToArena() doit le ramener pile sur le bord (PLAY_W/
   // PLAY_D), jamais plus loin, et la caméra ne doit jamais montrer du vide
