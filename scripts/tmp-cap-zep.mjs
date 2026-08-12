@@ -1,0 +1,20 @@
+import { chromium } from 'playwright';
+const b = await chromium.launch({ executablePath: process.env.PW_EXECUTABLE_PATH });
+const p = await b.newPage({ viewport: { width: 1280, height: 720 } });
+const errors = [];
+p.on('console', m => { if (m.type() === 'error') errors.push(m.text()); });
+p.on('pageerror', e => errors.push(e.message));
+await p.goto('http://localhost:5173/spike3d-arena.html');
+await p.waitForTimeout(2500);
+await p.evaluate(() => {
+  document.querySelector('#start-overlay button, #btn-start, [data-start]')?.click();
+});
+await p.waitForTimeout(800);
+await p.evaluate(() => window.__arenaDebug?.forceEndQuestionPhase?.());
+await p.evaluate(() => window.__arenaDebug?.teleportPlayer?.(1.6, 0));
+await p.waitForTimeout(4000);
+await p.evaluate(() => { window.__arenaDebug?.teleportBot?.('Zep', -0.8, 0.4); });
+await p.waitForTimeout(60);
+await p.screenshot({ path: '/tmp/claude-0/-home-user-IronWolf/38765047-247e-51a5-903c-af97e5c1a19c/scratchpad/zep-arena.png' });
+console.log('errors:', errors.length ? errors.slice(0,5) : 'none');
+await b.close();

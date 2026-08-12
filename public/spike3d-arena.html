@@ -1832,6 +1832,18 @@ function makeBlob(bodyColor, hoodColor) {
 // en attendant le GLB Meshy (models/zep-character.glb, chargé et substitué
 // automatiquement s'il existe). Zep ne MARCHE pas : il glisse — flottement,
 // inclinaison dans les virages et boost gérés par updateZepVisual(). --------
+// éclair stylisé (emblèmes de Zep : board, poitrine, bandeau)
+function makeBoltGeometry(sc = 1) {
+  const sh = new THREE.Shape();
+  sh.moveTo(0.06 * sc, 0.5 * sc);
+  sh.lineTo(-0.2 * sc, 0.04 * sc);
+  sh.lineTo(-0.04 * sc, 0.04 * sc);
+  sh.lineTo(-0.22 * sc, -0.5 * sc);
+  sh.lineTo(0.2 * sc, 0.06 * sc);
+  sh.lineTo(0.03 * sc, 0.06 * sc);
+  sh.closePath();
+  return new THREE.ShapeGeometry(sh);
+}
 function makeZep() {
   const g = new THREE.Group();
   const visual = new THREE.Group(); // sous-groupe animé (flottement/inclinaison)
@@ -1843,9 +1855,11 @@ function makeZep() {
   board.position.y = 0.26;
   const deck = toon(new THREE.BoxGeometry(1.0, 0.09, 0.44), 0x7b3fd6, { outlineScale: 1.1 });
   board.add(deck);
-  const stripe = toon(new THREE.BoxGeometry(0.98, 0.095, 0.13), 0xffc928, { outline: false });
-  stripe.rotation.y = 0.18;
-  board.add(stripe);
+  const boardBolt = emissive(makeBoltGeometry(0.62), 0xffc928, 0.7);
+  boardBolt.rotation.x = -Math.PI / 2;
+  boardBolt.rotation.z = -Math.PI / 2; // couché le long de la planche
+  boardBolt.position.y = 0.052;
+  board.add(boardBolt);
   for (const side of [-1, 1]) {
     const pad = emissive(new THREE.CylinderGeometry(0.13, 0.17, 0.07, 12), 0x66e8ff, 2.2);
     pad.position.set(side * 0.3, -0.08, 0);
@@ -1864,6 +1878,9 @@ function makeZep() {
     const shoe = toon(new THREE.BoxGeometry(0.2, 0.12, 0.3), 0x7b3fd6, { outline: false });
     shoe.position.set(side * 0.22, 0.37, 0.02);
     visual.add(shoe);
+    const trim = toon(new THREE.BoxGeometry(0.21, 0.045, 0.31), 0xffc928, { outline: false });
+    trim.position.set(side * 0.22, 0.325, 0.02);
+    visual.add(trim);
     const leg = toon(new THREE.CylinderGeometry(0.085, 0.095, 0.28, 8), 0x2a2733, { outline: false });
     leg.position.set(side * 0.2, 0.56, 0);
     visual.add(leg);
@@ -1875,6 +1892,27 @@ function makeZep() {
   const body = toon(new THREE.CapsuleGeometry(0.34, 0.3, 4, 10), 0xf0a52c, { outlineScale: 1.08 });
   body.position.y = 1.02;
   visual.add(body);
+  // ceinture sombre à boucle dorée
+  const belt = toon(new THREE.CylinderGeometry(0.315, 0.325, 0.09, 12), 0x1c1a22, { outline: false });
+  belt.position.y = 0.9;
+  visual.add(belt);
+  const buckle = toon(new THREE.BoxGeometry(0.12, 0.08, 0.04), 0xffc928, { outline: false });
+  buckle.position.set(0, 0.9, 0.31);
+  visual.add(buckle);
+  // éclair blanc sur le gilet (emblème de la planche)
+  const chestBolt = emissive(makeBoltGeometry(0.34), 0xffffff, 0.9);
+  chestBolt.position.set(0.01, 1.06, 0.345);
+  visual.add(chestBolt);
+  // bras (manches or) + mitaines noires
+  for (const side of [-1, 1]) {
+    const arm = toon(new THREE.CapsuleGeometry(0.09, 0.3, 4, 8), 0xf0a52c, { outline: false });
+    arm.position.set(side * 0.42, 1.04, 0.02);
+    arm.rotation.z = side * 0.5;
+    visual.add(arm);
+    const glove = toon(new THREE.SphereGeometry(0.115, 8, 8), 0x26221f, { outline: false });
+    glove.position.set(side * 0.54, 0.84, 0.05);
+    visual.add(glove);
+  }
   // écharpe violette + pan flottant dans le dos
   const scarf = toon(new THREE.TorusGeometry(0.27, 0.09, 8, 14), 0x7b3fd6, { outline: false });
   scarf.rotation.x = Math.PI / 2;
@@ -1895,6 +1933,9 @@ function makeZep() {
   const emblem = emissive(new THREE.CircleGeometry(0.11, 12), 0x9a5cff, 1.8);
   emblem.position.set(0, 1.74, 0.41);
   visual.add(emblem);
+  const emblemBolt = emissive(makeBoltGeometry(0.15), 0xffffff, 1.4);
+  emblemBolt.position.set(0, 1.74, 0.415);
+  visual.add(emblemBolt);
   for (const side of [-1, 1]) {
     const cup = toon(new THREE.SphereGeometry(0.13, 8, 8), 0xffc928, { outline: false });
     cup.position.set(side * 0.4, 1.66, 0);
