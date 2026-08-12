@@ -2244,9 +2244,19 @@ const bots = BOT_DEFS.map(def => {
         if (node.isMesh && node.material) {
           const mats = Array.isArray(node.material) ? node.material : [node.material];
           mats.forEach((m) => {
-            m.emissiveMap = null; m.emissive?.set(0, 0, 0);
+            // -------- « trop terne » (retour Camille 2026-08-12) : la texture
+            // Meshy de Zep est plus sombre que celle de Max — au lieu de couper
+            // l'émissif (traitement Max), on RÉUTILISE la texture couleur en
+            // émissif doux (0,35) : les couleurs retrouvent leur éclat sans
+            // écraser les ombres (choisi sur comparatif à 3 réglages sous
+            // l'éclairage exact de l'arène). --------
             if (m.metalness !== undefined) m.metalness = 0;
-            if (m.roughness !== undefined) m.roughness = 0.75;
+            if (m.roughness !== undefined) m.roughness = 0.5;
+            if (m.map) {
+              m.emissive = new THREE.Color(0xffffff);
+              m.emissiveMap = m.map;
+              m.emissiveIntensity = 0.35;
+            } else { m.emissiveMap = null; m.emissive?.set(0, 0, 0); }
             m.needsUpdate = true;
           });
         }
