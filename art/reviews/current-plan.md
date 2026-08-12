@@ -60,3 +60,19 @@ Home = référence de style, maquette = référence de layout.
 - Navigation : Home → sélection ; carte MAX → écran détail personnages ;
   retour → Home. Vérifié en 1536×864, 932×430, 844×390, 667×375
   (0 erreur console, aucun scroll, aucune coupure).
+
+# Fiche d'itération — ZEP, premier personnage généré (2026-08-12)
+
+- Planche « NOUVEAU PERSONNAGE » → 4 vues recadrées → Meshy
+  multi-image-to-3d exécuté par GitHub Actions (la session cloud n'a pas
+  accès à api.meshy.ai ; clé dans le secret MESHY_API_KEY, circuit
+  réutilisable pour toute la 3D à venir : toucher
+  .github/trigger-zep-generation ou Run workflow).
+- public/models/zep-character.glb (11,5 Mo) : Zep sur son hoverboard,
+  très fidèle (vignette art/generated/3d/zep-thumbnail.png). Chargé
+  automatiquement dans l'arène à la place du Zep procédural (fallback
+  conservé), vérifié sans erreur console.
+- Déplacement hoverboard par code : flottement, inclinaison virages,
+  traînée éclair en boost — Zep remplace le bot Pixel.
+- À surveiller : 11,5 Mo à télécharger sur téléphone (préchargement ?),
+  échelle/orientation du GLB en jeu à valider sur capture réelle.
