@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<!-- Placeholder héros « VEX » (généré, en attendant l'illustration finale) -->
+<defs>
+  <radialGradient id="bg" cx="50%" cy="34%" r="80%">
+    <stop offset="0%" stop-color="#2e4a34"/>
+    <stop offset="62%" stop-color="#16224a"/>
+    <stop offset="100%" stop-color="#0d1530"/>
+  </radialGradient>
+  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="70%" stop-color="#0d1530" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#0d1530" stop-opacity="0.55"/>
+  </linearGradient>
+</defs>
+<rect width="240" height="240" fill="url(#bg)"/>
+
+<path d="M120 30 C70 30 48 78 52 128 C54 166 66 186 78 196 L162 196 C174 186 186 166 188 128 C192 78 170 30 120 30 Z" fill="#23262e" stroke="#0e1014" stroke-width="4"/>
+<path d="M120 30 C80 30 60 68 60 108 L84 96 C86 66 100 48 120 46 C140 48 154 66 156 96 L180 108 C180 68 160 30 120 30 Z" fill="#31353f"/>
+<ellipse cx="120" cy="118" rx="46" ry="44" fill="#101218"/>
+<path d="M88 108 C92 92 106 84 120 84 C134 84 148 92 152 108 L146 126 L94 126 Z" fill="#cbb78e" stroke="#8a744c" stroke-width="3"/>
+<path d="M112 118 L94 168 L120 132 Z" fill="#cbb78e" stroke="#8a744c" stroke-width="3"/>
+<circle cx="102" cy="106" r="11" fill="#1c1f26" stroke="#8a744c" stroke-width="2.5"/>
+<circle cx="138" cy="106" r="11" fill="#1c1f26" stroke="#8a744c" stroke-width="2.5"/>
+<circle cx="102" cy="106" r="6" fill="#54e04a"/>
+<circle cx="138" cy="106" r="6" fill="#54e04a"/>
+<circle cx="100" cy="104" r="2" fill="#d0ffc8"/>
+<circle cx="136" cy="104" r="2" fill="#d0ffc8"/>
+<path d="M54 240 C54 208 78 190 120 190 C162 190 186 208 186 240 Z" fill="#23262e" stroke="#0e1014" stroke-width="4"/>
+<path d="M100 196 L108 214 L116 198 L124 216 L132 198 L140 212" stroke="#0e1014" stroke-width="3" fill="none"/>
+<rect width="240" height="240" fill="url(#fade)"/>
+</svg>

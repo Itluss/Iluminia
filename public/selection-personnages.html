@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Illuminia — Sélection de personnages</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+/* =====================================================================
+   ÉCRAN SÉLECTION DE PERSONNAGES (spec Camille 2026-08-12, maquette 2)
+   MÊME ARCHITECTURE que la Home / l'écran Personnages : scène logique
+   1536×864, échelle uniforme, colonnes ancrées aux vrais bords
+   (--edge-x), fond peint plein viewport, zéro scroll, zéro emoji.
+   Home = référence de style des composants, maquette = référence de
+   layout. Les portraits des héros autres que Max sont des placeholders
+   SVG nommés (public/ui/heroes/hero-*.svg) en attendant les vraies
+   illustrations.
+   ===================================================================== */
+:root { --sal: env(safe-area-inset-left, 0px); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hidden;
+  overscroll-behavior: none; font-family: var(--el-font); background: var(--el-bg-deep); }
+
+#world-bg { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; }
+#stage { position: fixed; left: 50%; top: 50%; width: 1536px; height: 864px;
+  transform: translate(-50%, -50%); transform-origin: center center; z-index: 1; }
+
+/* ---------- TOP BAR ---------- */
+#back-btn { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 20px; width: 92px; height: 74px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 20px;
+  box-shadow: inset 0 -6px 0 #114a8c, inset 0 3px 0 rgba(255,255,255,0.4), 0 5px 12px rgba(10,18,48,0.4);
+  transition: transform 0.06s, box-shadow 0.06s; }
+#back-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 44%;
+  border-radius: 14px 14px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12)); pointer-events: none; }
+#back-btn .el-icon { width: 42px; height: 42px; color: #fff; position: relative; z-index: 1;
+  filter: drop-shadow(0 2px 0 rgba(10,18,48,0.5)); }
+#back-btn:hover { filter: brightness(1.05); }
+#back-btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 #114a8c,
+  inset 0 3px 0 rgba(255,255,255,0.4), 0 2px 6px rgba(10,18,48,0.4); }
+
+#screen-title { position: absolute; left: calc(140px - var(--edge-x, 0px)); top: 22px; }
+#screen-title .t { color: #fff; font-weight: 900; font-size: 33px; letter-spacing: 0.8px;
+  text-shadow: 0 3px 0 rgba(10,18,48,0.55); }
+#screen-title .st { margin-top: 4px; color: #8fdcff; font-weight: 700; font-size: 18px; }
+
+#top-right { position: absolute; right: calc(30px - var(--edge-x, 0px)); top: 22px; display: flex; align-items: center; gap: 20px; }
+.capsule { display: flex; align-items: center; gap: 10px; height: 62px;
+  background: linear-gradient(180deg, #1c2b58, #101c3e);
+  border: 4px solid rgba(10,18,48,0.95); border-radius: 999px; padding: 0 10px 0 16px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.14), inset 0 -5px 0 rgba(0,0,0,0.35),
+    0 5px 12px rgba(10,18,48,0.4); }
+.capsule .el-icon { width: 32px; height: 32px; }
+.capsule .val { color: #fff; font-weight: 900; font-size: 25px; letter-spacing: 0.5px; }
+.capsule .add { width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(180deg, #7fe08a, var(--el-success) 55%, var(--el-success-dark));
+  border: 3px solid rgba(10,18,48,0.85); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45); }
+.capsule .add .el-icon { width: 60%; height: 60%; fill: #fff; stroke: #fff; }
+.capsule .add:active { transform: translateY(2px); }
+#coin-capsule .el-icon { fill: var(--el-gold); }
+#gem-capsule .el-icon { fill: var(--el-purple); }
+#burger { position: relative; width: 118px; height: 74px; border-radius: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #2c4380, #1a2b58 62%, #1a2b58);
+  border: 4px solid rgba(10,18,48,0.95);
+  box-shadow: inset 0 -6px 0 #0d1834, inset 0 3px 0 rgba(255,255,255,0.2), 0 5px 12px rgba(10,18,48,0.4); }
+#burger .el-icon { width: 46px; height: 46px; color: #fff; }
+#burger:active { transform: translateY(3px); }
+
+.badge { position: absolute; top: -10px; right: -10px; min-width: 34px; height: 34px; padding: 0 8px;
+  background: linear-gradient(180deg, #ff8290 20%, var(--el-danger) 60%, var(--el-danger-dark));
+  border: 3px solid #8f1622; border-radius: 999px; color: #fff; font-weight: 900;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), 0 3px 6px rgba(10,18,48,0.45); }
+.badge-orange { background: linear-gradient(180deg, #ffd25e 20%, var(--el-warning) 60%, var(--el-warning-dark)) !important;
+  border-color: #9e5405 !important; }
+
+/* ---------- profil joueur (composant Home, sous la top bar) ---------- */
+#player-card { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 106px; height: 104px;
+  display: flex; align-items: center; gap: 13px; padding: 12px 16px 12px 12px;
+  background: linear-gradient(180deg, #22375f, #14224a 65%, #14224a);
+  border: 4px solid rgba(10,18,48,0.95); border-radius: 24px;
+  box-shadow: inset 0 -6px 0 #0c1732, inset 0 3px 0 rgba(255,255,255,0.16), 0 6px 14px rgba(10,18,48,0.4); }
+#player-card .avatar { width: 78px; height: 78px; border-radius: 50%;
+  border: 4px solid var(--el-purple); box-shadow: 0 0 0 3px rgba(10,18,48,0.8);
+  position: relative; flex: 0 0 auto; overflow: hidden;
+  background: radial-gradient(circle at 35% 30%, #6fb7ff, #258cff 70%); }
+.avatar .hair { position: absolute; top: -6%; left: 8%; right: 8%; height: 52%;
+  background: #5a3d28; border-radius: 50% 50% 42% 42%; }
+.avatar .face { position: absolute; top: 34%; left: 18%; right: 18%; height: 52%;
+  background: #ffd9b0; border-radius: 46%; }
+.avatar .eye { position: absolute; top: 56%; width: 9%; height: 13%; background: #26221f; border-radius: 50%; }
+.avatar .eye.l { left: 34%; } .avatar .eye.r { right: 34%; }
+.avatar .lvl-badge { position: absolute; bottom: 0; left: 0; width: 34%; height: 34%;
+  background: linear-gradient(180deg, #7fe08a, var(--el-success) 60%, var(--el-success-dark));
+  border: 3px solid rgba(10,18,48,0.85); border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 900; font-size: 17px; }
+#player-card .who { display: flex; flex-direction: column; gap: 4px; }
+#player-card .name { color: #fff; font-weight: 900; font-size: 25px; letter-spacing: 1px; }
+#player-card .lvl { color: var(--el-gold); font-weight: 800; font-size: 17px;
+  display: flex; align-items: center; gap: 7px; }
+#player-card .lvl .el-icon { width: 18px; height: 18px; fill: var(--el-gold); }
+.xp-track { width: 192px; height: 17px; border-radius: 999px;
+  background: rgba(4,9,28,0.6); border: 3px solid rgba(10,18,48,0.9); overflow: hidden; position: relative; }
+.xp-fill { height: 100%; width: 62.5%; border-radius: 999px;
+  background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
+.xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 900; font-size: 11.5px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+#xp-chip { position: absolute; left: calc(330px - var(--edge-x, 0px)); top: 122px; padding: 12px 20px;
+  background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 18px; color: #fff; font-weight: 900;
+  font-size: 21px; cursor: pointer; z-index: 3;
+  box-shadow: inset 0 -5px 0 #114a8c, inset 0 3px 0 rgba(255,255,255,0.4), 0 5px 10px rgba(10,18,48,0.4); }
+#xp-chip:active { transform: translateY(3px); }
+
+/* ---------- navigation gauche (composant Home/Personnages) ---------- */
+#side-nav { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 232px;
+  display: flex; flex-direction: column; gap: 11px; }
+.nav-btn { position: relative; display: flex; align-items: center; gap: 13px; cursor: pointer;
+  height: 70px; width: 280px; padding: 0 15px 0 11px;
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 18px;
+  background: linear-gradient(180deg, #22375f, #14224a);
+  box-shadow: inset 0 -5px 0 rgba(10,18,48,0.32), inset 0 3px 0 rgba(255,255,255,0.3),
+    0 5px 12px rgba(10,18,48,0.4);
+  transition: transform 0.08s, filter 0.08s; }
+.nav-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 44%;
+  border-radius: 12px 12px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0.1));
+  pointer-events: none; }
+.nav-btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+.nav-btn:active { transform: translateY(3px); }
+.nav-btn.is-selected { background: linear-gradient(180deg, #4ea4ff, #1e7ae8 62%, #1c6fd6);
+  border-color: var(--el-cyan);
+  box-shadow: inset 0 -5px 0 #1257ad, inset 0 3px 0 rgba(255,255,255,0.42),
+    0 0 16px 3px rgba(32,207,243,0.45), 0 5px 12px rgba(10,18,48,0.4); }
+.nav-btn.is-selected:hover, .nav-btn.is-selected:active { transform: none; filter: none; }
+.nav-ico { width: 50px; height: 50px; flex: 0 0 auto;
+  border-radius: 22%; border: 3px solid rgba(10,18,48,0.8);
+  background: linear-gradient(180deg, var(--tile-top), var(--tile-mid) 62%, var(--tile-mid));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -4px 0 var(--tile-lip), inset 0 3px 0 rgba(255,255,255,0.5); }
+.nav-ico .el-icon { width: 62%; height: 62%; fill: var(--tile-ico); color: var(--tile-ico); }
+.nav-btn .lbl { color: #fff; font-weight: 900; font-size: 19px; letter-spacing: 0.4px;
+  text-shadow: 0 2px 0 rgba(10,18,48,0.45); position: relative; z-index: 1; }
+.plate-orange { --tile-top: #ffc169; --tile-mid: var(--el-orange); --tile-lip: #cf6a06; --tile-ico: #7a4a12; }
+.plate-cyan { --tile-top: #7fe8cf; --tile-mid: #23b898; --tile-lip: #0e7a63; --tile-ico: #084d3e; }
+.plate-purple { --tile-top: #bb95ff; --tile-mid: var(--el-purple); --tile-lip: #5c28c4; --tile-ico: #35156e; }
+.plate-blue { --tile-top: #6fb7ff; --tile-mid: var(--el-blue); --tile-lip: #0d3f85; --tile-ico: #0d3364; }
+
+/* ---------- puissance totale ---------- */
+#power-card { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 646px; width: 280px; height: 78px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  background: linear-gradient(180deg, #22375f, #14224a);
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 18px;
+  box-shadow: inset 0 -5px 0 rgba(10,18,48,0.32), inset 0 3px 0 rgba(255,255,255,0.18),
+    0 5px 12px rgba(10,18,48,0.4); }
+#power-card .pt { color: #8fdcff; font-weight: 900; font-size: 15px; letter-spacing: 1.2px; }
+#power-card .pv { display: flex; align-items: center; gap: 9px; color: var(--el-gold);
+  font-weight: 900; font-size: 29px; text-shadow: 0 2px 0 rgba(10,18,48,0.5); }
+#power-card .pv .el-icon { width: 27px; height: 27px; fill: var(--el-gold); }
+
+/* ---------- tri ---------- */
+#sort-btn { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 736px; width: 280px; height: 54px;
+  display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer;
+  background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 16px;
+  box-shadow: inset 0 -5px 0 #114a8c, inset 0 3px 0 rgba(255,255,255,0.4), 0 5px 10px rgba(10,18,48,0.4);
+  transition: transform 0.06s; }
+#sort-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 42%;
+  border-radius: 11px 11px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12)); pointer-events: none; }
+#sort-btn .lbl { color: #fff; font-weight: 900; font-size: 21px; letter-spacing: 0.6px;
+  text-shadow: 0 2px 0 rgba(10,18,48,0.45); position: relative; z-index: 1; }
+#sort-btn .el-icon { width: 22px; height: 22px; fill: #fff; position: relative; z-index: 1; }
+#sort-btn:active { transform: translateY(3px); }
+#sort-value { position: absolute; left: calc(26px - var(--edge-x, 0px)); top: 800px; width: 280px; height: 44px;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 18px; cursor: pointer;
+  background: linear-gradient(180deg, #1c2b58, #101c3e);
+  border: 3px solid rgba(10,18,48,0.95); border-radius: 13px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.12), inset 0 -4px 0 rgba(0,0,0,0.3),
+    0 4px 8px rgba(10,18,48,0.4); }
+#sort-value span { color: var(--el-text-muted); font-weight: 800; font-size: 18px; }
+#sort-value .el-icon { width: 19px; height: 19px; fill: var(--el-text-muted); }
+#sort-value:active { transform: translateY(2px); }
+
+/* ---------- panneau principal ---------- */
+#main-panel { position: absolute; left: 330px; right: calc(26px - var(--edge-x, 0px)); top: 108px; height: 582px;
+  padding: 15px 17px; display: flex; flex-direction: column;
+  background: linear-gradient(180deg, rgba(28,46,88,0.88), rgba(15,25,54,0.9) 75%);
+  border: 4px solid #2f5eb8; border-radius: 26px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.12), inset 0 -6px 0 rgba(6,11,28,0.45),
+    0 10px 24px rgba(10,18,48,0.5); }
+
+/* filtres de rareté */
+#filters { display: flex; align-items: center; gap: 15px; padding: 2px 4px 0 96px; }
+.filter-btn { display: flex; align-items: center; gap: 9px; height: 46px; padding: 0 22px; cursor: pointer;
+  background: linear-gradient(180deg, #1a2950, #101c3e);
+  border: 3px solid var(--f-col); border-radius: 15px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.12), inset 0 -4px 0 rgba(6,11,28,0.5),
+    0 4px 8px rgba(10,18,48,0.4);
+  transition: transform 0.07s, box-shadow 0.07s; }
+.filter-btn .el-icon { width: 21px; height: 21px; fill: var(--f-col); }
+.filter-btn .lbl { color: #fff; font-weight: 900; font-size: 18px; letter-spacing: 0.5px; }
+.filter-btn:hover { transform: translateY(-1px); }
+.filter-btn:active { transform: translateY(2px); }
+.filter-all { --f-col: #3f5a96; }
+.filter-epique { --f-col: var(--el-purple); }
+.filter-rare { --f-col: #2fa7e8; }
+.filter-commun { --f-col: var(--el-success); }
+.filter-btn.is-selected { background: linear-gradient(180deg, #ffe993, var(--el-gold) 58%, var(--el-gold));
+  border-color: #17234a; box-shadow: inset 0 -5px 0 #e09b00, inset 0 2px 0 rgba(255,255,255,0.6),
+    0 0 14px 2px rgba(255,201,40,0.4), 0 4px 8px rgba(10,18,48,0.4); }
+.filter-btn.is-selected .lbl { color: #17234a; text-shadow: 0 1px 0 rgba(255,255,255,0.35); }
+.filter-btn.is-selected .el-icon { fill: #17234a; }
+#unlocked-count { margin-left: auto; color: #8fdcff; font-weight: 900; font-size: 19px;
+  letter-spacing: 0.6px; padding-right: 6px; }
+#unlocked-count b { color: #fff; }
+
+/* grille de personnages */
+#heroes-grid { flex: 1; min-height: 0; margin-top: 13px; display: grid;
+  grid-template-columns: repeat(5, 1fr); grid-template-rows: repeat(2, 1fr); gap: 13px; }
+.hero-card { position: relative; display: flex; flex-direction: column; cursor: pointer; min-height: 0;
+  border-radius: 18px; border: 3px solid var(--r-col); overflow: hidden;
+  background: linear-gradient(180deg, #1b2c58, #0f1a3a);
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.12), 0 5px 12px rgba(10,18,48,0.45);
+  transition: transform 0.08s, box-shadow 0.08s; }
+.hero-card:hover { transform: translateY(-3px); box-shadow: inset 0 2px 0 rgba(255,255,255,0.12),
+  0 9px 16px rgba(10,18,48,0.5); }
+.hero-card:active { transform: translateY(2px); }
+.hero-card .portrait { width: 100%; flex: 1; min-height: 0; object-fit: cover; object-position: 50% 20%;
+  display: block; background: #14224a; }
+.hero-card .p-max { object-fit: contain; object-position: 50% 0%; transform: scale(1.45); transform-origin: 50% 14%; }
+.hero-card .r-badge { position: absolute; top: 7px; right: 7px; height: 26px; padding: 0 11px;
+  display: flex; align-items: center; border-radius: 999px;
+  background: linear-gradient(180deg, var(--r-light), var(--r-col) 60%, var(--r-dark));
+  border: 2.5px solid rgba(10,18,48,0.85); color: #fff; font-weight: 900; font-size: 13px;
+  letter-spacing: 0.8px; box-shadow: inset 0 2px 0 rgba(255,255,255,0.4), 0 2px 5px rgba(10,18,48,0.4); }
+.hero-card .info { flex: 0 0 auto; position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 6px 8px 9px;
+  background: linear-gradient(180deg, rgba(13,21,45,0.2), rgba(13,21,45,0.85) 40%); }
+.hero-card .h-name { color: #fff; font-weight: 900; font-size: 19px; letter-spacing: 0.8px;
+  text-shadow: 0 2px 0 rgba(10,18,48,0.6); }
+.hero-card .h-lvl { display: flex; align-items: center; gap: 6px; color: var(--el-gold);
+  font-weight: 800; font-size: 15px; }
+.hero-card .h-lvl .el-icon { width: 16px; height: 16px; fill: var(--el-gold); }
+.hero-card .h-xp { width: 84%; height: 19px; border-radius: 999px; position: relative; overflow: hidden;
+  background: rgba(4,9,28,0.72); border: 2.5px solid rgba(10,18,48,0.9);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,0.5); }
+.hero-card .h-xp .fill { height: 100%; border-radius: 999px;
+  background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
+.hero-card .h-xp .txt { position: absolute; inset: 0; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 900; font-size: 11.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.75); }
+.rar-epique { --r-col: var(--el-purple); --r-light: #bb95ff; --r-dark: #5c28c4; }
+.rar-rare { --r-col: #2fa7e8; --r-light: #7fd4ff; --r-dark: #1470b8; }
+.rar-commun { --r-col: var(--el-success); --r-light: #7fe08a; --r-dark: #379e3a; }
+
+/* héros sélectionné (MAX) */
+.hero-card.is-selected { border: 4px solid var(--el-gold);
+  box-shadow: 0 0 18px 4px rgba(255,201,40,0.55), inset 0 2px 0 rgba(255,255,255,0.12),
+    0 5px 12px rgba(10,18,48,0.45); }
+.hero-card.is-selected:hover { transform: none; }
+.hero-card .check { display: none; position: absolute; top: 6px; right: 6px; width: 32px; height: 32px;
+  border-radius: 50%; background: linear-gradient(180deg, #7fe08a, var(--el-success) 55%, var(--el-success-dark));
+  border: 3px solid rgba(10,18,48,0.85); align-items: center; justify-content: center; z-index: 2;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), 0 2px 6px rgba(10,18,48,0.5); }
+.hero-card .check .el-icon { width: 60%; height: 60%; color: #fff; }
+.hero-card.is-selected .check { display: flex; }
+.hero-card.is-selected .r-badge { right: 44px; }
+
+/* héros verrouillé */
+.hero-card.is-locked .portrait { filter: grayscale(1) brightness(0.72); }
+.hero-card.is-locked .h-name { color: #c9d2e8; }
+.hero-card .lock { display: none; position: absolute; top: 7px; left: 7px; width: 34px; height: 34px;
+  border-radius: 10px; background: linear-gradient(180deg, #2c4380, #1a2b58);
+  border: 3px solid rgba(10,18,48,0.9); align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.2), 0 2px 5px rgba(10,18,48,0.5); }
+.hero-card .lock .el-icon { width: 60%; height: 60%; fill: #c9d2e8; }
+.hero-card.is-locked .lock { display: flex; }
+.hero-card .unlock { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.hero-card .unlock .u-t { color: var(--el-text-muted); font-weight: 700; font-size: 13.5px; }
+.hero-card .unlock .u-v { display: flex; align-items: center; gap: 6px; color: #fff;
+  font-weight: 900; font-size: 17px; }
+.hero-card .unlock .u-v .el-icon { width: 18px; height: 18px; fill: var(--el-purple); }
+
+/* ---------- footer OBTENEZ PLUS DE HÉROS ---------- */
+#footer-panel { position: absolute; left: 330px; right: calc(26px - var(--edge-x, 0px)); top: 704px; height: 134px;
+  display: flex; align-items: center; gap: 20px; padding: 0 24px;
+  background: linear-gradient(180deg, rgba(28,46,88,0.92), rgba(15,25,54,0.94) 75%);
+  border: 4px solid #2f5eb8; border-radius: 24px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.12), inset 0 -6px 0 rgba(6,11,28,0.45),
+    0 10px 24px rgba(10,18,48,0.5); }
+#footer-panel .chest-ico { position: relative; flex: 0 0 auto; width: 84px; height: 84px;
+  border-radius: 20px; border: 3.5px solid rgba(10,18,48,0.85);
+  background: linear-gradient(180deg, #a678f8, var(--el-purple-dark) 70%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -5px 0 #4a1e9e, inset 0 3px 0 rgba(255,255,255,0.35), 0 5px 10px rgba(10,18,48,0.4); }
+#footer-panel .chest-ico > .el-icon { width: 56%; height: 56%; fill: #ffd9b0; }
+#footer-panel .chest-ico .mini-star { position: absolute; top: -10px; right: -10px; width: 32px; height: 32px;
+  border-radius: 50%; background: linear-gradient(180deg, #ffe993, var(--el-gold) 60%, #e09b00);
+  border: 3px solid rgba(10,18,48,0.85); display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.5); }
+#footer-panel .chest-ico .mini-star .el-icon { width: 62%; height: 62%; fill: #7a4a12; }
+#footer-panel .txt { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+#footer-panel .txt .t { color: var(--el-gold); font-weight: 900; font-size: 24px; letter-spacing: 0.6px;
+  text-shadow: 0 2px 0 rgba(10,18,48,0.5); }
+#footer-panel .txt .st { color: #e6ecfb; font-weight: 600; font-size: 16.5px; line-height: 1.3; }
+
+#chests-btn { margin-left: auto; flex: 0 0 auto; width: 450px; height: 92px;
+  display: flex; align-items: center; justify-content: center; gap: 16px; cursor: pointer;
+  border-radius: 22px; border: 5px solid #17234a; position: relative;
+  background: linear-gradient(180deg, #ffe993 0%, var(--el-gold) 58%, var(--el-gold) 100%);
+  outline: 3px solid rgba(10,18,48,0.5); outline-offset: 2px;
+  box-shadow: inset 0 -9px 0 #e09b00, inset 0 4px 0 rgba(255,255,255,0.6),
+    0 8px 18px rgba(10,18,48,0.5);
+  transition: transform 0.06s, box-shadow 0.06s; }
+#chests-btn::after { content: ""; position: absolute; left: 6px; right: 6px; top: 4px; height: 46%;
+  border-radius: 16px 16px 48% 48%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.58), rgba(255,255,255,0.18)); pointer-events: none; }
+#chests-btn:hover { filter: brightness(1.04); }
+#chests-btn:active { transform: translateY(4px); box-shadow: inset 0 -5px 0 #e09b00,
+  inset 0 4px 0 rgba(255,255,255,0.6), 0 3px 8px rgba(10,18,48,0.5); }
+#chests-btn .el-icon { width: 40px; height: 40px; fill: #fff; position: relative; z-index: 1;
+  filter: drop-shadow(0 3px 0 rgba(23,35,74,0.6)); }
+#chests-btn .lbl { color: #fff; font-weight: 900; font-size: 30px; letter-spacing: 1px; white-space: nowrap;
+  position: relative; z-index: 1;
+  -webkit-text-stroke: 2px rgba(23,35,74,0.8); paint-order: stroke fill;
+  text-shadow: 0 3px 0 rgba(23,35,74,0.5); }
+
+/* ---------- toast + rotation ---------- */
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 10; background: rgba(10,18,48,0.95); border: 3px solid var(--el-gold);
+  border-radius: 999px; color: var(--el-cream); font-weight: 900; font-size: 16px;
+  padding: 10px 22px; display: none; }
+#toast.show { display: block; }
+#rotate-prompt { display: none; position: fixed; inset: 0; z-index: 90; background: var(--el-bg-deep);
+  color: var(--el-text-main); flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 16px; font-weight: 800; font-size: 18px; }
+#rotate-prompt .phone { width: 46px; height: 80px; border: 4px solid var(--el-gold);
+  border-radius: 10px; animation: rotHint 1.6s ease-in-out infinite alternate; }
+@keyframes rotHint { from { transform: rotate(0); } to { transform: rotate(90deg); } }
+@media (orientation: portrait) { #rotate-prompt { display: flex; } }
+</style>
+</head>
+<body>
+<canvas id="world-bg"></canvas>
+
+<div id="stage">
+  <!-- top bar -->
+  <div id="back-btn" data-href="./index.html">
+    <svg class="el-icon"><use href="#icon-back"></use></svg>
+  </div>
+  <div id="screen-title">
+    <div class="t">SÉLECTION DE PERSONNAGES</div>
+    <div class="st">Collectionnez et améliorez vos héros.</div>
+  </div>
+  <div id="top-right">
+    <div class="capsule" id="coin-capsule">
+      <svg class="el-icon"><use href="#icon-coin"></use></svg>
+      <span class="val">12 450</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div class="capsule" id="gem-capsule">
+      <svg class="el-icon"><use href="#icon-gem"></use></svg>
+      <span class="val">480</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div id="burger" data-soon>
+      <svg class="el-icon"><use href="#icon-menu"></use></svg>
+      <span class="badge">3</span>
+    </div>
+  </div>
+
+  <!-- profil joueur -->
+  <div id="player-card">
+    <div class="avatar">
+      <div class="face"></div>
+      <div class="hair"></div>
+      <div class="eye l"></div><div class="eye r"></div>
+      <div class="lvl-badge">+</div>
+    </div>
+    <div class="who">
+      <span class="name">MAX</span>
+      <span class="lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 17</span>
+      <div class="xp-track"><div class="xp-fill"></div><span class="xp-num">1250 / 2000</span></div>
+    </div>
+  </div>
+  <div id="xp-chip" data-soon>XP</div>
+
+  <!-- navigation gauche -->
+  <div id="side-nav">
+    <div class="nav-btn is-selected plate-orange">
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-avatar"></use></svg></span>
+      <span class="lbl">PERSONNAGES</span>
+      <span class="badge badge-orange">!</span>
+    </div>
+    <div class="nav-btn plate-cyan" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-tshirt"></use></svg></span>
+      <span class="lbl">TENUES</span>
+    </div>
+    <div class="nav-btn plate-orange" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-book"></use></svg></span>
+      <span class="lbl">COMPÉTENCES</span>
+    </div>
+    <div class="nav-btn plate-blue" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-chart"></use></svg></span>
+      <span class="lbl">STATS</span>
+    </div>
+    <div class="nav-btn plate-purple" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-evolve"></use></svg></span>
+      <span class="lbl">ÉVOLUTION</span>
+    </div>
+  </div>
+
+  <!-- puissance totale -->
+  <div id="power-card">
+    <span class="pt">PUISSANCE TOTALE</span>
+    <span class="pv"><svg class="el-icon"><use href="#icon-fist"></use></svg>12 340</span>
+  </div>
+
+  <!-- tri -->
+  <div id="sort-btn" data-soon>
+    <span class="lbl">TRIER PAR</span>
+    <svg class="el-icon"><use href="#icon-caretDown"></use></svg>
+  </div>
+  <div id="sort-value" data-soon>
+    <span>Rareté</span>
+    <svg class="el-icon"><use href="#icon-caretDown"></use></svg>
+  </div>
+
+  <!-- panneau principal -->
+  <div id="main-panel">
+    <div id="filters">
+      <div class="filter-btn filter-all is-selected" data-filter="all">
+        <span class="lbl">TOUS</span>
+      </div>
+      <div class="filter-btn filter-epique" data-filter="epique">
+        <svg class="el-icon"><use href="#icon-star"></use></svg>
+        <span class="lbl">ÉPIQUE</span>
+      </div>
+      <div class="filter-btn filter-rare" data-filter="rare">
+        <svg class="el-icon"><use href="#icon-star"></use></svg>
+        <span class="lbl">RARE</span>
+      </div>
+      <div class="filter-btn filter-commun" data-filter="commun">
+        <svg class="el-icon"><use href="#icon-star"></use></svg>
+        <span class="lbl">COMMUN</span>
+      </div>
+      <div id="unlocked-count">HÉROS DÉBLOQUÉS : <b>8 / 16</b></div>
+    </div>
+
+    <div id="heroes-grid">
+      <div class="hero-card is-selected rar-epique" data-rarity="epique" data-href="./personnages.html">
+        <img class="portrait p-max" src="ui/skin-max-1.png" alt="Max" />
+        <span class="r-badge">ÉPIQUE</span>
+        <span class="check"><svg class="el-icon"><use href="#icon-check"></use></svg></span>
+        <div class="info">
+          <span class="h-name">MAX</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 17</span>
+          <div class="h-xp"><div class="fill" style="width:62.5%"></div><span class="txt">1250 / 2000</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-epique" data-rarity="epique" data-soon>
+        <img class="portrait" src="ui/heroes/hero-lina.svg" alt="Lina" />
+        <span class="r-badge">ÉPIQUE</span>
+        <div class="info">
+          <span class="h-name">LINA</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 16</span>
+          <div class="h-xp"><div class="fill" style="width:47%"></div><span class="txt">850 / 1800</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-epique" data-rarity="epique" data-soon>
+        <img class="portrait" src="ui/heroes/hero-orion.svg" alt="Orion" />
+        <span class="r-badge">ÉPIQUE</span>
+        <div class="info">
+          <span class="h-name">ORION</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 15</span>
+          <div class="h-xp"><div class="fill" style="width:41%"></div><span class="txt">650 / 1600</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-rare" data-rarity="rare" data-soon>
+        <img class="portrait" src="ui/heroes/hero-zara.svg" alt="Zara" />
+        <span class="r-badge">RARE</span>
+        <div class="info">
+          <span class="h-name">ZARA</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 13</span>
+          <div class="h-xp"><div class="fill" style="width:66%"></div><span class="txt">920 / 1400</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-commun" data-rarity="commun" data-soon>
+        <img class="portrait" src="ui/heroes/hero-rok.svg" alt="Rok" />
+        <span class="r-badge">COMMUN</span>
+        <div class="info">
+          <span class="h-name">ROK</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 12</span>
+          <div class="h-xp"><div class="fill" style="width:36%"></div><span class="txt">430 / 1200</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-rare" data-rarity="rare" data-soon>
+        <img class="portrait" src="ui/heroes/hero-kai.svg" alt="Kai" />
+        <span class="r-badge">RARE</span>
+        <div class="info">
+          <span class="h-name">KAI</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 11</span>
+          <div class="h-xp"><div class="fill" style="width:25%"></div><span class="txt">250 / 1000</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-rare" data-rarity="rare" data-soon>
+        <img class="portrait" src="ui/heroes/hero-nova.svg" alt="Nova" />
+        <span class="r-badge">RARE</span>
+        <div class="info">
+          <span class="h-name">NOVA</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 10</span>
+          <div class="h-xp"><div class="fill" style="width:19%"></div><span class="txt">150 / 800</span></div>
+        </div>
+      </div>
+      <div class="hero-card rar-commun" data-rarity="commun" data-soon>
+        <img class="portrait" src="ui/heroes/hero-vex.svg" alt="Vex" />
+        <span class="r-badge">COMMUN</span>
+        <div class="info">
+          <span class="h-name">VEX</span>
+          <span class="h-lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 8</span>
+          <div class="h-xp"><div class="fill" style="width:20%"></div><span class="txt">120 / 600</span></div>
+        </div>
+      </div>
+      <div class="hero-card is-locked rar-epique" data-rarity="epique" data-soon>
+        <img class="portrait" src="ui/heroes/hero-axel.svg" alt="Axel (verrouillé)" />
+        <span class="r-badge">ÉPIQUE</span>
+        <span class="lock"><svg class="el-icon"><use href="#icon-lock"></use></svg></span>
+        <div class="info">
+          <span class="h-name">AXEL</span>
+          <div class="unlock">
+            <span class="u-t">Débloquer avec</span>
+            <span class="u-v"><svg class="el-icon"><use href="#icon-gem"></use></svg>50</span>
+          </div>
+        </div>
+      </div>
+      <div class="hero-card is-locked rar-epique" data-rarity="epique" data-soon>
+        <img class="portrait" src="ui/heroes/hero-mira.svg" alt="Mira (verrouillée)" />
+        <span class="r-badge">ÉPIQUE</span>
+        <span class="lock"><svg class="el-icon"><use href="#icon-lock"></use></svg></span>
+        <div class="info">
+          <span class="h-name">MIRA</span>
+          <div class="unlock">
+            <span class="u-t">Débloquer avec</span>
+            <span class="u-v"><svg class="el-icon"><use href="#icon-gem"></use></svg>50</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- footer -->
+  <div id="footer-panel">
+    <div class="chest-ico">
+      <svg class="el-icon"><use href="#icon-gift"></use></svg>
+      <span class="mini-star"><svg class="el-icon"><use href="#icon-star"></use></svg></span>
+    </div>
+    <div class="txt">
+      <div class="t">OBTENEZ PLUS DE HÉROS</div>
+      <div class="st">Ouvrez des coffres, terminez des événements<br />et collectionnez tous les héros d'Illuminia&nbsp;!</div>
+    </div>
+    <div id="chests-btn" data-soon>
+      <svg class="el-icon"><use href="#icon-gift"></use></svg>
+      <span class="lbl">VOIR LES COFFRES</span>
+    </div>
+  </div>
+</div>
+
+<div id="toast">Bientôt disponible !</div>
+<div id="rotate-prompt">
+  <div class="phone"></div>
+  <div>Tourne ton téléphone en mode paysage&nbsp;!</div>
+</div>
+
+<script src="ui/icons.js"></script>
+<script>
+// ---------- scale uniforme 1536×864 + ancrage aux vrais bords (Home) ----------
+{
+  const stage = document.getElementById('stage');
+  const fit = () => {
+    const s = Math.min(innerWidth / 1536, innerHeight / 864);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+    const sl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sal')) || 0;
+    const extra = Math.max(0, (innerWidth / s - 1536) / 2 - sl / s);
+    stage.style.setProperty('--edge-x', `${extra}px`);
+  };
+  fit();
+  addEventListener('resize', fit);
+}
+
+// navigation + placeholders (identique Home)
+document.querySelectorAll('[data-href]').forEach(el =>
+  el.addEventListener('click', () => { location.href = el.dataset.href; }));
+let toastTimer = 0;
+document.querySelectorAll('[data-soon]').forEach(el =>
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }));
+
+// ---------- filtres de rareté : montrent/cachent les cartes ----------
+document.querySelectorAll('.filter-btn').forEach(btn =>
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('is-selected'));
+    btn.classList.add('is-selected');
+    const f = btn.dataset.filter;
+    document.querySelectorAll('.hero-card').forEach(card => {
+      card.style.display = (f === 'all' || card.dataset.rarity === f) ? '' : 'none';
+    });
+  }));
+
+// ---------- fond peint : MÊME monde que la Home ----------
+{
+  const c = document.getElementById('world-bg');
+  const paint = () => {
+    const w = c.width = innerWidth * Math.min(devicePixelRatio, 2);
+    const h = c.height = innerHeight * Math.min(devicePixelRatio, 2);
+    const x = f => f * w, y = f => f * h;
+    const ctx = c.getContext('2d');
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#3f9df8'); sky.addColorStop(0.45, '#6db9ff'); sky.addColorStop(0.75, '#a8d8ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    const sun = ctx.createRadialGradient(x(0.72), y(0.16), 0, x(0.72), y(0.16), Math.min(w, h) * 0.3);
+    sun.addColorStop(0, 'rgba(255,240,190,0.8)'); sun.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = sun; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const cloud = (cx, cy, s) => {
+      [[0, 0, 1], [-1.1, 0.18, 0.7], [1.1, 0.2, 0.75], [0.4, -0.4, 0.6], [-0.5, -0.35, 0.55]].forEach(([dx, dy, r]) => {
+        ctx.beginPath(); ctx.arc(x(cx) + dx * s, y(cy) + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
+      });
+    };
+    cloud(0.15, 0.14, w * 0.030); cloud(0.55, 0.09, w * 0.023); cloud(0.87, 0.24, w * 0.026);
+    ctx.fillStyle = 'rgba(138,85,245,0.42)';
+    const tower = (cx, base, tw2, th2) => {
+      ctx.fillRect(x(cx) - tw2 / 2, y(base) - th2, tw2, th2);
+      ctx.beginPath(); ctx.moveTo(x(cx) - tw2 * 0.72, y(base) - th2);
+      ctx.lineTo(x(cx), y(base) - th2 - tw2 * 0.9); ctx.lineTo(x(cx) + tw2 * 0.72, y(base) - th2);
+      ctx.closePath(); ctx.fill();
+    };
+    tower(0.09, 0.62, w * 0.045, h * 0.20); tower(0.2, 0.63, w * 0.03, h * 0.13);
+    tower(0.86, 0.60, w * 0.05, h * 0.24); tower(0.95, 0.62, w * 0.03, h * 0.12);
+    ctx.fillStyle = 'rgba(111,216,255,0.5)';
+    const crystal = (cx, base, s) => {
+      ctx.beginPath(); ctx.moveTo(x(cx), y(base) - s * 2.6);
+      ctx.lineTo(x(cx) + s, y(base)); ctx.lineTo(x(cx) - s, y(base)); ctx.closePath(); ctx.fill();
+    };
+    crystal(0.3, 0.62, w * 0.012); crystal(0.75, 0.6, w * 0.016); crystal(0.68, 0.63, w * 0.009);
+    const hill = (cy, col) => {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, h);
+      for (let i = 0; i <= 24; i++) {
+        const px = i / 24 * w;
+        ctx.lineTo(px, y(cy) + Math.sin(i * 0.9) * h * 0.03);
+      }
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+    };
+    hill(0.66, '#8a55f5'); hill(0.74, '#6a34d6'); hill(0.84, '#53386e');
+    for (let i = 0; i < 40; i++) {
+      const fx = Math.random() * w, fy = y(0.7 + Math.random() * 0.28);
+      ctx.fillStyle = ['#ef4e9b', '#ffc928', '#20cff3'][i % 3] + 'aa';
+      ctx.beginPath(); ctx.arc(fx, fy, w * 0.0035, 0, Math.PI * 2); ctx.fill();
+    }
+    const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(14,22,56,0.5)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+  };
+  paint();
+  addEventListener('resize', paint);
+}
+</script>
+</body>
+</html>

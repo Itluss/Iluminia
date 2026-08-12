@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<!-- Placeholder héros « MIRA » (généré, en attendant l'illustration finale) -->
+<defs>
+  <radialGradient id="bg" cx="50%" cy="34%" r="80%">
+    <stop offset="0%" stop-color="#6b5a6e"/>
+    <stop offset="62%" stop-color="#16224a"/>
+    <stop offset="100%" stop-color="#0d1530"/>
+  </radialGradient>
+  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="70%" stop-color="#0d1530" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#0d1530" stop-opacity="0.55"/>
+  </linearGradient>
+</defs>
+<rect width="240" height="240" fill="url(#bg)"/>
+
+<path d="M64 104 C50 148 54 192 70 212 C78 192 72 156 80 132 Z" fill="#6b5a6e" stroke="#453a48" stroke-width="3"/>
+<path d="M176 104 C190 148 186 192 170 212 C162 192 168 156 160 132 Z" fill="#6b5a6e" stroke="#453a48" stroke-width="3"/>
+<ellipse cx="120" cy="114" rx="54" ry="52" fill="#ffd9b0" stroke="#c98d5f" stroke-width="3"/>
+<path d="M62 110 C54 62 86 36 120 36 C154 36 186 62 178 110 C174 82 158 66 120 66 C82 66 66 82 62 110 Z" fill="#7d6a80" stroke="#453a48" stroke-width="3"/>
+<path d="M78 88 Q92 60 118 58 Q102 74 98 96 Z" fill="#8f7c92"/>
+<path d="M112 44 l3.5 7.5 8 1 -5.9 5.5 1.6 7.9 -7.2-4 -7.2 4 1.6-7.9 -5.9-5.5 8-1 Z" fill="#c9c2cc" stroke="#453a48" stroke-width="2"/>
+<ellipse cx="99.0" cy="118" rx="13" ry="15" fill="#fff"/>
+<circle cx="99.0" cy="120" r="8" fill="#6a5a8a"/>
+<circle cx="99.0" cy="120" r="3.6" fill="#1a120c"/>
+<circle cx="96.0" cy="115" r="3.2" fill="#fff"/><ellipse cx="141.0" cy="118" rx="13" ry="15" fill="#fff"/>
+<circle cx="141.0" cy="120" r="8" fill="#6a5a8a"/>
+<circle cx="141.0" cy="120" r="3.6" fill="#1a120c"/>
+<circle cx="138.0" cy="115" r="3.2" fill="#fff"/><path d="M91 102 Q99 94 107 98" stroke="#453a48" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M133 98 Q141 94 149 102" stroke="#453a48" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M104 146 Q120 158 136 146" stroke="#8a4a32" stroke-width="4.5" fill="none" stroke-linecap="round"/><path d="M52 240 C52 192 76 168 120 168 C164 168 188 192 188 240 Z" fill="#9aa4b8" stroke="#5f6878" stroke-width="3"/>
+<path d="M52 240 C52 216 60 200 76 190 L76 240 Z" fill="#5f6878" opacity="0.35"/>
+<path d="M188 240 C188 216 180 200 164 190 L164 240 Z" fill="#5f6878" opacity="0.35"/><path d="M96 172 L120 196 L144 172 Q120 162 96 172 Z" fill="#ffd9b0"/>
+<path d="M92 174 L120 190 L148 174 L148 186 L120 202 L92 186 Z" fill="#c3ccdd" stroke="#5f6878" stroke-width="3"/>
+<rect width="240" height="240" fill="url(#fade)"/>
+</svg>

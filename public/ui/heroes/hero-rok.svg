@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<!-- Placeholder héros « ROK » (généré, en attendant l'illustration finale) -->
+<defs>
+  <radialGradient id="bg" cx="50%" cy="34%" r="80%">
+    <stop offset="0%" stop-color="#4f6a2e"/>
+    <stop offset="62%" stop-color="#16224a"/>
+    <stop offset="100%" stop-color="#0d1530"/>
+  </radialGradient>
+  <linearGradient id="fade" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="70%" stop-color="#0d1530" stop-opacity="0"/>
+    <stop offset="100%" stop-color="#0d1530" stop-opacity="0.55"/>
+  </linearGradient>
+</defs>
+<rect width="240" height="240" fill="url(#bg)"/>
+
+<path d="M50 240 L46 178 L74 150 L60 118 L84 84 L74 56 L110 40 L134 52 L168 44 L178 84 L198 108 L176 144 L196 178 L186 240 Z" fill="#8a7354" stroke="#4f3d26" stroke-width="4"/>
+<path d="M84 84 L74 56 L110 40 L118 62 Z M178 84 L168 44 L134 52 L146 70 Z" fill="#a08862"/>
+<path d="M60 118 L84 84 L96 104 L74 140 Z" fill="#6e5a3e"/>
+<path d="M196 178 L176 144 L160 168 L178 196 Z" fill="#6e5a3e"/>
+<path d="M92 96 L116 88 L128 108 L108 122 Z" fill="#a08862" stroke="#4f3d26" stroke-width="2.5"/>
+<path d="M134 92 L158 96 L152 120 L132 112 Z" fill="#96805c" stroke="#4f3d26" stroke-width="2.5"/>
+<path d="M96 158 L144 158 L150 186 L90 186 Z" fill="#75603f" stroke="#4f3d26" stroke-width="3"/>
+<path d="M99 112 L121 104 L118 124 L102 128 Z" fill="#2a1c0c"/>
+<path d="M137 106 L157 110 L152 128 L136 124 Z" fill="#2a1c0c"/>
+<path d="M102 114 L116 108 L114 121 L104 124 Z" fill="#ffb020"/>
+<path d="M139 110 L153 113 L149 125 L138 122 Z" fill="#ffb020"/>
+<circle cx="109" cy="114" r="2.6" fill="#fff3c0"/>
+<circle cx="145" cy="116" r="2.6" fill="#fff3c0"/>
+<path d="M104 166 L136 166 L140 178 L100 178 Z" fill="#2a1c0c"/>
+<path d="M108 166 L114 178 M122 166 L126 178" stroke="#75603f" stroke-width="3"/>
+<rect width="240" height="240" fill="url(#fade)"/>
+</svg>

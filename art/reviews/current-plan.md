@@ -41,3 +41,22 @@ les tenues sont pour l'instant de simples couleurs de pull.
   de vraies tenues (casquette, lunettes…) demanderont des modèles.
 - AMÉLIORER / compétences / autres onglets de nav : « Bientôt
   disponible ! » en attendant les mécaniques.
+
+# Fiche d'itération — écran SÉLECTION DE PERSONNAGES (v1)
+
+Spec Camille (2026-08-12, maquette 3) : reproduction quasi pixel-perfect,
+Home = référence de style, maquette = référence de layout.
+
+- public/selection-personnages.html : top bar (retour + titre/sous-titre,
+  monnaies, burger), profil joueur, nav gauche (PERSONNAGES sélectionné),
+  PUISSANCE TOTALE, TRIER PAR + Rareté, panneau principal (filtres
+  TOUS/ÉPIQUE/RARE/COMMUN fonctionnels, compteur 8/16, grille 5×2),
+  footer OBTENEZ PLUS DE HÉROS + VOIR LES COFFRES (style JOUER).
+- MAX : vrai portrait 3D, carte sélectionnée (or + glow + coche).
+- AXEL/MIRA verrouillés (grayscale + cadenas + Débloquer avec 50 gemmes).
+- Pas de clé d'API image dans la session cloud → les 9 autres héros sont
+  des placeholders SVG propres (public/ui/heroes/hero-*.svg), à remplacer
+  par de vraies illustrations quand la génération sera à nouveau possible.
+- Navigation : Home → sélection ; carte MAX → écran détail personnages ;
+  retour → Home. Vérifié en 1536×864, 932×430, 844×390, 667×375
+  (0 erreur console, aucun scroll, aucune coupure).
