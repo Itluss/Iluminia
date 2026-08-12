@@ -1,0 +1,56 @@
+# Génération 3D de Zep via Meshy, exécutée par GitHub Actions (2026-08-12).
+# Pourquoi ici : la session cloud de développement n'a pas accès à
+# api.meshy.ai (réseau restreint) — les runners GitHub, si. La clé vit dans
+# le secret de dépôt MESHY_API_KEY (Settings → Secrets → Actions), jamais
+# dans le code (dépôt public).
+# Déclenchement : modification du fichier .github/trigger-zep-generation
+# (le bot de session ne peut pas utiliser workflow_dispatch — 403).
+# Le GLB est commité sur main ; le push d'un GITHUB_TOKEN ne redéclenche
+# pas deploy-pages (anti-boucle GitHub) : un petit commit de suivi depuis
+# la session relance le déploiement.
+name: Génération 3D Zep (Meshy)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/trigger-zep-generation']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: generate-zep
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Vérifier le secret
+        run: |
+          if [ -z "${{ secrets.MESHY_API_KEY }}" ]; then
+            echo "::error::Secret MESHY_API_KEY absent. L'ajouter dans Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      - name: Générer Zep (multi-image-to-3d)
+        env:
+          MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+        run: node scripts/generate-3d-zep.mjs
+
+      - name: Commiter le GLB
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/models/zep-character.glb art/generated/3d/zep-task.json art/generated/3d/zep-thumbnail.png || true
+          git diff --cached --quiet && { echo "Rien à commiter"; exit 0; }
+          git commit -m "Zep : modèle 3D généré via Meshy (GitHub Actions)"
+          git pull --rebase origin main
+          git push origin main
