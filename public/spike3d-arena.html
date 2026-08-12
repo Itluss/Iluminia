@@ -1980,22 +1980,67 @@ function spawnZepTrailPuff(pos) {
   scene.add(puff);
   zepTrail.push(puff);
 }
-function spawnZepIceStreak(pos, heading) {
-  const streak = emissive(new THREE.PlaneGeometry(0.15, 0.6), 0xd8f4ff, 0.9);
-  // couchée au sol, allongée dans la direction de glisse (ordre YXZ :
-  // cap d'abord, puis mise à plat)
-  streak.rotation.order = 'YXZ';
-  streak.rotation.set(-Math.PI / 2, heading, 0);
-  streak.position.set(pos.x, 0.185, pos.z);
-  streak.material.transparent = true;
-  streak.material.opacity = 0.5;
-  streak.material.depthWrite = false;
-  streak.renderOrder = 4;
-  streak.userData.life = 1;
-  streak.userData.kind = 'ice';
-  scene.add(streak);
-  zepTrail.push(streak);
-  if (zepTrail.length > 60) { const oldest = zepTrail.shift(); scene.remove(oldest); }
+// RUBAN de glace continu (retour Camille : « une vraie traînée jolie en
+// 2026 ») : bande de triangles reconstruite chaque frame sur les derniers
+// points de passage du board — dégradé blanc-cyan additif, large et vif
+// sous le board, qui s'affine et fond vers la queue.
+const ZEP_RIBBON_MAX = 46;
+let zepRibbon = null;
+function ensureZepRibbon() {
+  if (zepRibbon) return zepRibbon;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ZEP_RIBBON_MAX * 6), 3).setUsage(THREE.DynamicDrawUsage));
+  geo.setAttribute('color', new THREE.BufferAttribute(new Float32Array(ZEP_RIBBON_MAX * 6), 3).setUsage(THREE.DynamicDrawUsage));
+  const idx = [];
+  for (let i = 0; i < ZEP_RIBBON_MAX - 1; i++) {
+    const a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  geo.setIndex(idx);
+  geo.setDrawRange(0, 0);
+  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  zepRibbon = new THREE.Mesh(geo, mat);
+  zepRibbon.renderOrder = 4;
+  zepRibbon.frustumCulled = false;
+  scene.add(zepRibbon);
+  return zepRibbon;
+}
+function updateZepRibbon(bot, dt, now, heading, speed, moving) {
+  const pts = bot.userData.icePts || (bot.userData.icePts = []);
+  if (moving && speed > 1 && now > (bot.userData.zepNextIce || 0)) {
+    const wOff = new THREE.Vector3(bot.userData.hoverVisual.position.x, 0, 0)
+      .applyAxisAngle(new THREE.Vector3(0, 1, 0), bot.rotation.y);
+    pts.unshift({
+      x: bot.position.x - Math.sin(heading) * 0.5 + wOff.x,
+      z: bot.position.z - Math.cos(heading) * 0.5 + wOff.z,
+      px: Math.cos(heading), pz: -Math.sin(heading), age: 0,
+    });
+    if (pts.length > ZEP_RIBBON_MAX) pts.pop();
+    bot.userData.zepNextIce = now + 40;
+  }
+  for (const pt of pts) pt.age += dt;
+  while (pts.length && pts[pts.length - 1].age > 1.2) pts.pop();
+  const ribbon = ensureZepRibbon();
+  const pos = ribbon.geometry.attributes.position;
+  const col = ribbon.geometry.attributes.color;
+  const n = pts.length;
+  for (let i = 0; i < n; i++) {
+    const pt = pts[i];
+    const t = i / Math.max(1, n - 1);
+    const w = 0.19 * (1 - t) + 0.03; // demi-largeur : large sous le board, fine en queue
+    pos.setXYZ(i * 2, pt.x + pt.px * w, 0.19, pt.z + pt.pz * w);
+    pos.setXYZ(i * 2 + 1, pt.x - pt.px * w, 0.19, pt.z - pt.pz * w);
+    const fade = Math.max(0, 1 - pt.age / 1.2) * (1 - t * 0.7);
+    const head = 1 - t; // tête quasi blanche, queue cyan glacé
+    const r = fade * (0.35 + 0.55 * head);
+    const g = fade * (0.75 + 0.25 * head);
+    const b = fade;
+    col.setXYZ(i * 2, r, g, b);
+    col.setXYZ(i * 2 + 1, r, g, b);
+  }
+  pos.needsUpdate = true; col.needsUpdate = true;
+  ribbon.geometry.setDrawRange(0, n > 1 ? (n - 1) * 6 : 0);
 }
 // flottement + glisse ondulante + vrille de boost — appelé chaque frame
 // depuis animate(). Retour Camille (2026-08-12) : « complètement statique
@@ -2013,7 +2058,10 @@ function updateZepVisual(bot, dt, now) {
   // flottement permanent, plus ample (jamais de foulée : Zep glisse)
   visual.position.y = 0.1 + Math.sin(now * 0.0048) * 0.09;
   // inclinaison : penche vers l'avant avec la vitesse, s'incline en virage
-  const targetPitch = Math.min(0.34, speed * 0.06);
+  // tangage de VRAI surfeur : il pompe — penché en avant dans la
+  // descente de chaque courbe du S, redressé en sortie (synchronisé sur
+  // la phase de carving, voir plus bas)
+  const basePitch = Math.min(0.2, speed * 0.04);
   const heading = Math.atan2(vel.x, vel.z);
   let turnRate = 0;
   if (speed > 0.4 && bot.userData.zepLastHeading !== undefined) {
@@ -2041,6 +2089,7 @@ function updateZepVisual(bot, dt, now) {
   const bank = moving ? -Math.sin(ph) * 0.26 : Math.sin(now * 0.0021) * 0.07;
   const carveYaw = moving ? Math.cos(ph) * 0.32 : 0;
   const targetRoll = Math.max(-0.45, Math.min(0.45, -turnRate * 0.09)) + bank;
+  const targetPitch = basePitch + (moving ? Math.cos(ph) * 0.15 : 0);
   visual.rotation.x += (targetPitch - visual.rotation.x) * Math.min(1, dt * 8);
   visual.rotation.z += (targetRoll - visual.rotation.z) * Math.min(1, dt * 8);
   // vrille 360° au départ du dash (signature espiègle de Zep)
@@ -2057,28 +2106,19 @@ function updateZepVisual(bot, dt, now) {
   // le pan d'écharpe se soulève avec la vitesse et flotte
   if (bot.userData.scarfTail) bot.userData.scarfTail.rotation.x =
     0.5 + Math.min(0.7, speed * 0.14) + Math.sin(now * 0.007) * 0.08;
-  // traînée de glace : continue dès que Zep glisse, déposée SOUS le board
-  // (léger décalage vers l'arrière), effacée progressivement
-  if (moving && speed > 1.1 && now > (bot.userData.zepNextIce || 0)) {
-    const back = new THREE.Vector3(Math.sin(heading), 0, Math.cos(heading)).multiplyScalar(-0.45);
-    const worldOffset = new THREE.Vector3(visual.position.x, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), bot.rotation.y);
-    spawnZepIceStreak(bot.position.clone().add(back).add(worldOffset), heading);
-    bot.userData.zepNextIce = now + 70;
-  }
+  // ruban de glace continu sous le board, qui fond vers la queue
+  updateZepRibbon(bot, dt, now, heading, speed, moving);
   // disques lumineux réservés au boost (dash)
   if (dashing && now > (bot.userData.zepNextPuff || 0)) {
     spawnZepTrailPuff(bot.position);
     bot.userData.zepNextPuff = now + 55;
   }
-  // vieillissement des traînées (glace : fonte lente + étirement)
+  // vieillissement des disques de boost
   for (let i = zepTrail.length - 1; i >= 0; i--) {
     const el = zepTrail[i];
-    const ice = el.userData.kind === 'ice';
-    el.userData.life -= dt * (ice ? 0.9 : 2.2);
-    const life = Math.max(0, el.userData.life);
-    el.material.opacity = ice ? life * 0.5 : life * 0.7;
-    if (ice) el.scale.set(1 + (1 - life) * 0.6, 1 + (1 - life) * 0.35, 1);
-    else el.scale.setScalar(1 + (1 - life) * 1.6);
+    el.userData.life -= dt * 2.2;
+    el.material.opacity = Math.max(0, el.userData.life) * 0.7;
+    el.scale.setScalar(1 + (1 - el.userData.life) * 1.6);
     if (el.userData.life <= 0) {
       scene.remove(el);
       zepTrail.splice(i, 1);
@@ -2334,6 +2374,12 @@ const bots = BOT_DEFS.map(def => {
       // Ancrage par DELTA (position.add) et non par écrasement : le GLB
       // Meshy porte un offset racine que position.set() détruisait — Zep
       // apparaissait rétréci et enterré. --------
+      // -------- orientation (retour Camille : « il avance avec son surf
+      // perpendiculaire à sa direction ») : l'axe principal du board dans
+      // le GLB v2 est à ~60° de +z (mesuré par ACP sur les vertices du bas
+      // du modèle) — on le remet dans l'axe d'avance ; le garçon se
+      // retrouve de profil sur son board, comme un vrai surfeur. --------
+      model.rotation.y = -1.043;
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
       const scale = 4.5 / size.y;
