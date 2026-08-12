@@ -1984,7 +1984,7 @@ function spawnZepTrailPuff(pos) {
 // 2026 ») : bande de triangles reconstruite chaque frame sur les derniers
 // points de passage du board — dégradé blanc-cyan additif, large et vif
 // sous le board, qui s'affine et fond vers la queue.
-const ZEP_RIBBON_MAX = 46;
+const ZEP_RIBBON_MAX = 60;
 let zepRibbon = null;
 function ensureZepRibbon() {
   if (zepRibbon) return zepRibbon;
@@ -2020,7 +2020,7 @@ function updateZepRibbon(bot, dt, now, heading, speed, moving) {
     bot.userData.zepNextIce = now + 40;
   }
   for (const pt of pts) pt.age += dt;
-  while (pts.length && pts[pts.length - 1].age > 1.2) pts.pop();
+  while (pts.length && pts[pts.length - 1].age > 1.6) pts.pop();
   const ribbon = ensureZepRibbon();
   const pos = ribbon.geometry.attributes.position;
   const col = ribbon.geometry.attributes.color;
@@ -2031,7 +2031,7 @@ function updateZepRibbon(bot, dt, now, heading, speed, moving) {
     const w = 0.19 * (1 - t) + 0.03; // demi-largeur : large sous le board, fine en queue
     pos.setXYZ(i * 2, pt.x + pt.px * w, 0.19, pt.z + pt.pz * w);
     pos.setXYZ(i * 2 + 1, pt.x - pt.px * w, 0.19, pt.z - pt.pz * w);
-    const fade = Math.max(0, 1 - pt.age / 1.2) * (1 - t * 0.7);
+    const fade = Math.max(0, 1 - pt.age / 1.6) * (1 - t * 0.7);
     const head = 1 - t; // tête quasi blanche, queue cyan glacé
     const r = fade * (0.35 + 0.55 * head);
     const g = fade * (0.75 + 0.25 * head);
@@ -2077,19 +2077,23 @@ function updateZepVisual(bot, dt, now) {
   // direction), penché vers l'intérieur de chaque courbe, le nez du board
   // suivant la tangente du S. La phase avance avec la DISTANCE parcourue
   // (longueur d'onde constante), pas avec le temps.
-  bot.userData.carvePhase = (bot.userData.carvePhase || 0) + speed * dt * 2.4;
+  // « plus ample, moins de balancier » (retour Camille) : longues courbes
+  // (longueur d'onde ~5,7 u) et large débattement latéral — de vraies
+  // arches de slalom, pas une oscillation sur place.
+  bot.userData.carvePhase = (bot.userData.carvePhase || 0) + speed * dt * 1.1;
   const ph = bot.userData.carvePhase;
-  const carveAmp = moving ? Math.min(0.42, speed * 0.1) : 0;
+  const carveAmp = moving ? Math.min(0.9, speed * 0.22) : 0;
   bot.userData.carveAmpSmooth = (bot.userData.carveAmpSmooth || 0)
     + (carveAmp - (bot.userData.carveAmpSmooth || 0)) * Math.min(1, dt * 5);
   const amp = bot.userData.carveAmpSmooth;
   visual.position.x = Math.sin(ph) * amp;
   // penché vers l'intérieur de la courbe (accélération latérale) ; à
   // l'arrêt, léger balancement du board pour ne jamais figer
-  const bank = moving ? -Math.sin(ph) * 0.26 : Math.sin(now * 0.0021) * 0.07;
-  const carveYaw = moving ? Math.cos(ph) * 0.32 : 0;
+  const bank = moving ? -Math.sin(ph) * 0.3 : Math.sin(now * 0.0021) * 0.07;
+  // le nez du board suit la VRAIE tangente du S (dérivée de l'offset)
+  const carveYaw = moving ? Math.atan(Math.cos(ph) * amp * 1.1) * 0.75 : 0;
   const targetRoll = Math.max(-0.45, Math.min(0.45, -turnRate * 0.09)) + bank;
-  const targetPitch = basePitch + (moving ? Math.cos(ph) * 0.15 : 0);
+  const targetPitch = basePitch + (moving ? Math.cos(ph) * 0.18 : 0);
   visual.rotation.x += (targetPitch - visual.rotation.x) * Math.min(1, dt * 8);
   visual.rotation.z += (targetRoll - visual.rotation.z) * Math.min(1, dt * 8);
   // vrille 360° au départ du dash (signature espiègle de Zep)
