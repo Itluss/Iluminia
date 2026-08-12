@@ -1,0 +1,582 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Illuminia — Personnages</title>
+<link rel="icon" href="data:," />
+<link rel="stylesheet" href="ui/theme.css" />
+<style>
+/* =====================================================================
+   ÉCRAN PERSONNAGES — reproduction de la maquette (spec Camille 2026-08-12)
+   MÊME ARCHITECTURE que la Home (index.html) : scène logique 1536×864 à
+   positionnement absolu, échelle uniforme min(vw/1536, vh/864), colonnes
+   gauche/droite ancrées aux vrais bords via --edge-x, fond peint plein
+   viewport, aucun emoji (sprite SVG uniquement), aucun scroll.
+   Composants top bar / boutons de nav / badges copiés de la Home pour que
+   les deux écrans semblent sortis de la même main.
+   ===================================================================== */
+:root { --sal: env(safe-area-inset-left, 0px); }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+html, body { margin: 0; padding: 0; width: 100dvw; height: 100dvh; overflow: hidden;
+  overscroll-behavior: none; font-family: var(--el-font); background: var(--el-bg-deep); }
+
+/* ---------- fond peint : couvre TOUT le viewport (même code que la Home) ---------- */
+#world-bg { position: fixed; inset: 0; z-index: 0; width: 100%; height: 100%; }
+
+/* ---------- scène logique 1536×864 ---------- */
+#stage { position: fixed; left: 50%; top: 50%; width: 1536px; height: 864px;
+  transform: translate(-50%, -50%); transform-origin: center center; z-index: 1; }
+
+/* ---------- Max sur son socle de pierre (point focal n°1, niveau 2) ---------- */
+#hero { position: absolute; left: 600px; bottom: 56px; transform: translateX(-50%);
+  height: 700px; pointer-events: none;
+  filter: drop-shadow(0 16px 26px rgba(10,18,48,0.42));
+  animation: heroFloat 5s ease-in-out infinite alternate; }
+@keyframes heroFloat { from { transform: translateX(-50%) translateY(0); }
+  to { transform: translateX(-50%) translateY(-8px); } }
+
+/* ---------- carte joueur (haut gauche) — copie exacte de la Home ---------- */
+#player-card { position: absolute; left: calc(30px - var(--edge-x, 0px)); top: 26px; height: 110px;
+  display: flex; align-items: center; gap: 14px; padding: 12px 22px 12px 12px; cursor: pointer;
+  background: linear-gradient(180deg, #22375f, #14224a 65%, #14224a);
+  border: 4px solid rgba(10,18,48,0.95); border-radius: 24px;
+  box-shadow: inset 0 -6px 0 #0c1732, inset 0 3px 0 rgba(255,255,255,0.16), 0 6px 14px rgba(10,18,48,0.4); }
+#player-card .avatar { width: 82px; height: 82px; border-radius: 50%;
+  border: 4px solid var(--el-purple); box-shadow: 0 0 0 3px rgba(10,18,48,0.8);
+  position: relative; flex: 0 0 auto; overflow: hidden;
+  background: radial-gradient(circle at 35% 30%, #6fb7ff, #258cff 70%); }
+.avatar .hair { position: absolute; top: -6%; left: 8%; right: 8%; height: 52%;
+  background: #5a3d28; border-radius: 50% 50% 42% 42%; }
+.avatar .face { position: absolute; top: 34%; left: 18%; right: 18%; height: 52%;
+  background: #ffd9b0; border-radius: 46%; }
+.avatar .eye { position: absolute; top: 56%; width: 9%; height: 13%; background: #26221f; border-radius: 50%; }
+.avatar .eye.l { left: 34%; } .avatar .eye.r { right: 34%; }
+.avatar .lvl-badge { position: absolute; bottom: 0; left: 0; width: 34%; height: 34%;
+  background: linear-gradient(180deg, #7fe08a, var(--el-success) 60%, var(--el-success-dark));
+  border: 3px solid rgba(10,18,48,0.85); border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; color: #fff; font-weight: 900; font-size: 18px; }
+#player-card .who { display: flex; flex-direction: column; gap: 5px; }
+#player-card .name { color: #fff; font-weight: 900; font-size: 27px; letter-spacing: 1px; }
+#player-card .lvl { color: #fff; font-weight: 800; font-size: 18px;
+  display: flex; align-items: center; gap: 7px; }
+#player-card .lvl .el-icon { width: 19px; height: 19px; fill: var(--el-gold); }
+.xp-track { width: 220px; height: 18px; border-radius: 999px;
+  background: rgba(4,9,28,0.6); border: 3px solid rgba(10,18,48,0.9); overflow: hidden; position: relative; }
+.xp-fill { height: 100%; width: 62.5%; border-radius: 999px;
+  background: linear-gradient(180deg, #7fe3ff, var(--el-cyan) 55%, var(--el-cyan-dark)); }
+.xp-num { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 900; font-size: 12px; text-shadow: 0 1px 2px rgba(0,0,0,0.7); }
+#xp-chip { position: absolute; left: calc(390px - var(--edge-x, 0px)); top: 34px; padding: 12px 20px;
+  background: linear-gradient(180deg, #5fc0ff, #1c72c9 62%, #1c72c9);
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 18px; color: #fff; font-weight: 900;
+  font-size: 21px; cursor: pointer;
+  box-shadow: inset 0 -5px 0 #114a8c, inset 0 3px 0 rgba(255,255,255,0.4), 0 5px 10px rgba(10,18,48,0.4); }
+#xp-chip:active { transform: translateY(3px); }
+
+/* ---------- monnaies + menu (haut droite) — copie exacte de la Home ---------- */
+#top-right { position: absolute; right: calc(30px - var(--edge-x, 0px)); top: 26px; display: flex; align-items: center; gap: 20px; }
+.capsule { display: flex; align-items: center; gap: 10px; height: 62px;
+  background: linear-gradient(180deg, #1c2b58, #101c3e);
+  border: 4px solid rgba(10,18,48,0.95); border-radius: 999px; padding: 0 10px 0 16px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.14), inset 0 -5px 0 rgba(0,0,0,0.35),
+    0 5px 12px rgba(10,18,48,0.4); }
+.capsule .el-icon { width: 32px; height: 32px; }
+.capsule .val { color: #fff; font-weight: 900; font-size: 25px; letter-spacing: 0.5px; }
+.capsule .add { width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(180deg, #7fe08a, var(--el-success) 55%, var(--el-success-dark));
+  border: 3px solid rgba(10,18,48,0.85); display: flex; align-items: center; justify-content: center;
+  cursor: pointer; box-shadow: inset 0 2px 0 rgba(255,255,255,0.45); }
+.capsule .add .el-icon { width: 60%; height: 60%; fill: #fff; stroke: #fff; }
+.capsule .add:active { transform: translateY(2px); }
+#coin-capsule .el-icon { fill: var(--el-gold); }
+#gem-capsule .el-icon { fill: var(--el-purple); }
+#burger { position: relative; width: 118px; height: 74px; border-radius: 20px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #2c4380, #1a2b58 62%, #1a2b58);
+  border: 4px solid rgba(10,18,48,0.95);
+  box-shadow: inset 0 -6px 0 #0d1834, inset 0 3px 0 rgba(255,255,255,0.2), 0 5px 12px rgba(10,18,48,0.4); }
+#burger .el-icon { width: 46px; height: 46px; color: #fff; }
+#burger:active { transform: translateY(3px); }
+
+/* ---------- badge notification (Home) + variante orange (spec §6) ---------- */
+.badge { position: absolute; top: -10px; right: -10px; min-width: 34px; height: 34px; padding: 0 8px;
+  background: linear-gradient(180deg, #ff8290 20%, var(--el-danger) 60%, var(--el-danger-dark));
+  border: 3px solid #8f1622; border-radius: 999px; color: #fff; font-weight: 900;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.45), 0 3px 6px rgba(10,18,48,0.45); }
+.badge-orange { background: linear-gradient(180deg, #ffd25e 20%, var(--el-warning) 60%, var(--el-warning-dark)) !important;
+  border-color: #9e5405 !important; }
+
+/* ---------- ZONE A : navigation verticale gauche (style Home) ---------- */
+#side-nav { position: absolute; left: calc(30px - var(--edge-x, 0px)); top: 200px;
+  display: flex; flex-direction: column; gap: 16px; }
+.nav-btn { position: relative; display: flex; align-items: center; gap: 14px; cursor: pointer;
+  height: 82px; width: 280px; padding: 0 15px 0 12px;
+  border: 4px solid rgba(10,18,48,0.9); border-radius: 20px;
+  background: linear-gradient(180deg, #22375f, #14224a);
+  box-shadow: inset 0 -6px 0 rgba(10,18,48,0.32), inset 0 3px 0 rgba(255,255,255,0.3),
+    0 6px 14px rgba(10,18,48,0.4);
+  transition: transform 0.08s, filter 0.08s; }
+.nav-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 44%;
+  border-radius: 14px 14px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.34), rgba(255,255,255,0.1));
+  pointer-events: none; }
+.nav-btn:hover { filter: brightness(1.06); transform: translateY(-2px); }
+.nav-btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 rgba(10,18,48,0.32),
+  inset 0 3px 0 rgba(255,255,255,0.3), 0 2px 6px rgba(10,18,48,0.4); }
+/* état SÉLECTIONNÉ (PERSONNAGES) : fond bleu lumineux, contour cyan, halo */
+.nav-btn.is-selected { background: linear-gradient(180deg, #4ea4ff, #1e7ae8 62%, #1c6fd6);
+  border-color: var(--el-cyan);
+  box-shadow: inset 0 -6px 0 #1257ad, inset 0 3px 0 rgba(255,255,255,0.42),
+    0 0 18px 3px rgba(32,207,243,0.45), 0 6px 14px rgba(10,18,48,0.4); }
+.nav-btn.is-selected:hover { transform: none; filter: none; }
+.nav-btn.is-selected:active { transform: none; box-shadow: inset 0 -6px 0 #1257ad,
+  inset 0 3px 0 rgba(255,255,255,0.42), 0 0 18px 3px rgba(32,207,243,0.45), 0 6px 14px rgba(10,18,48,0.4); }
+.nav-ico { width: 58px; height: 58px; flex: 0 0 auto;
+  border-radius: 22%; border: 3px solid rgba(10,18,48,0.8);
+  background: linear-gradient(180deg, var(--tile-top), var(--tile-mid) 62%, var(--tile-mid));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 -4px 0 var(--tile-lip), inset 0 3px 0 rgba(255,255,255,0.5); }
+.nav-ico .el-icon { width: 62%; height: 62%; fill: var(--tile-ico); color: var(--tile-ico); }
+.nav-btn .lbl { color: #fff; font-weight: 900; font-size: 20px; letter-spacing: 0.5px;
+  text-shadow: 0 2px 0 rgba(10,18,48,0.45); position: relative; z-index: 1; }
+.plate-orange { --tile-top: #ffc169; --tile-mid: var(--el-orange); --tile-lip: #cf6a06; --tile-ico: #7a4a12; }
+.plate-cyan { --tile-top: #7fe8cf; --tile-mid: #23b898; --tile-lip: #0e7a63; --tile-ico: #084d3e; }
+.plate-purple { --tile-top: #bb95ff; --tile-mid: var(--el-purple); --tile-lip: #5c28c4; --tile-ico: #35156e; }
+.plate-blue { --tile-top: #6fb7ff; --tile-mid: var(--el-blue); --tile-lip: #0d3f85; --tile-ico: #0d3364; }
+
+/* ---------- ZONE C : panneau d'informations à droite ---------- */
+#info-panel { position: absolute; right: calc(26px - var(--edge-x, 0px)); top: 118px; width: 470px;
+  bottom: 26px; display: flex; flex-direction: column; padding: 22px 24px 18px;
+  background: linear-gradient(180deg, rgba(30,49,92,0.97), rgba(16,27,58,0.97) 70%);
+  border: 4px solid #2f5eb8; border-radius: 26px;
+  box-shadow: inset 0 3px 0 rgba(255,255,255,0.14), inset 0 -6px 0 rgba(6,11,28,0.5),
+    0 10px 24px rgba(10,18,48,0.5); }
+#info-panel .head { display: flex; align-items: center; justify-content: space-between; }
+#info-panel .head .name { color: #fff; font-weight: 900; font-size: 46px; letter-spacing: 1.5px;
+  text-shadow: 0 3px 0 rgba(10,18,48,0.5); }
+.rarity { display: flex; align-items: center; gap: 8px; padding: 8px 16px;
+  background: linear-gradient(180deg, #a678f8, var(--el-purple) 55%, var(--el-purple-dark));
+  border: 3px solid rgba(10,18,48,0.85); border-radius: 999px;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.4), inset 0 -3px 0 #4a1e9e, 0 4px 8px rgba(10,18,48,0.4); }
+.rarity .el-icon { width: 20px; height: 20px; fill: #fff; }
+.rarity span { color: #fff; font-weight: 900; font-size: 19px; letter-spacing: 1px; }
+#info-panel .role { display: flex; align-items: center; gap: 9px; margin-top: 8px; }
+#info-panel .role .el-icon { width: 22px; height: 22px; fill: #6fb7ff; }
+#info-panel .role span { color: #fff; font-weight: 900; font-size: 20px; letter-spacing: 0.5px; }
+#info-panel .desc { margin-top: 7px; color: var(--el-text-muted); font-weight: 600;
+  font-size: 17.5px; line-height: 1.32; }
+
+/* ----- statistiques : barres segmentées façon jeu ----- */
+#stats { margin-top: 14px; display: flex; flex-direction: column; gap: 11px; }
+.stat-row { display: flex; align-items: center; gap: 10px; }
+.stat-row .s-ico { width: 30px; height: 30px; flex: 0 0 auto; border-radius: 50%;
+  background: linear-gradient(180deg, var(--s-light), var(--s-col) 60%, var(--s-dark));
+  border: 2.5px solid rgba(10,18,48,0.85); display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.4); }
+.stat-row .s-ico .el-icon { width: 62%; height: 62%; fill: #fff; color: #fff; }
+.stat-row .s-lbl { width: 106px; flex: 0 0 auto; color: #fff; font-weight: 800; font-size: 16.5px;
+  letter-spacing: 0.4px; }
+.stat-track { flex: 1; height: 21px; border-radius: 999px; position: relative; overflow: hidden;
+  background: rgba(4,9,28,0.72); border: 3px solid rgba(10,18,48,0.9);
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.55); }
+.stat-fill { height: 100%; border-radius: 999px 4px 4px 999px; position: relative;
+  background: linear-gradient(180deg, var(--s-light), var(--s-col) 52%, var(--s-dark)); }
+.stat-fill::before { content: ""; position: absolute; left: 4%; right: 3%; top: 12%; height: 30%;
+  background: rgba(255,255,255,0.5); border-radius: 999px; }
+/* segments : encoches sombres régulières par-dessus le remplissage */
+.stat-track::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: repeating-linear-gradient(90deg, transparent 0 36px, rgba(6,11,28,0.85) 36px 39px); }
+.stat-row .s-val { width: 42px; flex: 0 0 auto; text-align: right; color: #fff; font-weight: 900;
+  font-size: 20px; font-variant-numeric: tabular-nums; text-shadow: 0 2px 0 rgba(10,18,48,0.5); }
+.stat-blue   { --s-col: var(--el-blue);   --s-light: #6fb7ff; --s-dark: #1660c2; }
+.stat-green  { --s-col: var(--el-success);--s-light: #7fe08a; --s-dark: #379e3a; }
+.stat-orange { --s-col: var(--el-orange); --s-light: #ffc169; --s-dark: #e0700a; }
+.stat-purple { --s-col: var(--el-purple); --s-light: #bb95ff; --s-dark: #6a34d6; }
+
+/* ----- titres de sections du panneau ----- */
+.panel-title { margin-top: 15px; color: #b9c9f2; font-weight: 900; font-size: 17px;
+  letter-spacing: 1.2px; }
+
+/* ----- compétences : 3 cartes côte à côte ----- */
+#skills { margin-top: 8px; display: flex; gap: 12px; }
+.skill-card { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 10px 6px 9px; cursor: pointer; position: relative;
+  background: linear-gradient(180deg, #1b2c58, #101b3c);
+  border: 3px solid var(--k-col); border-radius: 18px;
+  box-shadow: 0 0 12px 1px var(--k-glow), inset 0 2px 0 rgba(255,255,255,0.12),
+    inset 0 -4px 0 rgba(6,11,28,0.5), 0 5px 10px rgba(10,18,48,0.4);
+  transition: transform 0.08s, box-shadow 0.08s; }
+.skill-card:hover { transform: translateY(-2px); box-shadow: 0 0 16px 3px var(--k-glow),
+  inset 0 2px 0 rgba(255,255,255,0.12), inset 0 -4px 0 rgba(6,11,28,0.5), 0 7px 12px rgba(10,18,48,0.4); }
+.skill-card:active { transform: translateY(2px); }
+.skill-card .k-ico { width: 58px; height: 58px; border-radius: 14px; position: relative;
+  background: radial-gradient(circle at 50% 42%, var(--k-heart), rgba(6,11,28,0.95) 78%);
+  border: 2.5px solid rgba(10,18,48,0.85); display: flex; align-items: center; justify-content: center;
+  box-shadow: inset 0 0 12px var(--k-glow); }
+.skill-card .k-ico .el-icon { width: 66%; height: 66%; fill: var(--k-ico-col); color: var(--k-ico-col);
+  filter: drop-shadow(0 0 5px var(--k-glow)); }
+.skill-card .k-name { color: #fff; font-weight: 900; font-size: 13px; text-align: center;
+  line-height: 1.15; letter-spacing: 0.2px; min-height: 30px; display: flex; align-items: center; }
+.skill-card .k-lvl { color: var(--el-gold); font-weight: 800; font-size: 14.5px; }
+.skill-blue   { --k-col: #2fa7e8; --k-glow: rgba(32,207,243,0.4);  --k-heart: rgba(37,140,255,0.6);  --k-ico-col: #8fdcff; }
+.skill-orange { --k-col: var(--el-orange); --k-glow: rgba(255,148,24,0.4); --k-heart: rgba(255,120,24,0.55); --k-ico-col: #ffd08a; }
+.skill-green  { --k-col: var(--el-success); --k-glow: rgba(83,204,85,0.4); --k-heart: rgba(60,190,80,0.5);  --k-ico-col: #a9f0aa; }
+
+/* ----- tenues : carrousel de vignettes ----- */
+#skins { margin-top: 8px; display: flex; align-items: center; gap: 11px; }
+.skin-thumb { width: 82px; height: 82px; border-radius: 16px; cursor: pointer; position: relative;
+  background: linear-gradient(180deg, #2a4b8e, #162450);
+  border: 3px solid #2f5eb8; overflow: hidden; flex: 0 0 auto;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.15), 0 4px 8px rgba(10,18,48,0.4);
+  transition: transform 0.08s; }
+.skin-thumb:hover { transform: translateY(-2px); }
+.skin-thumb:active { transform: translateY(2px); }
+.skin-thumb img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%;
+  transform: scale(1.35); transform-origin: 50% 18%; pointer-events: none; }
+.skin-thumb.is-selected { border-color: var(--el-gold);
+  box-shadow: 0 0 14px 2px rgba(255,201,40,0.55), inset 0 2px 0 rgba(255,255,255,0.15),
+    0 4px 8px rgba(10,18,48,0.4); }
+.skin-thumb .check { display: none; position: absolute; right: 4px; bottom: 4px; width: 24px; height: 24px;
+  border-radius: 50%; background: linear-gradient(180deg, #7fe08a, var(--el-success) 55%, var(--el-success-dark));
+  border: 2.5px solid rgba(10,18,48,0.85); align-items: center; justify-content: center;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.45); }
+.skin-thumb .check .el-icon { width: 62%; height: 62%; color: #fff; }
+.skin-thumb.is-selected .check { display: flex; }
+#skin-next { width: 44px; height: 82px; border-radius: 16px; cursor: pointer; flex: 0 0 auto;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(180deg, #2c4380, #1a2b58);
+  border: 3px solid rgba(10,18,48,0.9);
+  box-shadow: inset 0 -4px 0 #0d1834, inset 0 2px 0 rgba(255,255,255,0.2), 0 4px 8px rgba(10,18,48,0.4); }
+#skin-next .el-icon { width: 26px; height: 26px; color: #fff; }
+#skin-next:active { transform: translateY(2px); }
+
+/* ---------- actions du bas ---------- */
+/* AMÉLIORER : philosophie exacte du bouton JOUER de la Home, taille maquette */
+#upgrade-btn { position: absolute; left: 650px; bottom: 26px; width: 330px; height: 104px;
+  display: flex; align-items: center; justify-content: center; gap: 15px; cursor: pointer;
+  border-radius: 24px; border: 5px solid #17234a;
+  background: linear-gradient(180deg, #ffe993 0%, var(--el-gold) 58%, var(--el-gold) 100%);
+  outline: 3px solid rgba(10,18,48,0.5); outline-offset: 2px;
+  box-shadow: inset 0 -9px 0 #e09b00, inset 0 4px 0 rgba(255,255,255,0.6),
+    0 8px 18px rgba(10,18,48,0.5);
+  transition: transform 0.06s, box-shadow 0.06s; }
+#upgrade-btn::after { content: ""; position: absolute; left: 6px; right: 6px; top: 4px; height: 46%;
+  border-radius: 18px 18px 48% 48%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.58), rgba(255,255,255,0.18));
+  pointer-events: none; }
+#upgrade-btn:hover { filter: brightness(1.04); }
+#upgrade-btn:active { transform: translateY(4px); box-shadow: inset 0 -5px 0 #e09b00,
+  inset 0 4px 0 rgba(255,255,255,0.6), 0 3px 8px rgba(10,18,48,0.5); }
+#upgrade-btn .up { width: 44px; height: 44px; position: relative; z-index: 1;
+  display: flex; align-items: center; justify-content: center; }
+#upgrade-btn .up .el-icon { width: 100%; height: 100%; fill: #fff;
+  filter: drop-shadow(0 3px 0 rgba(23,35,74,0.6)); }
+#upgrade-btn .lbl { color: #fff; font-weight: 900; font-size: 40px; letter-spacing: 1.5px;
+  position: relative; z-index: 1;
+  -webkit-text-stroke: 2px rgba(23,35,74,0.8); paint-order: stroke fill;
+  text-shadow: 0 3px 0 rgba(23,35,74,0.5); }
+
+/* PERSONNALISER : secondaire bleu/cyan, icône pinceau */
+#custom-btn { position: absolute; left: calc(30px - var(--edge-x, 0px)); bottom: 30px; width: 280px; height: 76px;
+  display: flex; align-items: center; justify-content: center; gap: 12px; cursor: pointer;
+  border-radius: 20px; border: 4px solid rgba(10,18,48,0.9);
+  background: linear-gradient(180deg, #5fc0ff, #1e7ae8 60%, #1c6fd6);
+  box-shadow: inset 0 -6px 0 #1257ad, inset 0 3px 0 rgba(255,255,255,0.42), 0 6px 14px rgba(10,18,48,0.4);
+  transition: transform 0.06s, box-shadow 0.06s; }
+#custom-btn::after { content: ""; position: absolute; left: 5px; right: 5px; top: 3px; height: 44%;
+  border-radius: 14px 14px 46% 46%;
+  background: linear-gradient(180deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12));
+  pointer-events: none; }
+#custom-btn:hover { filter: brightness(1.05); }
+#custom-btn:active { transform: translateY(3px); box-shadow: inset 0 -3px 0 #1257ad,
+  inset 0 3px 0 rgba(255,255,255,0.42), 0 2px 6px rgba(10,18,48,0.4); }
+#custom-btn .el-icon { width: 30px; height: 30px; fill: #fff; position: relative; z-index: 1;
+  filter: drop-shadow(0 2px 0 rgba(10,18,48,0.5)); }
+#custom-btn .lbl { color: #fff; font-weight: 900; font-size: 24px; letter-spacing: 0.6px;
+  position: relative; z-index: 1; text-shadow: 0 2px 0 rgba(10,18,48,0.45); }
+
+/* ---------- toast + rotation (identiques Home) ---------- */
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 10; background: rgba(10,18,48,0.95); border: 3px solid var(--el-gold);
+  border-radius: 999px; color: var(--el-cream); font-weight: 900; font-size: 16px;
+  padding: 10px 22px; display: none; }
+#toast.show { display: block; }
+#rotate-prompt { display: none; position: fixed; inset: 0; z-index: 90; background: var(--el-bg-deep);
+  color: var(--el-text-main); flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 16px; font-weight: 800; font-size: 18px; }
+#rotate-prompt .phone { width: 46px; height: 80px; border: 4px solid var(--el-gold);
+  border-radius: 10px; animation: rotHint 1.6s ease-in-out infinite alternate; }
+@keyframes rotHint { from { transform: rotate(0); } to { transform: rotate(90deg); } }
+@media (orientation: portrait) { #rotate-prompt { display: flex; } }
+</style>
+</head>
+<body>
+<canvas id="world-bg"></canvas>
+
+<div id="stage">
+  <img id="hero" src="ui/max-pedestal.png" alt="Max sur son socle" />
+
+  <!-- top bar : copie de la Home -->
+  <div id="player-card" data-href="./index.html" title="Retour à l'accueil">
+    <div class="avatar">
+      <div class="face"></div>
+      <div class="hair"></div>
+      <div class="eye l"></div><div class="eye r"></div>
+      <div class="lvl-badge">+</div>
+    </div>
+    <div class="who">
+      <span class="name">MAX</span>
+      <span class="lvl"><svg class="el-icon"><use href="#icon-star"></use></svg>Niveau 17</span>
+      <div class="xp-track"><div class="xp-fill"></div><span class="xp-num">1250/2000</span></div>
+    </div>
+  </div>
+  <div id="xp-chip" data-soon>XP</div>
+
+  <div id="top-right">
+    <div class="capsule" id="coin-capsule">
+      <svg class="el-icon"><use href="#icon-coin"></use></svg>
+      <span class="val">12 450</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div class="capsule" id="gem-capsule">
+      <svg class="el-icon"><use href="#icon-gem"></use></svg>
+      <span class="val">480</span>
+      <div class="add" data-soon><svg class="el-icon"><use href="#icon-plus"></use></svg></div>
+    </div>
+    <div id="burger" data-soon>
+      <svg class="el-icon"><use href="#icon-menu"></use></svg>
+      <span class="badge">3</span>
+    </div>
+  </div>
+
+  <!-- ZONE A : navigation -->
+  <div id="side-nav">
+    <div class="nav-btn is-selected plate-orange">
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-avatar"></use></svg></span>
+      <span class="lbl">PERSONNAGES</span>
+      <span class="badge badge-orange">!</span>
+    </div>
+    <div class="nav-btn plate-cyan" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-tshirt"></use></svg></span>
+      <span class="lbl">TENUES</span>
+    </div>
+    <div class="nav-btn plate-orange" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-book"></use></svg></span>
+      <span class="lbl">COMPÉTENCES</span>
+    </div>
+    <div class="nav-btn plate-blue" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-chart"></use></svg></span>
+      <span class="lbl">STATS</span>
+    </div>
+    <div class="nav-btn plate-purple" data-soon>
+      <span class="nav-ico"><svg class="el-icon"><use href="#icon-evolve"></use></svg></span>
+      <span class="lbl">ÉVOLUTION</span>
+    </div>
+  </div>
+
+  <!-- ZONE C : panneau d'informations -->
+  <div id="info-panel">
+    <div class="head">
+      <span class="name">MAX</span>
+      <div class="rarity">
+        <svg class="el-icon"><use href="#icon-star"></use></svg>
+        <span>ÉPIQUE</span>
+      </div>
+    </div>
+    <div class="role">
+      <svg class="el-icon"><use href="#icon-sword"></use></svg>
+      <span>RÔLE : AVENTURIER</span>
+    </div>
+    <div class="desc">Jeune explorateur curieux et courageux.<br />Prêt à relever tous les défis&nbsp;!</div>
+
+    <div id="stats">
+      <div class="stat-row stat-blue">
+        <span class="s-ico"><svg class="el-icon"><use href="#icon-sparkle"></use></svg></span>
+        <span class="s-lbl">VITESSE</span>
+        <div class="stat-track"><div class="stat-fill" style="width:86%"></div></div>
+        <span class="s-val">86</span>
+      </div>
+      <div class="stat-row stat-green">
+        <span class="s-ico"><svg class="el-icon"><use href="#icon-bolt"></use></svg></span>
+        <span class="s-lbl">ÉNERGIE</span>
+        <div class="stat-track"><div class="stat-fill" style="width:92%"></div></div>
+        <span class="s-val">92</span>
+      </div>
+      <div class="stat-row stat-orange">
+        <span class="s-ico"><svg class="el-icon"><use href="#icon-target"></use></svg></span>
+        <span class="s-lbl">PRÉCISION</span>
+        <div class="stat-track"><div class="stat-fill" style="width:78%"></div></div>
+        <span class="s-val">78</span>
+      </div>
+      <div class="stat-row stat-purple">
+        <span class="s-ico"><svg class="el-icon"><use href="#icon-shield"></use></svg></span>
+        <span class="s-lbl">DÉFENSE</span>
+        <div class="stat-track"><div class="stat-fill" style="width:72%"></div></div>
+        <span class="s-val">72</span>
+      </div>
+    </div>
+
+    <div class="panel-title">COMPÉTENCES</div>
+    <div id="skills">
+      <div class="skill-card skill-blue" data-soon>
+        <span class="k-ico"><svg class="el-icon"><use href="#icon-swirl"></use></svg></span>
+        <span class="k-name">ÉLAN<br />RAPIDE</span>
+        <span class="k-lvl">Niv. 3</span>
+      </div>
+      <div class="skill-card skill-orange" data-soon>
+        <span class="k-ico"><svg class="el-icon"><use href="#icon-flame"></use></svg></span>
+        <span class="k-name">FRAPPE<br />ÉNERGÉTIQUE</span>
+        <span class="k-lvl">Niv. 2</span>
+      </div>
+      <div class="skill-card skill-green" data-soon>
+        <span class="k-ico"><svg class="el-icon"><use href="#icon-shield"></use></svg></span>
+        <span class="k-name">BOUCLIER<br />VITAL</span>
+        <span class="k-lvl">Niv. 2</span>
+      </div>
+    </div>
+
+    <div class="panel-title" style="margin-top: auto;">TENUES</div>
+    <div id="skins">
+      <div class="skin-thumb is-selected" data-skin="1">
+        <img src="ui/skin-max-1.png" alt="Tenue bleue" />
+        <span class="check"><svg class="el-icon"><use href="#icon-check"></use></svg></span>
+      </div>
+      <div class="skin-thumb" data-skin="2">
+        <img src="ui/skin-max-2.png" alt="Tenue verte" />
+        <span class="check"><svg class="el-icon"><use href="#icon-check"></use></svg></span>
+      </div>
+      <div class="skin-thumb" data-skin="3">
+        <img src="ui/skin-max-3.png" alt="Tenue orange" />
+        <span class="check"><svg class="el-icon"><use href="#icon-check"></use></svg></span>
+      </div>
+      <div class="skin-thumb" data-skin="4">
+        <img src="ui/skin-max-4.png" alt="Tenue exploratrice" />
+        <span class="check"><svg class="el-icon"><use href="#icon-check"></use></svg></span>
+      </div>
+      <div id="skin-next" data-soon>
+        <svg class="el-icon"><use href="#icon-chevronRight"></use></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- actions du bas -->
+  <div id="custom-btn" data-href="./spike3d-menu.html">
+    <svg class="el-icon"><use href="#icon-brush"></use></svg>
+    <span class="lbl">PERSONNALISER</span>
+  </div>
+  <div id="upgrade-btn" data-soon>
+    <span class="up"><svg class="el-icon"><use href="#icon-arrowUp"></use></svg></span>
+    <span class="lbl">AMÉLIORER</span>
+  </div>
+</div>
+
+<div id="toast">Bientôt disponible !</div>
+<div id="rotate-prompt">
+  <div class="phone"></div>
+  <div>Tourne ton téléphone en mode paysage&nbsp;!</div>
+</div>
+
+<script src="ui/icons.js"></script>
+<script>
+// ---------- scale uniforme 1536×864 + ancrage aux vrais bords (Home) ----------
+{
+  const stage = document.getElementById('stage');
+  const fit = () => {
+    const s = Math.min(innerWidth / 1536, innerHeight / 864);
+    stage.style.transform = `translate(-50%, -50%) scale(${s})`;
+    const sl = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--sal')) || 0;
+    const extra = Math.max(0, (innerWidth / s - 1536) / 2 - sl / s);
+    stage.style.setProperty('--edge-x', `${extra}px`);
+  };
+  fit();
+  addEventListener('resize', fit);
+}
+
+// navigation + placeholders (identique Home)
+document.querySelectorAll('[data-href]').forEach(el =>
+  el.addEventListener('click', () => { location.href = el.dataset.href; }));
+let toastTimer = 0;
+document.querySelectorAll('[data-soon]').forEach(el =>
+  el.addEventListener('click', e => {
+    e.stopPropagation();
+    const t = document.getElementById('toast');
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 1600);
+  }));
+
+// ---------- choix de tenue : la vignette change la couleur du pull de Max ----------
+{
+  const hero = document.getElementById('hero');
+  const SRC = { 1: 'ui/max-pedestal.png', 2: 'ui/max-pedestal-2.png',
+                3: 'ui/max-pedestal-3.png', 4: 'ui/max-pedestal-4.png' };
+  document.querySelectorAll('.skin-thumb').forEach(th =>
+    th.addEventListener('click', () => {
+      document.querySelectorAll('.skin-thumb').forEach(o => o.classList.remove('is-selected'));
+      th.classList.add('is-selected');
+      hero.src = SRC[th.dataset.skin];
+    }));
+}
+
+// ---------- fond peint : MÊME monde que la Home ----------
+{
+  const c = document.getElementById('world-bg');
+  const paint = () => {
+    const w = c.width = innerWidth * Math.min(devicePixelRatio, 2);
+    const h = c.height = innerHeight * Math.min(devicePixelRatio, 2);
+    const x = f => f * w, y = f => f * h;
+    const ctx = c.getContext('2d');
+    const sky = ctx.createLinearGradient(0, 0, 0, h);
+    sky.addColorStop(0, '#3f9df8'); sky.addColorStop(0.45, '#6db9ff'); sky.addColorStop(0.75, '#a8d8ff');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, w, h);
+    const sun = ctx.createRadialGradient(x(0.72), y(0.16), 0, x(0.72), y(0.16), Math.min(w, h) * 0.3);
+    sun.addColorStop(0, 'rgba(255,240,190,0.8)'); sun.addColorStop(1, 'rgba(255,240,190,0)');
+    ctx.fillStyle = sun; ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    const cloud = (cx, cy, s) => {
+      [[0, 0, 1], [-1.1, 0.18, 0.7], [1.1, 0.2, 0.75], [0.4, -0.4, 0.6], [-0.5, -0.35, 0.55]].forEach(([dx, dy, r]) => {
+        ctx.beginPath(); ctx.arc(x(cx) + dx * s, y(cy) + dy * s, r * s, 0, Math.PI * 2); ctx.fill();
+      });
+    };
+    cloud(0.15, 0.14, w * 0.030); cloud(0.55, 0.09, w * 0.023); cloud(0.87, 0.24, w * 0.026);
+    ctx.fillStyle = 'rgba(138,85,245,0.42)';
+    const tower = (cx, base, tw2, th2) => {
+      ctx.fillRect(x(cx) - tw2 / 2, y(base) - th2, tw2, th2);
+      ctx.beginPath(); ctx.moveTo(x(cx) - tw2 * 0.72, y(base) - th2);
+      ctx.lineTo(x(cx), y(base) - th2 - tw2 * 0.9); ctx.lineTo(x(cx) + tw2 * 0.72, y(base) - th2);
+      ctx.closePath(); ctx.fill();
+    };
+    tower(0.09, 0.62, w * 0.045, h * 0.20); tower(0.2, 0.63, w * 0.03, h * 0.13);
+    tower(0.86, 0.60, w * 0.05, h * 0.24); tower(0.95, 0.62, w * 0.03, h * 0.12);
+    ctx.fillStyle = 'rgba(111,216,255,0.5)';
+    const crystal = (cx, base, s) => {
+      ctx.beginPath(); ctx.moveTo(x(cx), y(base) - s * 2.6);
+      ctx.lineTo(x(cx) + s, y(base)); ctx.lineTo(x(cx) - s, y(base)); ctx.closePath(); ctx.fill();
+    };
+    crystal(0.3, 0.62, w * 0.012); crystal(0.75, 0.6, w * 0.016); crystal(0.68, 0.63, w * 0.009);
+    const hill = (cy, col) => {
+      ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(0, h);
+      for (let i = 0; i <= 24; i++) {
+        const px = i / 24 * w;
+        ctx.lineTo(px, y(cy) + Math.sin(i * 0.9) * h * 0.03);
+      }
+      ctx.lineTo(w, h); ctx.closePath(); ctx.fill();
+    };
+    hill(0.66, '#8a55f5'); hill(0.74, '#6a34d6'); hill(0.84, '#53386e');
+    for (let i = 0; i < 40; i++) {
+      const fx = Math.random() * w, fy = y(0.7 + Math.random() * 0.28);
+      ctx.fillStyle = ['#ef4e9b', '#ffc928', '#20cff3'][i % 3] + 'aa';
+      ctx.beginPath(); ctx.arc(fx, fy, w * 0.0035, 0, Math.PI * 2); ctx.fill();
+    }
+    const vig = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.75);
+    vig.addColorStop(0, 'rgba(0,0,0,0)'); vig.addColorStop(1, 'rgba(14,22,56,0.5)');
+    ctx.fillStyle = vig; ctx.fillRect(0, 0, w, h);
+  };
+  paint();
+  addEventListener('resize', paint);
+}
+</script>
+</body>
+</html>

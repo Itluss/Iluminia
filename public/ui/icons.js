@@ -36,7 +36,20 @@
     music: '<circle cx="7" cy="18" r="2.6"/><circle cx="17" cy="16" r="2.6"/><path d="M9.6 18V6.5L19.6 4v11.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
     info: '<circle cx="12" cy="12" r="9.5"/><rect x="10.7" y="10.2" width="2.6" height="7" rx="1" fill="#0a1230"/><circle cx="12" cy="7.4" r="1.5" fill="#0a1230"/>',
     plus: '<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>',
-    book: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v15H5.5c-.8 0-1.5.7-1.5 1.5z"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H13v15h5.5c.8 0 1.5.7 1.5 1.5z"/><path d="M11 4v15M13 4v15" stroke="#0a1230" stroke-width="1.4"/>'
+    book: '<path d="M4 5.5C4 4.7 4.7 4 5.5 4H11v15H5.5c-.8 0-1.5.7-1.5 1.5z"/><path d="M20 5.5C20 4.7 19.3 4 18.5 4H13v15h5.5c.8 0 1.5.7 1.5 1.5z"/><path d="M11 4v15M13 4v15" stroke="#0a1230" stroke-width="1.4"/>',
+    /* ---- ajouts écran PERSONNAGES (2026-08-12) ---- */
+    tshirt: '<path d="M8.6 3.5L4 6.5l1.6 3.6 2-1v10.4h8.8V9.1l2 1L20 6.5l-4.6-3c-.5 1.2-1.8 2-3.4 2s-2.9-.8-3.4-2z"/>',
+    sword: '<path d="M19.8 3.2l-2.9.5-7.4 7.4 2.4 2.4 7.4-7.4zM8.3 12.3l-1.6 1.6 3.4 3.4 1.6-1.6z"/><path d="M6 14.6l-2.4 2.9 2.9 2.9 2.9-2.4z"/><path d="M4.4 16.7l2.9 2.9" stroke="#0a1230" stroke-width="1.2"/>',
+    brush: '<path d="M19.9 3.4c-2.6.9-6.4 3.8-8.6 6.4l2.9 2.9c2.6-2.2 5.5-6 6.4-8.6.3-.7-.1-1-.7-.7zM10.2 11l2.8 2.8c-.6 1.5-1.9 2.6-3.6 3-1.9.5-3.3 0-4.9 1 .3-1.4.7-2 .9-3.3.3-1.7 1.6-3.1 3.3-3.6z" transform="translate(-1.5 1.5)"/>',
+    arrowUp: '<path d="M12 3l7.5 8H15v9H9v-9H4.5z"/>',
+    chevronRight: '<path d="M9 4.5l7.5 7.5L9 19.5" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+    chart: '<rect x="4" y="13" width="4.2" height="7.5" rx="1.2"/><rect x="9.9" y="8.5" width="4.2" height="12" rx="1.2"/><rect x="15.8" y="3.5" width="4.2" height="17" rx="1.2"/>',
+    shield: '<path d="M12 3l7.5 2.6v5.6c0 4.6-3.1 8-7.5 9.8-4.4-1.8-7.5-5.2-7.5-9.8V5.6z"/>',
+    flame: '<path d="M12.6 2.8c.6 2.6-.5 4.1-1.9 5.6-1.3 1.4-2.9 3-2.9 6a5.6 5.6 0 0011.2.3c0-2.2-1-3.4-1.9-4.5-.5-.6-1-1.4-1.1-2.2-1 .8-1.5 1.7-1.4 3-1.5-1.2-2.5-4.4-2-8.2z"/>',
+    swirl: '<path d="M12 4a8 8 0 018 8 6.4 6.4 0 01-6.4 6.4 5.1 5.1 0 01-5.1-5.1 4.1 4.1 0 014.1-4.1 3.3 3.3 0 013.3 3.3 2.6 2.6 0 01-2.6 2.6 2.1 2.1 0 01-2.1-2.1h1.6c0 .3.2.5.5.5a1 1 0 001-1 1.7 1.7 0 00-1.7-1.7 2.5 2.5 0 00-2.5 2.5 3.5 3.5 0 003.5 3.5A4.8 4.8 0 0018.4 12 6.4 6.4 0 0012 5.6 6.4 6.4 0 005.6 12H4a8 8 0 018-8z"/>',
+    target: '<circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.4"/><circle cx="12" cy="12" r="4.6" fill="none" stroke="currentColor" stroke-width="2.2"/><circle cx="12" cy="12" r="1.6"/>',
+    evolve: '<path d="M12 2.8l2 4.3 4.7.5-3.5 3.2 1 4.6-4.2-2.4-4.2 2.4 1-4.6-3.5-3.2 4.7-.5z"/><path d="M12 15.5l4 3-1.4 3H9.4L8 18.5z"/>',
+    sparkle: '<path d="M12 2.5l2.2 7.3 7.3 2.2-7.3 2.2-2.2 7.3-2.2-7.3-7.3-2.2 7.3-2.2z"/>'
   };
 
   var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
