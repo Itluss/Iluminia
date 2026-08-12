@@ -2285,14 +2285,15 @@ const bots = BOT_DEFS.map(def => {
       // -------- taille (retour Camille 2026-08-12 ×2 : « trop petit ») :
       // mesuré au rendu, Max fait en réalité ≈ 2,6 u en jeu (la bbox de son
       // GLB rigué sous-estime sa hauteur). Zep = garçon (~78 % du modèle,
-      // le reste étant le hoverboard) à la MÊME taille → cible 4,8 u
+      // le reste étant le hoverboard) à la MÊME taille → cible 4,5 u (v2
+      // enfantine : pose accroupie plus large, tête plus grosse)
       // (Max rend 3,76 u mesuré au pixel, sa bbox riguée sous-estime ~3×).
       // Ancrage par DELTA (position.add) et non par écrasement : le GLB
       // Meshy porte un offset racine que position.set() détruisait — Zep
       // apparaissait rétréci et enterré. --------
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
-      const scale = 4.8 / size.y;
+      const scale = 4.5 / size.y;
       model.scale.setScalar(scale);
       const box2 = new THREE.Box3().setFromObject(model);
       model.position.x += -(box2.min.x + box2.max.x) / 2;
