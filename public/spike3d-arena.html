@@ -1977,7 +1977,11 @@ function spawnZepTrailPuff(pos) {
   scene.add(puff);
   zepTrail.push(puff);
 }
-// flottement + inclinaison + traînée — appelé chaque frame depuis animate()
+// flottement + glisse ondulante + vrille de boost — appelé chaque frame
+// depuis animate(). Retour Camille (2026-08-12) : « complètement statique
+// dans ses déplacements » → tout est amplifié et la glisse devient un
+// vrai surf : ondulation latérale (carving), balancement du board à
+// l'arrêt, vrille 360° au départ du dash.
 function updateZepVisual(bot, dt, now) {
   const visual = bot.userData.hoverVisual;
   if (!visual) return;
@@ -1985,10 +1989,11 @@ function updateZepVisual(bot, dt, now) {
   const vel = bot.position.clone().sub(last);
   bot.userData.zepLastPos = bot.position.clone();
   const speed = dt > 0 ? vel.length() / dt : 0;
-  // flottement permanent du board (jamais de foulée : Zep glisse)
-  visual.position.y = 0.1 + Math.sin(now * 0.004) * 0.05;
+  const moving = speed > 0.6;
+  // flottement permanent, plus ample (jamais de foulée : Zep glisse)
+  visual.position.y = 0.1 + Math.sin(now * 0.0048) * 0.09;
   // inclinaison : penche vers l'avant avec la vitesse, s'incline en virage
-  const targetPitch = Math.min(0.3, speed * 0.055);
+  const targetPitch = Math.min(0.34, speed * 0.06);
   const heading = Math.atan2(vel.x, vel.z);
   let turnRate = 0;
   if (speed > 0.4 && bot.userData.zepLastHeading !== undefined) {
@@ -1998,13 +2003,29 @@ function updateZepVisual(bot, dt, now) {
     turnRate = dh / Math.max(dt, 0.001);
   }
   if (speed > 0.4) bot.userData.zepLastHeading = heading;
-  const targetRoll = Math.max(-0.4, Math.min(0.4, -turnRate * 0.09));
+  // carving : en glisse, le board ondule comme un surf ; à l'arrêt, il se
+  // balance doucement (jamais figé)
+  const carveRoll = moving ? Math.sin(now * 0.0058) * 0.16 : Math.sin(now * 0.0021) * 0.07;
+  const carveYaw = moving ? Math.sin(now * 0.0058 + 1.3) * 0.11 : 0;
+  const targetRoll = Math.max(-0.45, Math.min(0.45, -turnRate * 0.09)) + carveRoll;
   visual.rotation.x += (targetPitch - visual.rotation.x) * Math.min(1, dt * 8);
   visual.rotation.z += (targetRoll - visual.rotation.z) * Math.min(1, dt * 8);
-  // le pan d'écharpe se soulève avec la vitesse
-  if (bot.userData.scarfTail) bot.userData.scarfTail.rotation.x = 0.5 + Math.min(0.7, speed * 0.14);
+  // vrille 360° au départ du dash (signature espiègle de Zep)
+  const dashing = (bot.userData.dashRemaining || 0) > 0;
+  if (dashing && !bot.userData.zepWasDashing) bot.userData.zepSpinUntil = now + 480;
+  bot.userData.zepWasDashing = dashing;
+  if (now < (bot.userData.zepSpinUntil || 0)) {
+    const t = 1 - (bot.userData.zepSpinUntil - now) / 480;
+    // départ rapide, fin amortie
+    visual.rotation.y = (1 - Math.pow(1 - t, 2)) * Math.PI * 2 + carveYaw;
+  } else {
+    visual.rotation.y += (carveYaw - (visual.rotation.y % (Math.PI * 2))) * Math.min(1, dt * 6);
+  }
+  // le pan d'écharpe se soulève avec la vitesse et flotte
+  if (bot.userData.scarfTail) bot.userData.scarfTail.rotation.x =
+    0.5 + Math.min(0.7, speed * 0.14) + Math.sin(now * 0.007) * 0.08;
   // traînée : en boost (dash) ou glisse rapide
-  const boosting = (bot.userData.dashRemaining || 0) > 0 || speed > 3.4;
+  const boosting = dashing || speed > 3.4;
   if (boosting && now > (bot.userData.zepNextPuff || 0)) {
     spawnZepTrailPuff(bot.position);
     bot.userData.zepNextPuff = now + 55;
