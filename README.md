@@ -11,7 +11,10 @@ Le monde du jeu s'adapte et génère les missions de l'enfant.
 ## Jouer
 
 **En ligne (mise à jour automatique à chaque push sur main) :**
-https://itluss.github.io/Iluminia/spike3d-arena.html
+
+- **Région Godot « Terres d'Émeraude » (action-RPG 2D, mobile tactile) :**
+  https://itluss.github.io/Iluminia/godot/ — voir `godot/README.md`
+- Spike 3D Three.js : https://itluss.github.io/Iluminia/spike3d-arena.html
 
 Hébergement : GitHub Pages (workflow `.github/workflows/deploy-pages.yml`).
 Historique des hébergeurs : Cloudflare Pages (compte suspendu 2026-08-09)

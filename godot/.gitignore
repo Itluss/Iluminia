@@ -1,0 +1,5 @@
+# Fichiers générés par Godot
+.godot/
+
+# Sorties d'export (générées par la CI)
+build/

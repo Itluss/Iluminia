@@ -3,6 +3,12 @@
 # court de crédits, Cloudflare suspendu). À chaque push sur main, le site
 # statique (index.html + public/*) est publié sur
 # https://itluss.github.io/iluminia/
+#
+# 2026-08-13 — conversion Godot (demande de Camille) : un job exporte la
+# région « Terres d'Émeraude » (godot/) en HTML5 via Godot 4.3 headless
+# (image barichello/godot-ci, threads désactivés → pas besoin de COOP/COEP
+# sur Pages) et le jeu est publié sous /godot/ à côté des spikes Three.js :
+# https://itluss.github.io/Iluminia/godot/
 name: Deploy to GitHub Pages
 
 on:
@@ -20,7 +26,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  export-godot:
+    runs-on: ubuntu-latest
+    container:
+      image: barichello/godot-ci:4.3
+    steps:
+      - uses: actions/checkout@v4
+
+      # Les templates d'export vivent dans /root dans l'image ; le job
+      # tourne avec HOME=/github/home, on les copie au bon endroit.
+      - name: Installer les export templates
+        run: |
+          mkdir -p ~/.local/share/godot/export_templates
+          cp -r /root/.local/share/godot/export_templates/4.3.stable ~/.local/share/godot/export_templates/4.3.stable
+
+      - name: Export Web (Godot headless)
+        run: |
+          godot --headless --path godot --import || true
+          mkdir -p godot/build/web
+          godot --headless --path godot --export-release "Web" "$PWD/godot/build/web/index.html"
+          ls -lh godot/build/web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: godot-web
+          path: godot/build/web
+          retention-days: 3
+
   deploy:
+    needs: export-godot
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -34,6 +68,13 @@ jobs:
           mkdir -p _site
           cp index.html _site/
           cp -r public/. _site/
+
+      # Le jeu Godot exporté est servi sous /godot/.
+      - name: Ajouter le jeu Godot
+        uses: actions/download-artifact@v4
+        with:
+          name: godot-web
+          path: _site/godot
 
       # enablement: true — active Pages automatiquement au premier passage,
       # aucune manipulation dans Settings → Pages.

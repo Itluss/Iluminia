@@ -53,6 +53,23 @@ Le jeu est aujourd'hui un **spike 3D procédural** :
   comme infra réutilisable mais **actuellement inutilisés** par le jeu
   (100 % procédural) — ne pas les brancher sans besoin réel identifié.
 
+## Conversion Godot (2026-08-13, demande explicite de Camille)
+
+Première région jouable convertie en **Godot 4.3** : dossier `godot/` —
+action-RPG 2D vue du dessus « Terres d'Émeraude » (tactile d'abord, visuels
+100 % procéduraux dessinés par code, sons synthétisés, aucun asset externe,
+palette bonbon Eluminia). Voir `godot/README.md` : architecture, contrôles,
+remplacement des visuels par de vrais sprites, activation du multijoueur v2.
+
+- Export HTML5 automatique dans `deploy-pages.yml` (image
+  `barichello/godot-ci:4.3`, `thread_support` désactivé → fonctionne sur
+  Pages sans en-têtes COOP/COEP) ; publié sous
+  https://itluss.github.io/Iluminia/godot/ à chaque push sur main.
+- Les spikes Three.js restent servis tels quels (aucune régression).
+- Squelettes prêts pour la suite : `godot/scripts/reseau.gd` (multijoueur
+  v2 WebSocket) et `godot/scripts/pedagogie.gd` (boucle photos → IA →
+  missions, cf. `docs/programme-cm1-quetes.md`).
+
 ## Priorités
 
 1. Qualité visuelle vérifiée en jeu réel. 2. Cohérence artistique (toon
