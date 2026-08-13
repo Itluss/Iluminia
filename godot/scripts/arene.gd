@@ -27,12 +27,9 @@ const CRISTAL_PERIODE := 8.0
 const CRISTAL_MAX := 3
 const CRISTAL_ENERGIE := 20.0
 const LETTRES := ["A", "B", "C", "D"]
-const COULEURS_ZONES := [
-	Color(1.0, 0.42, 0.5),   # A — rose
-	Color(0.35, 0.62, 1.0),  # B — bleu
-	Color(1.0, 0.78, 0.25),  # C — or
-	Color(0.4, 0.85, 0.45),  # D — vert
-]
+## Couleurs des zones = couleurs des boutons de réponse (identite.gd) :
+## le joueur associe la couleur du panneau à la colonne au sol.
+const COULEURS_ZONES := Identite.COULEURS_REPONSES
 
 var fx: FX
 var hud: HUD
@@ -49,6 +46,7 @@ var cristal_temps := CRISTAL_PERIODE
 var message_interlude := ""
 var _chevrons: Array = []       ## flèches-boussole vers la zone choisie
 var _label_distance: Label3D
+var _rochers: Array = []        ## rochers flottants en orbite {noeud, rayon, vitesse, phase, hauteur}
 var _t := 0.0
 
 
@@ -64,6 +62,12 @@ func _process(delta: float) -> void:
 	_t += delta
 	_animer_zones()
 	_animer_chevrons()
+	# Orbite lente des rochers flottants.
+	for r in _rochers:
+		var ang: float = r.phase + _t * r.vitesse * TAU
+		var noeud: Node3D = r.noeud
+		noeud.position = Vector3(cos(ang) * r.rayon, r.hauteur + sin(_t * 0.5 + r.phase) * 0.6, sin(ang) * r.rayon)
+		noeud.rotation.y = ang
 	match etat:
 		Etat.QUESTION:
 			temps_etat -= delta
@@ -89,49 +93,112 @@ func _process(delta: float) -> void:
 
 # ---------------------------------------------------------------- monde 3D
 
+## L'ÎLE FLOTTANTE d'Iluminia : pelouse bioluminescente dans la nuit,
+## lisière-lumière, falaise de roche violette hérissée de cristaux,
+## arbres-lanternes, fleurs-lumen, lucioles, rochers en orbite.
 func _construire_sol() -> void:
-	# Prairie extérieure sombre, arène claire, lisière peinte.
-	Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE + 14.0, 0.3),
-		Materiaux.toon(Color(0.30, 0.52, 0.30)), Vector3(0.0, -0.32, 0.0), Vector3.ONE, false)
-	Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE + 0.5, 0.3),
-		Materiaux.toon(Color(0.20, 0.16, 0.26)), Vector3(0.0, -0.25, 0.0), Vector3.ONE, false)
+	# Pelouse sombre-turquoise + anneaux de tonte plus clairs.
 	Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE, 0.3),
-		Materiaux.toon(Color(0.55, 0.83, 0.45)), Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
-	# Anneaux de tonte légers + motif central.
+		Materiaux.toon(Identite.PELOUSE_NUIT), Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
 	for i in range(1, 4):
 		Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE * i / 4.0, 0.02),
-			Materiaux.toon(Color(0.50, 0.78, 0.42)), Vector3(0.0, -0.008 * i, 0.0), Vector3.ONE, false)
-	Materiaux.mesh(self, Materiaux.cylindre(1.4, 0.06),
-		Materiaux.toon(Color(0.66, 0.82, 0.52)), Vector3.ZERO, Vector3.ONE, false)
+			Materiaux.toon(Identite.PELOUSE_ANNEAU), Vector3(0.0, -0.008 * i, 0.0), Vector3.ONE, false)
+	# Lisière-lumière : l'anneau cyan qui borde l'île (zones au sol de la planche).
+	Materiaux.mesh(self, Materiaux.tore(RAYON_ARENE + 0.15, 0.14),
+		Materiaux.emissif(Identite.LUEUR_LISIERE, 1.4), Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
+	# Falaise sous l'île : cône de roche violette qui s'effile dans le vide.
+	var falaise := CylinderMesh.new()
+	falaise.top_radius = RAYON_ARENE + 0.4
+	falaise.bottom_radius = 2.5
+	falaise.height = 12.0
+	falaise.radial_segments = 24
+	Materiaux.mesh(self, falaise, Materiaux.toon(Identite.ROCHE),
+		Vector3(0.0, -6.3, 0.0), Vector3.ONE, false)
+	# Cœur lumineux au centre du sanctuaire.
+	Materiaux.mesh(self, Materiaux.tore(1.4, 0.1), Materiaux.emissif(Identite.OR, 1.2),
+		Vector3(0.0, 0.04, 0.0), Vector3.ONE, false)
 
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20260813
-	# Fleurs et touffes d'herbe dans l'arène.
+	# Fleurs-lumen et touffes d'herbe sombre.
 	for i in 60:
 		var p := Vector2.from_angle(rng.randf_range(0.0, TAU)) * rng.randf_range(2.0, RAYON_ARENE - 1.0)
-		if rng.randf() < 0.5:
-			var teinte := Color(1.0, 0.6, 0.75) if rng.randf() < 0.5 else Color(1.0, 0.85, 0.4)
-			Materiaux.mesh(self, Materiaux.sphere(0.12), Materiaux.toon(teinte),
-				Vector3(p.x, 0.12, p.y), Vector3.ONE, false)
+		if rng.randf() < 0.45:
+			var teinte: Color = [Identite.OR, Identite.CYAN, Identite.MAGENTA][rng.randi() % 3]
+			Materiaux.mesh(self, Materiaux.sphere(0.1), Materiaux.emissif(teinte, 1.3),
+				Vector3(p.x, 0.14, p.y), Vector3.ONE, false)
 		else:
-			Materiaux.mesh(self, Materiaux.cone(0.14, 0.35), Materiaux.toon(Color(0.38, 0.68, 0.32)),
+			Materiaux.mesh(self, Materiaux.cone(0.14, 0.35), Materiaux.toon(Identite.PELOUSE_ANNEAU.darkened(0.15)),
 				Vector3(p.x, 0.15, p.y), Vector3.ONE, false)
-	# Couronne d'arbres bonbon autour de l'arène.
-	for i in 26:
-		var ang := TAU * i / 26.0 + rng.randf_range(-0.06, 0.06)
-		var r := RAYON_ARENE + rng.randf_range(2.5, 9.0)
+	# Cristaux dressés sur la lisière.
+	for i in 10:
+		var ang := TAU * i / 10.0 + rng.randf_range(-0.15, 0.15)
+		var p := Vector2.from_angle(ang) * (RAYON_ARENE - 0.4)
+		var teinte: Color = [Identite.CYAN, Identite.VIOLET][i % 2]
+		var cristal := Materiaux.mesh(self, Materiaux.cone(0.22, rng.randf_range(0.7, 1.3)),
+			Materiaux.emissif(teinte, 1.3), Vector3(p.x, 0.3, p.y))
+		cristal.rotation_degrees = Vector3(rng.randf_range(-14.0, 14.0), 0.0, rng.randf_range(-14.0, 14.0))
+	# Arbres-lanternes dans l'arène (rares) et sur le pourtour de l'île.
+	for i in 14:
+		var ang := TAU * i / 14.0 + rng.randf_range(-0.1, 0.1)
+		var r := RAYON_ARENE - rng.randf_range(1.2, 3.2)
+		if i % 2 == 0:
+			r = rng.randf_range(5.0, RAYON_ARENE - 4.0)
 		var p := Vector2.from_angle(ang) * r
-		var taille := rng.randf_range(0.8, 1.5)
+		var taille := rng.randf_range(0.7, 1.2)
 		var arbre := Node3D.new()
 		arbre.position = Vector3(p.x, 0.0, p.y)
 		add_child(arbre)
-		Materiaux.mesh(arbre, Materiaux.cylindre(0.22 * taille, 1.2 * taille),
-			Materiaux.toon(Color(0.45, 0.30, 0.20)), Vector3(0.0, 0.6 * taille, 0.0))
-		var feuillage := Color(0.24, 0.55, 0.30).lerp(Color(0.40, 0.74, 0.34), rng.randf())
-		Materiaux.mesh(arbre, Materiaux.sphere(0.9 * taille), Materiaux.toon(feuillage),
-			Vector3(0.0, 1.6 * taille, 0.0), Vector3.ONE, true, 0.08)
-		Materiaux.mesh(arbre, Materiaux.sphere(0.55 * taille), Materiaux.toon(feuillage.lightened(0.15)),
-			Vector3(0.35 * taille, 2.0 * taille, 0.1), Vector3.ONE, false)
+		Materiaux.mesh(arbre, Materiaux.cylindre(0.16 * taille, 1.3 * taille),
+			Materiaux.toon(Identite.ROCHE.lightened(0.12)), Vector3(0.0, 0.65 * taille, 0.0))
+		var teinte: Color = [Identite.CYAN, Identite.VIOLET, Identite.MAGENTA, Identite.BLEU][i % 4]
+		var feuillage := Materiaux.toon(teinte.darkened(0.35))
+		feuillage.emission_enabled = true
+		feuillage.emission = teinte
+		feuillage.emission_energy_multiplier = 0.55
+		Materiaux.mesh(arbre, Materiaux.sphere(0.75 * taille), feuillage,
+			Vector3(0.0, 1.75 * taille, 0.0), Vector3.ONE, true, 0.07)
+		Materiaux.mesh(arbre, Materiaux.sphere(0.4 * taille), feuillage,
+			Vector3(0.35 * taille, 2.15 * taille, 0.1), Vector3.ONE, false)
+	# Rochers flottants en orbite lente autour de l'île.
+	for i in 7:
+		var noeud := Node3D.new()
+		add_child(noeud)
+		var taille := rng.randf_range(0.5, 1.1)
+		Materiaux.mesh(noeud, Materiaux.sphere(taille), Materiaux.toon(Identite.ROCHE),
+			Vector3.ZERO, Vector3(1.0, 0.75, 1.0))
+		Materiaux.mesh(noeud, Materiaux.cone(taille * 0.3, taille * 0.7),
+			Materiaux.emissif(Identite.CYAN if i % 2 == 0 else Identite.VIOLET, 1.4),
+			Vector3(0.0, taille * 0.7, 0.0), Vector3.ONE, false)
+		_rochers.append({
+			"noeud": noeud,
+			"rayon": RAYON_ARENE + rng.randf_range(4.0, 10.0),
+			"vitesse": rng.randf_range(0.02, 0.05) * (1.0 if i % 2 == 0 else -1.0),
+			"phase": rng.randf_range(0.0, TAU),
+			"hauteur": rng.randf_range(-2.0, 3.0),
+		})
+	# Lucioles qui dérivent au-dessus de l'île.
+	var lucioles := CPUParticles3D.new()
+	lucioles.amount = 36
+	lucioles.lifetime = 7.0
+	lucioles.preprocess = 7.0
+	lucioles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	lucioles.emission_box_extents = Vector3(RAYON_ARENE, 1.5, RAYON_ARENE)
+	lucioles.direction = Vector3.UP
+	lucioles.spread = 180.0
+	lucioles.initial_velocity_min = 0.1
+	lucioles.initial_velocity_max = 0.5
+	lucioles.gravity = Vector3.ZERO
+	var etincelle := SphereMesh.new()
+	etincelle.radius = 0.05
+	etincelle.height = 0.1
+	etincelle.radial_segments = 6
+	etincelle.rings = 3
+	etincelle.material = Materiaux.emissif(Identite.CREME, 1.8)
+	lucioles.mesh = etincelle
+	lucioles.position = Vector3(0.0, 1.5, 0.0)
+	add_child(lucioles)
+	lucioles.emitting = true
 
 
 func _construire_zones() -> void:
@@ -152,7 +219,7 @@ func _construire_zones() -> void:
 		tube.cap_bottom = false
 		var colonne := Materiaux.mesh(noeud, tube, mat, Vector3(0.0, 3.5, 0.0), Vector3.ONE, false)
 		# Anneau peint au sol (non émissif : le glow le transformait en halo blanc).
-		Materiaux.mesh(noeud, Materiaux.tore(0.12, RAYON_ZONE),
+		Materiaux.mesh(noeud, Materiaux.tore(RAYON_ZONE, 0.12),
 			Materiaux.toon(teinte), Vector3(0.0, 0.06, 0.0), Vector3.ONE, false)
 		# Lettre géante.
 		var lettre := Label3D.new()

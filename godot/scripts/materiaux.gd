@@ -96,10 +96,12 @@ static func cylindre(rayon: float, hauteur: float) -> CylinderMesh:
 	return c
 
 
-static func tore(interieur: float, exterieur: float) -> TorusMesh:
+## Anneau de rayon `rayon` et de demi-épaisseur `epaisseur`.
+## (TorusMesh : inner_radius = rayon du trou, outer_radius = rayon extérieur.)
+static func tore(rayon: float, epaisseur: float) -> TorusMesh:
 	var t := TorusMesh.new()
-	t.inner_radius = interieur
-	t.outer_radius = exterieur
+	t.inner_radius = maxf(rayon - epaisseur, 0.01)
+	t.outer_radius = rayon + epaisseur
 	t.rings = 32
 	t.ring_segments = 12
 	return t

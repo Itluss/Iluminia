@@ -8,10 +8,10 @@ extends Node3D
 ## Personnages : Max (joueur) et les bots de la planche Eluminia,
 ## positions de départ du spike.
 const CHASSEURS := [
-	{"nom": "Max", "teinte": Color(0.30, 0.75, 0.72), "joueur": true, "pos": Vector2(0.0, 6.0)},
-	{"nom": "Zep", "teinte": Color(0.48, 0.25, 0.84), "joueur": false, "pos": Vector2(0.0, -6.0)},
-	{"nom": "Nova", "teinte": Color(0.54, 0.44, 0.84), "joueur": false, "pos": Vector2(6.0, 3.0)},
-	{"nom": "Ficelle", "teinte": Color(0.88, 0.52, 0.69), "joueur": false, "pos": Vector2(-6.0, 3.0)},
+	{"nom": "Max", "teinte": Identite.TEINTE_MAX, "joueur": true, "pos": Vector2(0.0, 6.0)},
+	{"nom": "Zep", "teinte": Identite.TEINTE_ZEP, "joueur": false, "pos": Vector2(0.0, -6.0)},
+	{"nom": "Nova", "teinte": Identite.TEINTE_NOVA, "joueur": false, "pos": Vector2(6.0, 3.0)},
+	{"nom": "Ficelle", "teinte": Identite.TEINTE_FICELLE, "joueur": false, "pos": Vector2(-6.0, 3.0)},
 ]
 
 ## Recul isométrique de la caméra par rapport au héros.

@@ -59,12 +59,16 @@ Le cœur de jeu d'Iluminia — l'arène **« Chasse au dragon »** — converti 
 **Godot 4.3, vraie 3D** (demande du 2026-08-13 : « un vrai jeu 3D avec des
 menus à la Clash Royale et de beaux graphismes ») : dossier `godot/`, caméra
 isométrique orthographique (l'angle validé du spike), toon shading bandé +
-contours coque inversée, ciel dégradé/ombres/glow/particules, menu d'accueil
-premium (diorama animé, bouton JOUER doré), tactile d'abord, sons
-synthétisés, palette bonbon. **Modèles Meshy intégrés** (2026-08-13,
-demande de Camille) : Max riggé avec marche/course fusionnées et Zep,
-copiés de `public/models/` vers `godot/assets/models/` ; Nova/Ficelle/le
-dragon restent des chibis procéduraux en attendant leurs planches.
+contours coque inversée, ombres/glow/particules, tactile d'abord, sons
+synthétisés. **Univers graphique propre « nuit lumineuse »** (2026-08-13,
+demande de Camille : « un style personnel à Iluminia et évolutif ») —
+ancré sur `public/ui/theme.css` et la planche
+`public/ui/style-guide-fantasypop.png` : île flottante bioluminescente,
+personnages « Lumins » à crête-lumière signature (fiches paramétriques
+dans `godot/scripts/personnage3d.gd`), tokens de style centralisés dans
+`godot/scripts/identite.gd`, kit UI de la planche dans
+`godot/scripts/ui.gd`. Les modèles Meshy (essai) ont été retirés de la
+version Godot — ils restent dans `public/models/` pour les spikes.
 Boucle V5 fidèle au spike (QUESTION 6 s figée → JEU 45 s, vol du dragon à
 l'Onde de choc, énergie/K.O., cristaux, gel 2 s sur mauvaise zone, refus
 individuels barrés, podium à 3 min) ; valeurs reprises de

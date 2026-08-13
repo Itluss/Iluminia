@@ -10,14 +10,34 @@ Export HTML5 automatique par GitHub Actions, publié sur GitHub Pages.
 
 **▶ Jouer :** https://itluss.github.io/Iluminia/godot/
 
-**Personnages Meshy** : Max (modèle riggé, animations marche/course
-fusionnées dans un seul AnimationPlayer) et Zep (modèle sculpté) viennent
-des GLB générés par Meshy (`assets/models/`, copiés depuis
-`public/models/`). Nova, Ficelle et le bébé dragon restent des chibis
-procéduraux en attendant leurs planches — conforme au plan « remplacer les
-bots par de vrais personnages au fur et à mesure ». Le monde et les sons
-restent 100 % procéduraux. Threads désactivés à l'export → fonctionne sur
-GitHub Pages sans en-têtes COOP/COEP, mobile compris.
+## L'univers graphique Iluminia — la « nuit lumineuse »
+
+Identité propre au jeu, ancrée sur le design system existant
+(`public/ui/theme.css` + planche `public/ui/style-guide-fantasypop.png`) :
+
+- **`scripts/identite.gd` est la source de vérité du style** : surfaces
+  marine profond, contours BD épais, accents néon (or, bleu, cyan, violet,
+  magenta), rayons et bords. Pour faire évoluer le style, on ne touche que
+  ce fichier (+ les fiches de personnages).
+- **Les Lumins** (`personnage3d.gd`) : nos personnages signature — petits
+  porteurs de lumière ronds et joufflus, écharpe au vent, et leur
+  **crête-lumière** émissive qui les identifie en un coup d'œil dans la
+  nuit (Max : étoile or — l'écho du logo ; Zep : éclair cyan + hoverboard ;
+  Nova : goutte ; Ficelle : flamme). **Évolutif** : un nouveau héros = une
+  nouvelle FICHE (couleurs, crête, accessoire), rien d'autre.
+- **L'arène** : une **île flottante bioluminescente** dans la nuit —
+  pelouse sombre-turquoise, lisière-lumière cyan, falaise de roche violette
+  hérissée de cristaux, arbres-lanternes, fleurs-lumen, lucioles, rochers
+  en orbite. Les zones A/B/C/D sont des anneaux néon aux couleurs des
+  boutons de réponse (vert/bleu/or/magenta).
+- **L'interface** (`ui.gd`) : le kit de la planche porté en code —
+  panneaux marine, boutons joufflus glossy, hexagone « ? » violet, jauge
+  d'énergie à éclair, bannière VICTOIRE à rubans, podium à pastilles de
+  rang, JOUER doré pulsé.
+
+Tout est 100 % procédural (aucun asset externe, sons synthétisés) : le jeu
+entier pèse ~34 Mo. Threads désactivés à l'export → fonctionne sur GitHub
+Pages sans en-têtes COOP/COEP, mobile compris.
 
 ## La boucle (V5 — la question se traite AVANT l'action)
 

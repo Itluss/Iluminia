@@ -75,7 +75,7 @@ func eclat_etoiles(pos: Vector2, teinte: Color, nombre := 8) -> void:
 ## Onde circulaire au sol (compétences, dépôts).
 func anneau(pos: Vector2, rayon_max: float, teinte: Color) -> void:
 	var mi := MeshInstance3D.new()
-	mi.mesh = Materiaux.tore(0.08, 1.0)
+	mi.mesh = Materiaux.tore(1.0, 0.08)
 	var mat := Materiaux.verre(teinte, 0.8, 2.0)
 	mi.material_override = mat
 	mi.position = en_3d(pos, 0.12)
