@@ -1,18 +1,19 @@
 class_name FX
-extends Node2D
-## Effets « game feel » : chiffres de dégâts flottants à contour, éclats
-## d'étoiles, anneaux d'onde de choc, arcs d'épée et secousse d'écran.
-## Chaque effet est un petit nœud autonome qui se détruit tout seul.
+extends Node3D
+## Effets « game feel » en 3D : éclats d'étoiles (particules), textes
+## flottants (Label3D à contour), anneaux d'onde de choc, traînées de dash
+## et secousse de caméra. Chaque effet se détruit tout seul.
 
-var camera: Camera2D
-var _trauma := 0.0 ## intensité de secousse (décroît toute seule)
+var camera: Camera3D
+var _trauma := 0.0
 
 
 func _process(delta: float) -> void:
 	if camera != null:
 		_trauma = maxf(_trauma - delta * 2.2, 0.0)
-		var force := _trauma * _trauma * 16.0
-		camera.offset = Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0)) * force
+		var force := _trauma * _trauma * 0.5
+		camera.h_offset = randf_range(-1.0, 1.0) * force
+		camera.v_offset = randf_range(-1.0, 1.0) * force
 
 
 ## Secousse d'écran légère (0.2) à forte (1.0).
@@ -20,160 +21,115 @@ func secousse(intensite: float) -> void:
 	_trauma = minf(_trauma + intensite, 1.0)
 
 
+## Position 3D d'un point logique du plan (x, z), à hauteur `h`.
+static func en_3d(p: Vector2, h := 1.0) -> Vector3:
+	return Vector3(p.x, h, p.y)
+
+
 func texte_flottant(pos: Vector2, texte: String, teinte: Color) -> void:
-	var n := TexteFlottant.new()
-	n.texte = texte
-	n.teinte = teinte
-	n.position = pos
-	add_child(n)
+	var l := Label3D.new()
+	l.text = texte
+	l.font_size = 72
+	l.outline_size = 22
+	l.modulate = teinte
+	l.outline_modulate = Materiaux.COULEUR_CONTOUR
+	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	l.no_depth_test = true
+	l.position = en_3d(pos, 1.6)
+	add_child(l)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y + 1.4, 0.9)
+	tw.tween_property(l, "modulate:a", 0.0, 0.9).set_ease(Tween.EASE_IN)
+	tw.tween_property(l, "outline_modulate:a", 0.0, 0.9).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(l.queue_free)
 
 
+## Éclat d'étoiles : particules émissives qui retombent.
 func eclat_etoiles(pos: Vector2, teinte: Color, nombre := 8) -> void:
-	for i in nombre:
-		var e := Etoile.new()
-		e.position = pos
-		e.velocite = Vector2.from_angle(randf_range(0.0, TAU)) * randf_range(60.0, 220.0)
-		e.teinte = teinte
-		add_child(e)
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = nombre
+	p.lifetime = 0.6
+	p.direction = Vector3.UP
+	p.spread = 75.0
+	p.initial_velocity_min = 3.0
+	p.initial_velocity_max = 6.5
+	p.gravity = Vector3(0.0, -9.0, 0.0)
+	p.scale_amount_min = 0.6
+	p.scale_amount_max = 1.2
+	var forme := SphereMesh.new()
+	forme.radius = 0.09
+	forme.height = 0.18
+	forme.radial_segments = 6
+	forme.rings = 3
+	forme.material = Materiaux.emissif(teinte, 2.2)
+	p.mesh = forme
+	p.position = en_3d(pos, 0.7)
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(1.4).timeout.connect(p.queue_free)
 
 
+## Onde circulaire au sol (compétences, dépôts).
 func anneau(pos: Vector2, rayon_max: float, teinte: Color) -> void:
-	var a := Anneau.new()
-	a.position = pos
-	a.rayon_max = rayon_max
-	a.teinte = teinte
-	add_child(a)
+	var mi := MeshInstance3D.new()
+	mi.mesh = Materiaux.tore(0.08, 1.0)
+	var mat := Materiaux.verre(teinte, 0.8, 2.0)
+	mi.material_override = mat
+	mi.position = en_3d(pos, 0.12)
+	mi.scale = Vector3(0.3, 1.0, 0.3)
+	add_child(mi)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "scale", Vector3(rayon_max, 1.0, rayon_max), 0.35) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.35)
+	tw.chain().tween_callback(mi.queue_free)
 
 
-## Éclair conique de l'Onde de choc (l'arc blanc = limite de portée).
-func cone(pos: Vector2, angle: float, portee: float, demi_cone: float) -> void:
-	var s := ConeOnde.new()
-	s.position = pos
-	s.angle_cone = angle
-	s.portee = portee
-	s.demi_cone = demi_cone
-	add_child(s)
+## Cône de l'Onde de choc : demi-anneau qui s'étend + particules dirigées.
+func cone(pos: Vector2, dir: Vector2, portee: float, teinte := Color(1.0, 0.95, 0.8)) -> void:
+	anneau(pos, portee, teinte)
+	var p := CPUParticles3D.new()
+	p.one_shot = true
+	p.explosiveness = 1.0
+	p.amount = 14
+	p.lifetime = 0.35
+	p.direction = Vector3(dir.x, 0.25, dir.y)
+	p.spread = 32.0
+	p.initial_velocity_min = portee * 2.2
+	p.initial_velocity_max = portee * 3.2
+	p.gravity = Vector3.ZERO
+	var forme := SphereMesh.new()
+	forme.radius = 0.07
+	forme.height = 0.14
+	forme.radial_segments = 6
+	forme.rings = 3
+	forme.material = Materiaux.emissif(teinte, 2.0)
+	p.mesh = forme
+	p.position = en_3d(pos, 0.8)
+	add_child(p)
+	p.emitting = true
+	get_tree().create_timer(0.9).timeout.connect(p.queue_free)
 
 
-## Petit rond de traînée (dash) qui s'estompe sur place.
+## Rond de traînée du dash : petite sphère émissive qui s'estompe.
 func traine(pos: Vector2, teinte: Color) -> void:
-	var t := Traine.new()
-	t.position = pos
-	t.teinte = teinte
-	add_child(t)
-
-
-## Chiffre (ou mot) qui monte et s'efface, avec gros contour lisible.
-class TexteFlottant extends Node2D:
-	const DUREE := 0.9
-	var texte := ""
-	var teinte := Color.WHITE
-	var _vie := 0.0
-
-	func _process(delta: float) -> void:
-		_vie += delta
-		position.y -= 46.0 * delta
-		if _vie >= DUREE:
-			queue_free()
-		queue_redraw()
-
-	func _draw() -> void:
-		var police := ThemeDB.fallback_font
-		var alpha := clampf(1.6 - _vie / DUREE * 1.6, 0.0, 1.0)
-		var taille := 19
-		var largeur := police.get_string_size(texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille).x
-		var p := Vector2(-largeur / 2.0, 0.0)
-		draw_string_outline(police, p, texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, 6,
-			Color(0.13, 0.10, 0.16, alpha))
-		draw_string(police, p, texte, HORIZONTAL_ALIGNMENT_LEFT, -1, taille,
-			Color(teinte.r, teinte.g, teinte.b, alpha))
-
-
-## Particule en étoile à cinq branches qui file puis freine.
-class Etoile extends Node2D:
-	const DUREE := 0.55
-	var velocite := Vector2.ZERO
-	var teinte := Color.WHITE
-	var _vie := 0.0
-
-	func _process(delta: float) -> void:
-		_vie += delta
-		position += velocite * delta
-		velocite *= pow(0.05, delta) # frottement exponentiel
-		if _vie >= DUREE:
-			queue_free()
-		queue_redraw()
-
-	func _draw() -> void:
-		var a := clampf(1.0 - _vie / DUREE, 0.0, 1.0)
-		var r := 7.0 * a + 2.0
-		var pts := PackedVector2Array()
-		for i in 10:
-			var rayon := r if i % 2 == 0 else r * 0.45
-			pts.append(Vector2.from_angle(TAU * i / 10.0 + _vie * 6.0) * rayon)
-		draw_colored_polygon(pts, Color(teinte.r, teinte.g, teinte.b, a))
-
-
-## Onde de choc circulaire des compétences de zone.
-class Anneau extends Node2D:
-	const DUREE := 0.35
-	var rayon_max := 100.0
-	var teinte := Color.WHITE
-	var _vie := 0.0
-
-	func _process(delta: float) -> void:
-		_vie += delta
-		if _vie >= DUREE:
-			queue_free()
-		queue_redraw()
-
-	func _draw() -> void:
-		var t := clampf(_vie / DUREE, 0.0, 1.0)
-		var r := rayon_max * (1.0 - (1.0 - t) * (1.0 - t)) # sortie amortie
-		var a := 1.0 - t
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(0.13, 0.10, 0.16, a * 0.8), 14.0)
-		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(teinte.r, teinte.g, teinte.b, a), 8.0)
-
-
-## Cône éclair de l'Onde de choc : arcs qui s'étendent jusqu'à la portée.
-class ConeOnde extends Node2D:
-	const DUREE := 0.22
-	var angle_cone := 0.0
-	var portee := 192.0
-	var demi_cone := 0.68
-	var _vie := 0.0
-
-	func _process(delta: float) -> void:
-		_vie += delta
-		if _vie >= DUREE:
-			queue_free()
-		queue_redraw()
-
-	func _draw() -> void:
-		var t := clampf(_vie / DUREE, 0.0, 1.0)
-		var a := 1.0 - t
-		# Trois arcs successifs qui gonflent vers la limite de portée.
-		for i in 3:
-			var r := portee * (0.35 + 0.65 * t) * (0.55 + 0.225 * i)
-			draw_arc(Vector2.ZERO, r, angle_cone - demi_cone, angle_cone + demi_cone,
-				14, Color(1.0, 1.0, 0.95, a * (0.9 - 0.2 * i)), 8.0 - 2.0 * i)
-		# L'arc blanc de limite de portée.
-		draw_arc(Vector2.ZERO, portee, angle_cone - demi_cone, angle_cone + demi_cone,
-			16, Color(1.0, 1.0, 1.0, a * 0.5), 3.0)
-
-
-## Rond de traînée du dash, s'estompe sur place.
-class Traine extends Node2D:
-	const DUREE := 0.3
-	var teinte := Color(0.45, 0.9, 1.0)
-	var _vie := 0.0
-
-	func _process(delta: float) -> void:
-		_vie += delta
-		if _vie >= DUREE:
-			queue_free()
-		queue_redraw()
-
-	func _draw() -> void:
-		var a := (1.0 - _vie / DUREE) * 0.5
-		draw_circle(Vector2.ZERO, 14.0 * (1.0 - _vie / DUREE) + 4.0, Color(teinte.r, teinte.g, teinte.b, a))
+	var mi := MeshInstance3D.new()
+	var forme := SphereMesh.new()
+	forme.radius = 0.22
+	forme.height = 0.44
+	forme.radial_segments = 8
+	forme.rings = 4
+	mi.mesh = forme
+	var mat := Materiaux.verre(teinte, 0.5, 1.6)
+	mi.material_override = mat
+	mi.position = en_3d(pos, 0.5)
+	add_child(mi)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "scale", Vector3.ONE * 0.1, 0.3)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.3)
+	tw.chain().tween_callback(mi.queue_free)

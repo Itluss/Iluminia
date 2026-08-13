@@ -1,34 +1,39 @@
-class_name Main
-extends Node2D
-## Point d'entrée de l'arène « Chasse au dragon » : construit toutes les
-## couches (arène, chasseurs, caméra, effets, interface) et câble leurs
-## références. La logique est découpée par responsabilité (un script = un
-## rôle) pour brancher le multijoueur v2 sans réécriture (voir reseau.gd).
+class_name Jeu
+extends Node3D
+## Scène de jeu 3D : caméra isométrique orthographique (le style validé du
+## spike), ambiance bonbon (ciel dégradé, soleil + ombres, glow), arène,
+## chasseurs, effets et interface. Chaque couche est câblée ici — en v2
+## multijoueur, le nœud Reseau s'insérera entre l'arène et les chasseurs.
 
-## Personnages : Max (joueur) et les bots de la planche Eluminia.
+## Personnages : Max (joueur) et les bots de la planche Eluminia,
+## positions de départ du spike.
 const CHASSEURS := [
-	{"nom": "Max", "teinte": Color(0.30, 0.75, 0.72), "joueur": true, "pos": Vector2(0.0, 360.0)},
-	{"nom": "Zep", "teinte": Color(0.48, 0.25, 0.84), "joueur": false, "pos": Vector2(0.0, -360.0)},
-	{"nom": "Nova", "teinte": Color(0.54, 0.44, 0.84), "joueur": false, "pos": Vector2(360.0, 180.0)},
-	{"nom": "Ficelle", "teinte": Color(0.88, 0.52, 0.69), "joueur": false, "pos": Vector2(-360.0, 180.0)},
+	{"nom": "Max", "teinte": Color(0.30, 0.75, 0.72), "joueur": true, "pos": Vector2(0.0, 6.0)},
+	{"nom": "Zep", "teinte": Color(0.48, 0.25, 0.84), "joueur": false, "pos": Vector2(0.0, -6.0)},
+	{"nom": "Nova", "teinte": Color(0.54, 0.44, 0.84), "joueur": false, "pos": Vector2(6.0, 3.0)},
+	{"nom": "Ficelle", "teinte": Color(0.88, 0.52, 0.69), "joueur": false, "pos": Vector2(-6.0, 3.0)},
 ]
+
+## Recul isométrique de la caméra par rapport au héros.
+const DECALAGE_CAMERA := Vector3(14.0, 17.0, 14.0)
 
 var arene: Arene
 var joueur: Chasseur
 var fx: FX
 var hud: HUD
-var camera: Camera2D
+var camera: Camera3D
+var _cible_camera := Vector3.ZERO
 
 
 func _ready() -> void:
-	_declarer_actions_clavier()
+	declarer_actions_clavier()
+	Ambiance.installer(self)
 
-	# Ordre d'ajout = ordre de dessin : l'arène dessous, les chasseurs au
-	# milieu, les effets au-dessus, l'interface tout en haut.
 	arene = Arene.new()
 	add_child(arene)
 
 	fx = FX.new()
+	add_child(fx)
 
 	for def in CHASSEURS:
 		var c := Chasseur.new()
@@ -38,35 +43,44 @@ func _ready() -> void:
 		arene.chasseurs.append(c)
 		if def.joueur:
 			joueur = c
-	add_child(fx)
 
-	camera = Camera2D.new()
-	camera.position_smoothing_enabled = true
-	camera.position_smoothing_speed = 8.0
-	joueur.add_child(camera)
-	camera.make_current()
+	# Caméra isométrique orthographique — angle du spike, ne pas changer
+	# sans demande explicite de Camille.
+	camera = Camera3D.new()
+	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+	camera.size = 19.0
+	add_child(camera)
+	_cible_camera = joueur.position
+	camera.position = _cible_camera + DECALAGE_CAMERA
+	camera.look_at(_cible_camera)
+	camera.current = true
 
 	hud = HUD.new()
 	add_child(hud)
 
-	# Câblage des références croisées. En v2 multijoueur, le nœud Reseau
-	# s'insérera ici entre l'arène (autorité) et les chasseurs distants.
+	# Câblage des références croisées.
 	arene.fx = fx
 	arene.hud = hud
 	arene.joueur = joueur
 	joueur.hud = hud
 	hud.joueur = joueur
 	hud.arene = arene
+	hud.camera = camera
 	fx.camera = camera
 
 	arene.demarrer()
 	hud.toast("Attrape le dragon et dépose-le dans la zone de TA réponse !")
 
 
-## Déclare les actions clavier en code (plus robuste qu'un fichier projet
-## édité à la main). Les touches « physiques » WASD couvrent automatiquement
-## ZQSD sur clavier AZERTY.
-func _declarer_actions_clavier() -> void:
+func _process(delta: float) -> void:
+	# Suivi lissé du héros (le look_at initial fixe l'angle une fois pour toutes).
+	_cible_camera = _cible_camera.lerp(joueur.position, minf(delta * 6.0, 1.0))
+	camera.position = _cible_camera + DECALAGE_CAMERA
+
+
+## Déclare les actions clavier en code (statique : le menu l'appelle aussi).
+## Les touches « physiques » WASD couvrent automatiquement ZQSD sur AZERTY.
+static func declarer_actions_clavier() -> void:
 	_action("mv_gauche", [KEY_LEFT, KEY_A])
 	_action("mv_droite", [KEY_RIGHT, KEY_D])
 	_action("mv_haut", [KEY_UP, KEY_W])
@@ -80,7 +94,7 @@ func _declarer_actions_clavier() -> void:
 	_action("rep_4", [KEY_4, KEY_KP_4])
 
 
-func _action(nom: String, touches: Array) -> void:
+static func _action(nom: String, touches: Array) -> void:
 	if InputMap.has_action(nom):
 		return
 	InputMap.add_action(nom)

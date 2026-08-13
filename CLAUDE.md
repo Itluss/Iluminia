@@ -56,8 +56,12 @@ Le jeu est aujourd'hui un **spike 3D procédural** :
 ## Conversion Godot (2026-08-13, demande explicite de Camille)
 
 Le cœur de jeu d'Iluminia — l'arène **« Chasse au dragon »** — converti en
-**Godot 4.3** : dossier `godot/`, 2D vue du dessus, tactile d'abord, visuels
-100 % procéduraux dessinés par code, sons synthétisés, palette bonbon.
+**Godot 4.3, vraie 3D** (demande du 2026-08-13 : « un vrai jeu 3D avec des
+menus à la Clash Royale et de beaux graphismes ») : dossier `godot/`, caméra
+isométrique orthographique (l'angle validé du spike), toon shading bandé +
+contours coque inversée, ciel dégradé/ombres/glow/particules, menu d'accueil
+premium (diorama animé, bouton JOUER doré), tactile d'abord, monde 100 %
+procédural, sons synthétisés, palette bonbon.
 Boucle V5 fidèle au spike (QUESTION 6 s figée → JEU 45 s, vol du dragon à
 l'Onde de choc, énergie/K.O., cristaux, gel 2 s sur mauvaise zone, refus
 individuels barrés, podium à 3 min) ; valeurs reprises de

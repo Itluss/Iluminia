@@ -1,15 +1,18 @@
 # Iluminia — Chasse au dragon (version Godot)
 
-Conversion **Godot 4.3** du cœur de jeu d'Iluminia : l'arène multijoueur
-« Chasse au dragon » (spike Three.js `public/spike3d-arena.html`), en 2D vue
-du dessus, **tactile d'abord**, style cartoon palette bonbon. Export HTML5
-automatique par GitHub Actions, publié sur GitHub Pages.
+Conversion **Godot 4.3 en vraie 3D** du cœur de jeu d'Iluminia : l'arène
+« Chasse au dragon » (spike Three.js `public/spike3d-arena.html`) — caméra
+isométrique orthographique (l'angle validé du spike), toon shading bandé,
+contours peints par coque inversée, ciel dégradé, ombres, glow, particules,
+palette bonbon. **Menu d'accueil façon jeu mobile premium** : diorama 3D
+animé des héros, logo doré, gros bouton JOUER qui pulse. Tactile d'abord.
+Export HTML5 automatique par GitHub Actions, publié sur GitHub Pages.
 
 **▶ Jouer :** https://itluss.github.io/Iluminia/godot/
 
-Aucun asset externe : visuels dessinés par code, sons synthétisés au
-démarrage. Threads désactivés à l'export → fonctionne sur GitHub Pages sans
-en-têtes COOP/COEP, mobile compris.
+Aucun asset externe : monde et personnages 100 % procéduraux, sons
+synthétisés au démarrage. Threads désactivés à l'export → fonctionne sur
+GitHub Pages sans en-têtes COOP/COEP, mobile compris.
 
 ## La boucle (V5 — la question se traite AVANT l'action)
 
@@ -59,19 +62,22 @@ spike (onde à ≤ 3,5 u, dash à > 9 u, bouclier sous menace en portant).
 
 | Script | Rôle |
 |---|---|
-| `scripts/main.gd` | assemble les couches, câble les références, actions clavier |
-| `scripts/arene.gd` | machine d'états de manche, zones, dragon, cristaux, scores, podium |
+| `scripts/menu.gd` | écran d'accueil : diorama 3D animé + interface premium (JOUER) |
+| `scripts/main.gd` | scène de jeu : caméra iso, ambiance, câblage des couches |
+| `scripts/arene.gd` | machine d'états de manche, monde 3D, zones, dragon, cristaux, podium |
 | `scripts/chasseur.gd` | joueur ET bots : énergie, pouvoirs, vol, K.O. ; IA des bots |
 | `scripts/dragon.gd` | fuite (détection 5,5 u, panique 2,6 u), pose « dans les bras » |
 | `scripts/questions.gd` | générateur maths CM1 (fractions, opérations, conversions) |
 | `scripts/hud.gd` | question, réponses cliquables, joystick, boutons, indicateurs de bord, podium |
-| `scripts/fx.gd` | squash & stretch, chiffres flottants, étoiles, cône d'onde, screen shake |
+| `scripts/fx.gd` | particules en étoiles, textes flottants 3D, anneaux, traînées, screen shake |
+| `scripts/personnage3d.gd` | chibis toon procéduraux (héros + dragon), squash, flash, anneau doré |
+| `scripts/materiaux.gd` | matériaux toon, contours coque inversée, émissifs, primitives |
+| `scripts/ambiance.gd` | ciel dégradé, soleil + ombres, appoint froid, glow |
 | `scripts/audio.gd` | autoload : sons 100 % synthétisés (AudioStreamWAV) |
-| `scripts/visuel.gd` | dessin cartoon par code (chasseurs, dragon, anneau doré, bulles) |
 | `scripts/reseau.gd` | **squelette multijoueur v2** (WebSocket) — commenté, non actif |
 | `scripts/pedagogie.gd` | **branchement Eluminia** : photos → IA → missions (remplace questions.gd) |
 
-Toutes les valeurs de gameplay viennent du spike (1 u 3D = 60 px), source :
+Toutes les valeurs de gameplay viennent du spike (mêmes unités), source :
 `docs/mecaniques-arene.md`.
 
 ## Remplacer les visuels code par des sprites
