@@ -15,6 +15,7 @@ const VITESSE_FUITE := 2.6   ## toujours plus lent que bots (3,2) et joueur (4,4
 var arene: Arene
 var porteur: Chasseur = null
 var visuel: Personnage3D
+var _temps_libre := 0.0  ## le dragon s'essouffle après 8 s de fuite
 
 
 func _ready() -> void:
@@ -38,6 +39,7 @@ func libre() -> bool:
 
 func _process(delta: float) -> void:
 	if porteur != null:
+		_temps_libre = 0.0
 		# Dans les bras du porteur, légèrement devant lui, soulevé.
 		var devant := porteur.pos2() + porteur.regard() * 0.55
 		position = Vector3(devant.x, 0.55, devant.y)
@@ -45,6 +47,7 @@ func _process(delta: float) -> void:
 		visuel.en_marche = false
 		return
 	position.y = 0.0
+	_temps_libre += delta
 
 	var proche := arene.chasseur_le_plus_proche(pos2())
 	if proche == null:
@@ -57,6 +60,9 @@ func _process(delta: float) -> void:
 		var poids_centre := pos2().length() / Arene.RAYON_ARENE
 		var dir := (fuite + (-pos2().normalized()) * poids_centre * 0.9).normalized()
 		var v := VITESSE_FUITE if d < PANIQUE else VITESSE_CALME
+		# Après 8 s de course, il s'essouffle : la capture arrive toujours.
+		if _temps_libre > 8.0:
+			v *= 0.7
 		fixer_pos2(arene.borner(pos2() + dir * v * delta))
 		visuel.regarder(dir)
 		visuel.en_marche = true

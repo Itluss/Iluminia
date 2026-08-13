@@ -15,14 +15,14 @@ extends Node3D
 
 enum Etat { QUESTION, JEU, INTERLUDE, PODIUM }
 
-const RAYON_ARENE := 18.0
+const RAYON_ARENE := 13.0
 const COMPTE_QUESTION := 6.0    ## questionCountdown
 const DUREE_MANCHE := 45.0      ## mancheDuration
 const GEL_MAUVAISE := 2.0       ## wrongFreezeSeconds
 const DUREE_MATCH := 180.0      ## chrono global du match → podium
 const DUREE_INTERLUDE := 3.0
 const RAYON_ZONE := 2.3
-const DISTANCE_ZONES := 12.5
+const DISTANCE_ZONES := 9.0
 const CRISTAL_PERIODE := 8.0
 const CRISTAL_MAX := 3
 const CRISTAL_ENERGIE := 20.0
@@ -453,8 +453,10 @@ func _podium() -> void:
 		var gain_xp: int = 20 + maxi(joueur.score, 0) / 2
 		var gain_etoiles: int = 5 if rang == 0 else 2
 		var niveaux := Profil.gagner_xp(float(gain_xp))
+		var niveaux_heros := Profil.gagner_xp_heros(joueur.nom, float(gain_xp))
 		Profil.gagner_etoiles(gain_etoiles)
-		recompense_podium = {"xp": gain_xp, "etoiles": gain_etoiles, "niveaux": niveaux}
+		recompense_podium = {"xp": gain_xp, "etoiles": gain_etoiles, "niveaux": niveaux,
+			"niveaux_heros": niveaux_heros, "heros": joueur.nom}
 	if hud != null:
 		hud.sur_podium()
 
@@ -483,11 +485,15 @@ func prendre_dragon(c: Chasseur, mode: String) -> void:
 	dragon.porteur = c
 	c.immunite = Chasseur.IMMUNITE_VOL
 	fx.eclat_etoiles(dragon.pos2(), Color(1.0, 0.85, 0.4), 10)
+	fx.anneau(c.pos2(), 1.6, Identite.OR)
 	if mode == "vol":
 		Audio.jouer("vol")
 		fx.texte_flottant(c.pos2(), "Dragon volé !", Color(1.0, 0.8, 0.3))
 	else:
 		Audio.jouer("ramasser")
+		fx.texte_flottant(c.pos2(), "ATTRAPÉ !", Identite.OR)
+		if c.est_joueur:
+			fx.secousse(0.25)
 	# Toast pédagogique quand un adversaire prend le dragon.
 	if not c.est_joueur and hud != null and (ancien == null or ancien.est_joueur):
 		hud.toast_pedagogique()
@@ -589,7 +595,7 @@ func meilleure_cible_onde(lanceur: Chasseur) -> Chasseur:
 func point_reapparition() -> Vector2:
 	var points: Array = []
 	for i in 4:
-		points.append(Vector2.from_angle(TAU * i / 4.0) * 15.0)
+		points.append(Vector2.from_angle(TAU * i / 4.0) * (RAYON_ARENE - 2.5))
 	if dragon == null:
 		return points[randi() % 4]
 	points.sort_custom(func(a, b): return a.distance_to(dragon.pos2()) > b.distance_to(dragon.pos2()))

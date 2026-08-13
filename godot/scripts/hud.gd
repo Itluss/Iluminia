@@ -25,6 +25,8 @@ var _toast := ""
 var _toast_temps := 0.0
 var _toast_pedago_delai := 0.0
 var _flash_mauvaise := 0.0
+var _guide_etape := 0            ## tutoriel de première partie (0 = éteint)
+var _guide_depart := Vector2.ZERO
 var surface: Control
 
 
@@ -75,11 +77,50 @@ func _process(delta: float) -> void:
 	for action in _refus:
 		_refus[action] = maxf(_refus[action] - delta, 0.0)
 	_boutons = _calculer_boutons()
+	_guider()
 	surface.queue_redraw()
 	if joueur != null:
 		for i in 4:
 			if Input.is_action_just_pressed("rep_%d" % (i + 1)):
 				_choisir_reponse(i)
+
+
+## Tutoriel de la toute première partie : trois consignes contextuelles,
+## une seule à la fois, jusqu'à la fin de la première manche.
+func _guider() -> void:
+	if Profil.tutoriel_fait or joueur == null or arene == null:
+		return
+	match _guide_etape:
+		0:
+			if arene.etat == Arene.Etat.JEU:
+				_guide_etape = 1
+				_guide_depart = joueur.pos2()
+		1:
+			if joueur.pos2().distance_to(_guide_depart) > 2.0:
+				_guide_etape = 2
+		2:
+			if arene.dragon != null and arene.dragon.porteur != null:
+				_guide_etape = 3
+		3:
+			pass
+	# La première manche terminée, le tutoriel est acquis.
+	if _guide_etape > 0 and (arene.etat == Arene.Etat.INTERLUDE or arene.etat == Arene.Etat.PODIUM):
+		Profil.tutoriel_fait = true
+		Profil.sauver()
+		_guide_etape = 0
+
+
+func _texte_guide() -> String:
+	match _guide_etape:
+		1:
+			return "Pose ton pouce à GAUCHE et bouge le joystick !"
+		2:
+			return "Attrape le bébé dragon — suis la pastille verte !"
+		3:
+			if joueur.porte_dragon():
+				return "Bravo ! Suis les chevrons vers la zone de TA réponse !"
+			return "Approche du porteur et touche le bouton ORANGE pour lui voler !"
+	return ""
 
 
 ## Boutons de pouvoirs : carrés arrondis (barre de compétences de la
@@ -89,11 +130,11 @@ func _calculer_boutons() -> Array:
 	if joueur == null:
 		return []
 	return [
-		{"centre": Vector2(t.x - 326.0, t.y - 66.0), "cote": 76.0, "action": "onde", "touche": "E",
+		{"centre": Vector2(t.x - 356.0, t.y - 70.0), "cote": 88.0, "action": "onde", "touche": "E",
 			"cd": joueur.cd_onde, "cd_max": Chasseur.CD_ONDE, "teinte": Identite.ORANGE},
-		{"centre": Vector2(t.x - 232.0, t.y - 106.0), "cote": 76.0, "action": "dash", "touche": "R",
+		{"centre": Vector2(t.x - 250.0, t.y - 116.0), "cote": 88.0, "action": "dash", "touche": "R",
 			"cd": joueur.cd_dash, "cd_max": Chasseur.CD_DASH, "teinte": Identite.BLEU},
-		{"centre": Vector2(t.x - 138.0, t.y - 172.0), "cote": 82.0, "action": "bouclier", "touche": "␣",
+		{"centre": Vector2(t.x - 140.0, t.y - 190.0), "cote": 96.0, "action": "bouclier", "touche": "␣",
 			"cd": joueur.cd_bouclier, "cd_max": Chasseur.CD_BOUCLIER, "teinte": Identite.VIOLET},
 	]
 
@@ -188,6 +229,11 @@ func _dessiner(c: Control) -> void:
 			_dessiner_energie(c)
 			_dessiner_boutons(c)
 			_dessiner_joystick(c)
+			# Consigne du tutoriel (première partie seulement).
+			var consigne := _texte_guide()
+			if consigne != "":
+				UI.banniere(c, Vector2(c.size.x / 2.0, c.size.y - 120.0),
+					minf(c.size.x - 200.0, 660.0), consigne, 18)
 			if joueur.ko_restant > 0.0:
 				UI.texte(c, c.size / 2.0, "K.O. ! Réapparition dans %.1f s" % joueur.ko_restant,
 					26, Identite.ORANGE, true)
@@ -218,16 +264,16 @@ func _dessiner_pilules(c: Control) -> void:
 	elif arene.etat == Arene.Etat.QUESTION:
 		texte_manche = "Départ dans %d…" % int(ceil(arene.temps_etat))
 	if texte_manche != "":
-		c.draw_style_box(UI.style("pilule", Identite.PANNEAU, Identite.OR, 18),
-			Rect2(centre_x - 84.0, 10.0, 168.0, 38.0))
-		c.draw_circle(Vector2(centre_x - 54.0, 29.0), 10.0, Identite.CONTOUR)
-		c.draw_circle(Vector2(centre_x - 54.0, 29.0), 8.0, Identite.VERT)
-		UI.texte(c, Vector2(centre_x + 10.0, 38.0), texte_manche, 18, Identite.TEXTE, true)
-	UI.panneau(c, Rect2(10.0, 10.0, 204.0, 66.0))
+		c.draw_style_box(UI.style("pilule", Identite.PANNEAU, Identite.OR, 20),
+			Rect2(centre_x - 98.0, 10.0, 196.0, 44.0))
+		c.draw_circle(Vector2(centre_x - 64.0, 32.0), 12.0, Identite.CONTOUR)
+		c.draw_circle(Vector2(centre_x - 64.0, 32.0), 10.0, Identite.VERT)
+		UI.texte(c, Vector2(centre_x + 12.0, 41.0), texte_manche, 21, Identite.TEXTE, true)
+	UI.panneau(c, Rect2(10.0, 10.0, 218.0, 72.0))
 	var m := int(maxf(arene.temps_match, 0.0)) / 60
 	var s := int(maxf(arene.temps_match, 0.0)) % 60
-	UI.texte(c, Vector2(24.0, 36.0), "Match %d:%02d" % [m, s], 16, Identite.TEXTE_ATTENUE)
-	UI.texte(c, Vector2(24.0, 62.0), "%s — %d pts" % [joueur.nom, joueur.score], 17, Identite.OR)
+	UI.texte(c, Vector2(24.0, 38.0), "Match %d:%02d" % [m, s], 17, Identite.TEXTE_ATTENUE)
+	UI.texte(c, Vector2(24.0, 66.0), "%s — %d pts" % [joueur.nom, joueur.score], 19, Identite.OR)
 
 
 ## Grand panneau de question (planche : hexagone « ? » violet + décompte).
@@ -248,15 +294,15 @@ func _dessiner_question_grande(c: Control) -> void:
 
 ## Panneau latéral compact pendant le jeu (choix modifiable, refus barrés).
 func _dessiner_panneau_lateral(c: Control) -> void:
-	var largeur := 252.0
-	var rect := Rect2(c.size.x - largeur - 12.0, 68.0, largeur, 200.0)
+	var largeur := 296.0
+	var rect := Rect2(c.size.x - largeur - 12.0, 74.0, largeur, 232.0)
 	UI.panneau(c, rect)
-	UI.texte(c, rect.position + Vector2(14.0, 26.0), str(arene.question.enonce), 14, Identite.TEXTE)
-	_dessiner_reponses(c, Rect2(rect.position + Vector2(12.0, 38.0), Vector2(largeur - 24.0, 154.0)), 34.0, 15)
+	UI.texte(c, rect.position + Vector2(16.0, 30.0), str(arene.question.enonce), 16, Identite.TEXTE)
+	_dessiner_reponses(c, Rect2(rect.position + Vector2(14.0, 44.0), Vector2(largeur - 28.0, 176.0)), 40.0, 17)
 	if joueur.choix == -1:
 		var pulse := 0.6 + 0.4 * absf(sin(Time.get_ticks_msec() / 250.0))
 		c.draw_rect(rect.grow(4.0), Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, pulse * 0.6), false, 3.0)
-		UI.texte(c, Vector2(rect.position.x + largeur / 2.0, rect.end.y + 22.0), "Choisis ta réponse !", 15,
+		UI.texte(c, Vector2(rect.position.x + largeur / 2.0, rect.end.y + 26.0), "Choisis ta réponse !", 17,
 			Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, pulse), true)
 
 
@@ -291,14 +337,14 @@ func _dessiner_reponses(c: Control, zone: Rect2, hauteur_rangee: float, taille_t
 
 ## Jauge d'énergie bleue à éclair (planche : « énergie / mana »).
 func _dessiner_energie(c: Control) -> void:
-	var rect := Rect2(34.0, 86.0, 180.0, 22.0)
+	var rect := Rect2(40.0, 94.0, 208.0, 28.0)
 	var ratio := joueur.energie / Chasseur.ENERGIE_MAX
 	var teinte := Identite.BLEU
 	if ratio < 0.25:
 		teinte = Identite.ROUGE.lerp(Identite.ORANGE, absf(sin(Time.get_ticks_msec() / 180.0)))
 	UI.barre(c, rect, ratio, teinte)
-	UI.eclair(c, Vector2(24.0, 97.0), 22.0, Identite.OR)
-	UI.texte(c, rect.position + Vector2(rect.size.x / 2.0, 16.0), str(int(joueur.energie)), 13, Identite.TEXTE, true, 4)
+	UI.eclair(c, Vector2(26.0, 108.0), 26.0, Identite.OR)
+	UI.texte(c, rect.position + Vector2(rect.size.x / 2.0, 20.0), str(int(joueur.energie)), 15, Identite.TEXTE, true, 4)
 
 
 ## Boutons de pouvoirs : carrés arrondis + anneau de recharge doré.
@@ -349,9 +395,9 @@ func _indicateur(c: Control, pos_monde: Vector2, teinte: Color, lettre: String) 
 	var ecran := camera.unproject_position(Vector3(pos_monde.x, 0.8, pos_monde.y))
 	if ecran.x > marge and ecran.x < c.size.x - marge and ecran.y > marge and ecran.y < c.size.y - marge:
 		return
-	var borne := Vector2(clampf(ecran.x, marge, c.size.x - marge), clampf(ecran.y, 126.0, c.size.y - marge))
-	if borne.x > c.size.x - 290.0 and borne.y < 300.0:
-		borne.y = 300.0
+	var borne := Vector2(clampf(ecran.x, marge, c.size.x - marge), clampf(ecran.y, 136.0, c.size.y - marge))
+	if borne.x > c.size.x - 334.0 and borne.y < 336.0:
+		borne.y = 336.0
 	var dir := (ecran - c.size / 2.0).normalized()
 	c.draw_colored_polygon(PackedVector2Array([
 		borne + dir * 16.0, borne + dir.rotated(2.5) * 9.0, borne + dir.rotated(-2.5) * 9.0,
@@ -399,12 +445,12 @@ func _dessiner_podium(c: Control) -> void:
 		UI.texte(c, Vector2(rect.position.x + 116.0, y + 7.0), ch.nom, 21,
 			Identite.OR if i == 0 else Identite.TEXTE)
 		UI.texte(c, Vector2(rect.end.x - 116.0, y + 7.0), "%d pts" % ch.score, 21, Identite.TEXTE_ATTENUE)
-	# Gains de compte (XP du lobby + étoiles).
+	# Gains de compte et de héros (l'évolution se voit à chaque match).
 	var gains: Dictionary = arene.recompense_podium
 	if not gains.is_empty():
-		var texte_gains := "+%d XP    +%d ⭐" % [int(gains.xp), int(gains.etoiles)]
-		if int(gains.niveaux) > 0:
-			texte_gains += "    NIVEAU %d !" % Profil.niveau
+		var texte_gains := "+%d XP pour %s    +%d ⭐" % [int(gains.xp), str(gains.heros), int(gains.etoiles)]
+		if int(gains.niveaux_heros) > 0:
+			texte_gains += "    %s passe NIVEAU %d !" % [str(gains.heros), Profil.niveau_heros(str(gains.heros))]
 		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 18.0), texte_gains, 18, Identite.OR, true)
 	var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 220.0)
 	var bl := 240.0 * pulse

@@ -41,16 +41,25 @@ Identité propre au jeu, ancrée sur le design system existant
 - **Accueil** : logo étoilé, badge **niveau/XP de compte**, indicateur
   d'**étoiles**, JOUER doré, boutons PERSONNAGES / POUVOIRS / CADEAUX
   (badge NEW quand le coffre est prêt), boutons son et aide.
-- **Personnages** : choix du Lumin joué (appliqué en jeu — les autres
-  deviennent les bots) + **garde-robe** de 4 couleurs par personnage.
+- **Personnages** (mode focus) : le héros en grand au centre du diorama,
+  flèches ‹ › pour changer, **niveau de héros + barre d'XP** (gagnés en
+  jouant avec lui), garde-robe de 4 couleurs avec **paliers affichés**
+  (« Niv 2 », « Niv 4 », « Niv 6 » — ou coffre quotidien), JOUER AVEC LUI.
 - **Pouvoirs** : le kit équipé en slots (Onde/Dash/Bouclier) + slots « + ».
 - **Cadeaux** : **coffre quotidien** (fenêtre récompense de la planche) —
   débloque une couleur de Lumin ou des étoiles, une fois par jour.
 - **Aide** : la boucle du jeu et les contrôles.
 
 La méta est persistée par l'autoload **`profil.gd`** (`user://profil.cfg`,
-IndexedDB sur le web) : personnage choisi, variantes débloquées, niveau/XP
-de compte (gagnés au podium : 20 + score/2, étoiles selon le rang), son.
+IndexedDB sur le web) : personnage choisi, variantes débloquées, **XP par
+héros** et niveau/XP de compte (gagnés au podium : 20 + score/2, étoiles
+selon le rang), tutoriel vu, son. Un **tutoriel guidé** (3 consignes
+contextuelles) accompagne la toute première manche.
+
+Confort et fun : résolution de référence 1024×576 (interface ~25 % plus
+grande), caméra rapprochée (taille 13,5), arène resserrée (rayon 13 u),
+le dragon s'essouffle après 8 s de fuite, traînée dorée derrière le
+porteur, célébration à la capture.
 Crochet de dev : `ILUMINIA_ECRAN=personnages|pouvoirs|cadeaux|aide` ouvre
 un sous-écran directement (captures automatisées).
 

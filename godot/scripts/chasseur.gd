@@ -57,6 +57,7 @@ var gel_restant := 0.0
 var ko_restant := 0.0
 
 var visuel: Personnage3D
+var _traine_delai := 0.0  ## cadence de la traînée dorée du porteur
 
 
 ## À appeler AVANT l'ajout à l'arbre.
@@ -153,6 +154,13 @@ func _process(delta: float) -> void:
 		visuel.regarder(derniere_dir)
 
 	fixer_pos2(arene.borner(pos2()))
+
+	# Traînée dorée du porteur : la poursuite se lit d'un coup d'œil.
+	if porte_dragon() and visuel.en_marche:
+		_traine_delai -= delta
+		if _traine_delai <= 0.0:
+			_traine_delai = 0.09
+			arene.fx.traine(pos2(), Identite.OR)
 
 	# Attraper le dragon libre = marcher dessus.
 	if arene.dragon != null and arene.dragon.libre() \

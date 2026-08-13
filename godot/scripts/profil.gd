@@ -8,20 +8,28 @@ extends Node
 
 const CHEMIN := "user://profil.cfg"
 
+## Niveau de héros exigé pour chaque variante de couleur (évolution VISIBLE :
+## la garde-robe affiche « Niv 2 », « Niv 4 »… sur les couleurs verrouillées).
+const PALIERS_VARIANTES := [1, 2, 4, 6]
+const XP_PAR_NIVEAU_HEROS := 100.0
+
 var personnage := "Max"          ## le Lumin joué
 var variantes := {}              ## nom → indice de variante choisie
-var debloquees := {}             ## nom → tableau d'indices débloqués
+var debloquees := {}             ## nom → indices offerts par les cadeaux
+var xp_heros := {}               ## nom → XP gagnée en jouant CE héros
 var xp := 0.0
 var niveau := 1
 var etoiles := 0
 var dernier_cadeau := 0          ## jour unix du dernier coffre ouvert
 var son_actif := true
+var tutoriel_fait := false
 
 
 func _ready() -> void:
 	for nom in Personnage3D.FICHES:
 		debloquees[nom] = [0]
 		variantes[nom] = 0
+		xp_heros[nom] = 0.0
 	charger()
 	Audio.definir_son(son_actif)
 
@@ -53,8 +61,33 @@ func choisir_personnage(nom: String) -> void:
 		sauver()
 
 
+# ---------------------------------------------------------------- héros
+
+func niveau_heros(nom: String) -> int:
+	return 1 + int(float(xp_heros.get(nom, 0.0)) / XP_PAR_NIVEAU_HEROS)
+
+
+## Progression vers le prochain niveau du héros (0..1).
+func progres_heros(nom: String) -> float:
+	return fposmod(float(xp_heros.get(nom, 0.0)), XP_PAR_NIVEAU_HEROS) / XP_PAR_NIVEAU_HEROS
+
+
+func gagner_xp_heros(nom: String, montant: float) -> int:
+	var avant := niveau_heros(nom)
+	xp_heros[nom] = float(xp_heros.get(nom, 0.0)) + montant
+	sauver()
+	return niveau_heros(nom) - avant
+
+
+## Une variante est accessible par palier de niveau du héros OU par cadeau.
+func variante_accessible(nom: String, indice: int) -> bool:
+	if indice == 0 or debloquees.get(nom, [0]).has(indice):
+		return true
+	return niveau_heros(nom) >= PALIERS_VARIANTES[clampi(indice, 0, PALIERS_VARIANTES.size() - 1)]
+
+
 func choisir_variante(nom: String, indice: int) -> bool:
-	if debloquees.get(nom, [0]).has(indice):
+	if variante_accessible(nom, indice):
 		variantes[nom] = indice
 		sauver()
 		return true
@@ -90,7 +123,7 @@ func ouvrir_cadeau() -> Dictionary:
 	for nom in Personnage3D.FICHES:
 		var palette: Array = Personnage3D.FICHES[nom].variantes
 		for i in palette.size():
-			if not debloquees[nom].has(i):
+			if not variante_accessible(nom, i):
 				verrouillees.append({"nom": nom, "indice": i})
 	var resultat := {}
 	if verrouillees.is_empty():
@@ -123,6 +156,8 @@ func sauver() -> void:
 	cfg.set_value("profil", "etoiles", etoiles)
 	cfg.set_value("profil", "dernier_cadeau", dernier_cadeau)
 	cfg.set_value("profil", "son_actif", son_actif)
+	cfg.set_value("profil", "xp_heros", xp_heros)
+	cfg.set_value("profil", "tutoriel_fait", tutoriel_fait)
 	cfg.save(CHEMIN)
 
 
@@ -143,5 +178,10 @@ func charger() -> void:
 	etoiles = int(cfg.get_value("profil", "etoiles", etoiles))
 	dernier_cadeau = int(cfg.get_value("profil", "dernier_cadeau", dernier_cadeau))
 	son_actif = bool(cfg.get_value("profil", "son_actif", son_actif))
+	var xh: Dictionary = cfg.get_value("profil", "xp_heros", xp_heros)
+	for nom in Personnage3D.FICHES:
+		if xh.has(nom):
+			xp_heros[nom] = float(xh[nom])
+	tutoriel_fait = bool(cfg.get_value("profil", "tutoriel_fait", tutoriel_fait))
 	if not Personnage3D.FICHES.has(personnage):
 		personnage = "Max"
