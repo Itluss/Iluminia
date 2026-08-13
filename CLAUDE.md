@@ -55,20 +55,27 @@ Le jeu est aujourd'hui un **spike 3D procédural** :
 
 ## Conversion Godot (2026-08-13, demande explicite de Camille)
 
-Première région jouable convertie en **Godot 4.3** : dossier `godot/` —
-action-RPG 2D vue du dessus « Terres d'Émeraude » (tactile d'abord, visuels
-100 % procéduraux dessinés par code, sons synthétisés, aucun asset externe,
-palette bonbon Eluminia). Voir `godot/README.md` : architecture, contrôles,
-remplacement des visuels par de vrais sprites, activation du multijoueur v2.
+Le cœur de jeu d'Iluminia — l'arène **« Chasse au dragon »** — converti en
+**Godot 4.3** : dossier `godot/`, 2D vue du dessus, tactile d'abord, visuels
+100 % procéduraux dessinés par code, sons synthétisés, palette bonbon.
+Boucle V5 fidèle au spike (QUESTION 6 s figée → JEU 45 s, vol du dragon à
+l'Onde de choc, énergie/K.O., cristaux, gel 2 s sur mauvaise zone, refus
+individuels barrés, podium à 3 min) ; valeurs reprises de
+`docs/mecaniques-arene.md` avec 1 u = 60 px ; bots Zep/Nova/Ficelle
+(précision 0,5), questions maths CM1 générées (`godot/scripts/questions.gd`).
+Voir `godot/README.md` (architecture, contrôles, sprites, multi v2).
 
 - Export HTML5 automatique dans `deploy-pages.yml` (image
   `barichello/godot-ci:4.3`, `thread_support` désactivé → fonctionne sur
   Pages sans en-têtes COOP/COEP) ; publié sous
-  https://itluss.github.io/Iluminia/godot/ à chaque push sur main.
-- Les spikes Three.js restent servis tels quels (aucune régression).
+  https://itluss.github.io/Iluminia/godot/ à chaque push sur main, avec
+  vérification HTTP 200 en fin de workflow.
+- Les spikes Three.js restent servis tels quels (aucune régression) ;
+  la première itération Godot (action-RPG « Terres d'Émeraude ») est dans
+  l'historique git si besoin.
 - Squelettes prêts pour la suite : `godot/scripts/reseau.gd` (multijoueur
-  v2 WebSocket) et `godot/scripts/pedagogie.gd` (boucle photos → IA →
-  missions, cf. `docs/programme-cm1-quetes.md`).
+  v2 WebSocket) et `godot/scripts/pedagogie.gd` (photos → IA → missions :
+  remplacer `Questions.generer()` par la file de missions, même format).
 
 ## Priorités
 

@@ -1,27 +1,23 @@
 class_name Pedagogie
 extends Node
-## SQUELETTE PÉDAGOGIQUE ELUMINIA — NON ACTIVÉ DANS CETTE RÉGION (v1).
+## SQUELETTE PÉDAGOGIQUE ELUMINIA — le cœur du projet : la progression du
+## jeu est alimentée par la scolarité réelle (photos de cours → IA →
+## compétences → missions).
 ##
-## Cœur du projet Eluminia : la progression du jeu est alimentée par la
-## scolarité réelle (photos de cours → IA → compétences → missions).
-## Cette région Godot « Terres d'Émeraude » est pour l'instant un pur
-## action-RPG ; ce fichier balise où brancher la boucle pédagogique,
-## en cohérence avec docs/programme-cm1-quetes.md du dépôt.
+## Dans cette arène Godot, les questions viennent de questions.gd (générateur
+## maths CM1 aligné sur docs/programme-cm1-quetes.md). C'est le SEUL point à
+## remplacer pour brancher la boucle pédagogique réelle :
 ##
-## BRANCHEMENT PRÉVU :
-## 1. Un service externe (déjà prototypé côté Three.js) transforme les photos
-##    de cours en une liste de compétences travaillées, ex. :
-##      {"competence": "fractions_comparaison", "niveau": 2}
-## 2. Ce nœud récupère ces compétences (HTTPRequest vers l'API familiale)
-##    et génère des MISSIONS en jeu : un PNJ du sanctuaire central propose
-##    un défi (« Compare 3/4 et 2/3 pour débloquer le pont de la Forêt »).
-## 3. Récompenses : XP, orbes de lumière bonus, objets — en réutilisant
-##    joueur.gagner_xp() / monde._lacher_objet(), rien d'autre à créer.
-##
-## Structure de mission suggérée :
-##   {"id": "m1", "competence": "fractions_comparaison",
-##    "enonce": "...", "reponses": [...], "bonne_reponse": 2,
-##    "recompense_xp": 60, "recompense_objet_rarete_min": 1}
+## 1. Un service externe transforme les photos de cours en compétences
+##    travaillées, ex. {"competence": "fractions_comparaison", "niveau": 2}.
+## 2. Ce nœud les récupère (HTTPRequest vers l'API familiale) et fournit à
+##    l'arène des questions ciblées AU MÊME FORMAT que Questions.generer() :
+##      {"enonce": String, "reponses": [4 × String], "bonne": int}
+##    → remplacer l'appel `Questions.generer()` dans arene.gd par une file
+##    de questions alimentée ici, rien d'autre à changer.
+## 3. Le suivi des progrès (bonnes/mauvaises réponses par compétence) peut
+##    être renvoyé à l'API depuis arene._tenter_zone() pour le diagnostic
+##    parent — brancher un signal ici le moment venu.
 
 func charger_missions(_url_api: String) -> void:
-	push_warning("Boucle pédagogique non activée dans cette région (v1).")
+	push_warning("Boucle pédagogique non branchée : questions.gd génère en local (v1).")

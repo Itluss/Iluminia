@@ -4,8 +4,10 @@ extends Node
 ##
 ## Ce fichier documente où et comment brancher un multijoueur WebSocket sans
 ## réécrire le jeu. La séparation logique est déjà en place :
-##   - monde.gd  : état du monde (ennemis, butin, secrets) — future AUTORITÉ serveur.
-##   - joueur.gd : entrées et état d'UN personnage — instanciable N fois.
+##   - arene.gd    : état de l'arène (manches, dragon, zones, scores) — future
+##                   AUTORITÉ serveur.
+##   - chasseur.gd : entrées et état d'UN chasseur — instanciable N fois ; les
+##                   bots (_ia_*) deviennent des joueurs distants.
 ##   - hud.gd/fx.gd : purement locaux, jamais synchronisés.
 ##
 ## ---------------------------------------------------------------------------
@@ -30,15 +32,16 @@ extends Node
 ##      multiplayer.multiplayer_peer = pair
 ##
 ## 4. Réplication :
-##    - Chaque Joueur devient une scène avec MultiplayerSynchronizer
-##      (position, pv, niveau) ; l'autorité d'entrée est le pair propriétaire
-##      (set_multiplayer_authority(id_pair)).
-##    - Le monde (ennemis, butin, secrets) n'est simulé QUE par le serveur ;
-##      les clients reçoivent les états via MultiplayerSpawner sur le nœud
-##      Monde (apparition des Ennemi/ObjetLoot/Projectile).
-##    - Les compétences deviennent des RPC : le client envoie l'intention
-##      (`@rpc("any_peer") func demander_tourbillon()`), le serveur valide
-##      (cooldown, position) puis diffuse l'effet.
+##    - Chaque Chasseur devient une scène avec MultiplayerSynchronizer
+##      (position, énergie, score, choix) ; l'autorité d'entrée est le pair
+##      propriétaire (set_multiplayer_authority(id_pair)).
+##    - L'arène (manches, question, dragon, cristaux) n'est simulée QUE par
+##      le serveur ; les clients reçoivent les états via MultiplayerSpawner
+##      sur le nœud Arene (apparition du Dragon et des cristaux).
+##    - Les pouvoirs deviennent des RPC : le client envoie l'intention
+##      (`@rpc("any_peer") func demander_onde()`), le serveur valide
+##      (cooldown, position, cône) puis diffuse l'effet — idem pour le choix
+##      de réponse et la tentative de zone.
 ##
 ## 5. Ce qui reste local : FX, Audio, HUD, la caméra — brancher sur les
 ##    signaux répliqués, jamais l'inverse.

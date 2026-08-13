@@ -12,7 +12,7 @@ Le monde du jeu s'adapte et génère les missions de l'enfant.
 
 **En ligne (mise à jour automatique à chaque push sur main) :**
 
-- **Région Godot « Terres d'Émeraude » (action-RPG 2D, mobile tactile) :**
+- **Chasse au dragon, version Godot (2D, mobile tactile) :**
   https://itluss.github.io/Iluminia/godot/ — voir `godot/README.md`
 - Spike 3D Three.js : https://itluss.github.io/Iluminia/spike3d-arena.html
 

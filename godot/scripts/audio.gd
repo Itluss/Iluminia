@@ -18,22 +18,26 @@ func _ready() -> void:
 		add_child(p)
 		_lecteurs.append(p)
 
-	_sons["coup"] = _wav(_ton(320.0, 180.0, 0.08, "carre", 0.5))
-	_sons["impact"] = _wav(_ton(0.0, 0.0, 0.05, "bruit", 0.5))
 	_sons["coup_recu"] = _wav(_ton(130.0, 70.0, 0.18, "carre", 0.6))
-	_sons["ramasser"] = _wav(_ton(500.0, 950.0, 0.12, "sinus", 0.6))
-	_sons["orbe"] = _wav(_enchainer([_ton(880.0, 880.0, 0.1, "sinus", 0.5), _ton(1320.0, 1320.0, 0.22, "sinus", 0.45)]))
-	_sons["niveau"] = _wav(_enchainer([_ton(523.0, 523.0, 0.09, "sinus", 0.6), _ton(659.0, 659.0, 0.09, "sinus", 0.6), _ton(784.0, 784.0, 0.16, "sinus", 0.6)]))
-	_sons["tourbillon"] = _wav(_ton(0.0, 0.0, 0.25, "bruit", 0.4))
-	_sons["nova"] = _wav(_enchainer([_ton(90.0, 55.0, 0.3, "sinus", 0.8), _ton(0.0, 0.0, 0.12, "bruit", 0.4)]))
-	_sons["roulade"] = _wav(_ton(0.0, 0.0, 0.1, "bruit", 0.25))
-	_sons["mort"] = _wav(_ton(300.0, 90.0, 0.5, "carre", 0.5))
-	_sons["mort_ennemi"] = _wav(_ton(420.0, 140.0, 0.22, "sinus", 0.55))
-	_sons["rage"] = _wav(_ton(110.0, 70.0, 0.5, "scie", 0.55))
-	_sons["souffle"] = _wav(_ton(0.0, 0.0, 0.2, "bruit", 0.35))
+	_sons["ramasser"] = _wav(_ton(500.0, 950.0, 0.12, "sinus", 0.6))       # capture du dragon
+	_sons["vol"] = _wav(_enchainer([_ton(700.0, 400.0, 0.07, "carre", 0.5), _ton(400.0, 900.0, 0.1, "sinus", 0.55)]))
+	_sons["onde"] = _wav(_enchainer([_ton(0.0, 0.0, 0.08, "bruit", 0.5), _ton(180.0, 60.0, 0.18, "sinus", 0.7)]))
+	_sons["dash"] = _wav(_ton(0.0, 0.0, 0.1, "bruit", 0.25))
+	_sons["bouclier"] = _wav(_ton(300.0, 800.0, 0.18, "sinus", 0.45))
+	_sons["cristal"] = _wav(_enchainer([_ton(880.0, 880.0, 0.07, "sinus", 0.5), _ton(1320.0, 1320.0, 0.14, "sinus", 0.45)]))
+	_sons["ko"] = _wav(_ton(300.0, 80.0, 0.45, "carre", 0.5))
+	_sons["mauvaise"] = _wav(_enchainer([_ton(220.0, 220.0, 0.12, "carre", 0.45), _ton(160.0, 160.0, 0.2, "carre", 0.45)]))
+	_sons["clic"] = _wav(_ton(900.0, 700.0, 0.05, "sinus", 0.4))
+	_sons["denied"] = _wav(_ton(120.0, 100.0, 0.08, "carre", 0.35))
+	_sons["depart"] = _wav(_enchainer([_ton(523.0, 523.0, 0.09, "sinus", 0.6), _ton(784.0, 784.0, 0.14, "sinus", 0.6)]))
 	_sons["victoire"] = _wav(_enchainer([
 		_ton(523.0, 523.0, 0.12, "sinus", 0.6), _ton(659.0, 659.0, 0.12, "sinus", 0.6),
 		_ton(784.0, 784.0, 0.12, "sinus", 0.6), _ton(1047.0, 1047.0, 0.3, "sinus", 0.6),
+	]))
+	_sons["podium"] = _wav(_enchainer([
+		_ton(392.0, 392.0, 0.11, "sinus", 0.6), _ton(523.0, 523.0, 0.11, "sinus", 0.6),
+		_ton(659.0, 659.0, 0.11, "sinus", 0.6), _ton(784.0, 784.0, 0.11, "sinus", 0.6),
+		_ton(1047.0, 1047.0, 0.35, "sinus", 0.65),
 	]))
 
 

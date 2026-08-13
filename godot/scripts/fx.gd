@@ -45,11 +45,22 @@ func anneau(pos: Vector2, rayon_max: float, teinte: Color) -> void:
 	add_child(a)
 
 
-func coup_d_epee(pos: Vector2, angle: float) -> void:
-	var s := ArcEpee.new()
+## Éclair conique de l'Onde de choc (l'arc blanc = limite de portée).
+func cone(pos: Vector2, angle: float, portee: float, demi_cone: float) -> void:
+	var s := ConeOnde.new()
 	s.position = pos
-	s.angle_coup = angle
+	s.angle_cone = angle
+	s.portee = portee
+	s.demi_cone = demi_cone
 	add_child(s)
+
+
+## Petit rond de traînée (dash) qui s'estompe sur place.
+func traine(pos: Vector2, teinte: Color) -> void:
+	var t := Traine.new()
+	t.position = pos
+	t.teinte = teinte
+	add_child(t)
 
 
 ## Chiffre (ou mot) qui monte et s'efface, avec gros contour lisible.
@@ -124,10 +135,12 @@ class Anneau extends Node2D:
 		draw_arc(Vector2.ZERO, r, 0.0, TAU, 48, Color(teinte.r, teinte.g, teinte.b, a), 8.0)
 
 
-## Arc de mêlée de l'auto-attaque, balayé dans la direction du coup.
-class ArcEpee extends Node2D:
-	const DUREE := 0.16
-	var angle_coup := 0.0
+## Cône éclair de l'Onde de choc : arcs qui s'étendent jusqu'à la portée.
+class ConeOnde extends Node2D:
+	const DUREE := 0.22
+	var angle_cone := 0.0
+	var portee := 192.0
+	var demi_cone := 0.68
 	var _vie := 0.0
 
 	func _process(delta: float) -> void:
@@ -139,6 +152,28 @@ class ArcEpee extends Node2D:
 	func _draw() -> void:
 		var t := clampf(_vie / DUREE, 0.0, 1.0)
 		var a := 1.0 - t
-		var balayage := lerpf(-0.9, 0.5, t)
-		draw_arc(Vector2.ZERO, 46.0, angle_coup + balayage - 0.5, angle_coup + balayage + 0.5,
-			12, Color(1.0, 1.0, 0.95, a * 0.9), 12.0 * a + 2.0)
+		# Trois arcs successifs qui gonflent vers la limite de portée.
+		for i in 3:
+			var r := portee * (0.35 + 0.65 * t) * (0.55 + 0.225 * i)
+			draw_arc(Vector2.ZERO, r, angle_cone - demi_cone, angle_cone + demi_cone,
+				14, Color(1.0, 1.0, 0.95, a * (0.9 - 0.2 * i)), 8.0 - 2.0 * i)
+		# L'arc blanc de limite de portée.
+		draw_arc(Vector2.ZERO, portee, angle_cone - demi_cone, angle_cone + demi_cone,
+			16, Color(1.0, 1.0, 1.0, a * 0.5), 3.0)
+
+
+## Rond de traînée du dash, s'estompe sur place.
+class Traine extends Node2D:
+	const DUREE := 0.3
+	var teinte := Color(0.45, 0.9, 1.0)
+	var _vie := 0.0
+
+	func _process(delta: float) -> void:
+		_vie += delta
+		if _vie >= DUREE:
+			queue_free()
+		queue_redraw()
+
+	func _draw() -> void:
+		var a := (1.0 - _vie / DUREE) * 0.5
+		draw_circle(Vector2.ZERO, 14.0 * (1.0 - _vie / DUREE) + 4.0, Color(teinte.r, teinte.g, teinte.b, a))
