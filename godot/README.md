@@ -10,8 +10,13 @@ Export HTML5 automatique par GitHub Actions, publié sur GitHub Pages.
 
 **▶ Jouer :** https://itluss.github.io/Iluminia/godot/
 
-Aucun asset externe : monde et personnages 100 % procéduraux, sons
-synthétisés au démarrage. Threads désactivés à l'export → fonctionne sur
+**Personnages Meshy** : Max (modèle riggé, animations marche/course
+fusionnées dans un seul AnimationPlayer) et Zep (modèle sculpté) viennent
+des GLB générés par Meshy (`assets/models/`, copiés depuis
+`public/models/`). Nova, Ficelle et le bébé dragon restent des chibis
+procéduraux en attendant leurs planches — conforme au plan « remplacer les
+bots par de vrais personnages au fur et à mesure ». Le monde et les sons
+restent 100 % procéduraux. Threads désactivés à l'export → fonctionne sur
 GitHub Pages sans en-têtes COOP/COEP, mobile compris.
 
 ## La boucle (V5 — la question se traite AVANT l'action)

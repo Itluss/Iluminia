@@ -1,10 +1,24 @@
 class_name Personnage3D
 extends Node3D
-## Personnage « toon chibi » 100 % procédural, style planche Eluminia :
-## corps rond, capuche claire, grands yeux, pieds trottinants — ou bébé
-## dragon (ailes battantes, cornes, ventre crème, queue). Contours peints
-## par coque inversée, squash & stretch, flash d'impact, anneau doré du
-## porteur, bulles de protection, étiquette de nom.
+## Personnage 3D : modèle Meshy texturé quand il existe (Max riggé avec
+## marche/course fusionnées, Zep sculpté), sinon « toon chibi » procédural
+## style planche Eluminia (Nova, Ficelle, bébé dragon) — les bots seront
+## remplacés par de vrais personnages au fur et à mesure. Dans tous les cas :
+## squash & stretch, anneau doré du porteur, bulles, étiquette de nom.
+
+## Personnages disposant d'un modèle Meshy (voir assets/models/).
+const MODELES := {
+	"Max": {
+		"scene": "res://assets/models/max-walk.glb",
+		"animations": {"course": "res://assets/models/max-run.glb", "repos": "res://assets/models/max-character-rigged.glb"},
+		"echelle": 1.25, "offset_y": 0.0, "cap": 0.0,
+	},
+	"Zep": {
+		"scene": "res://assets/models/zep-character.glb",
+		"animations": {},
+		"echelle": 0.85, "offset_y": 0.81, "cap": PI,
+	},
+}
 
 var genre := "chasseur"          ## "chasseur" ou "dragon"
 var couleur := Color(0.30, 0.75, 0.72)
@@ -24,6 +38,9 @@ var _aile_d: Node3D
 var _anneau: MeshInstance3D
 var _bulle: MeshInstance3D
 var _mat_bulle: StandardMaterial3D
+var _animateur: AnimationPlayer  ## renseigné si modèle Meshy animé
+var _anim_courante := ""
+var _modele_statique := false    ## Zep : pas de rig, dandinement procédural
 
 
 func _ready() -> void:
@@ -31,6 +48,8 @@ func _ready() -> void:
 	add_child(_racine)
 	if genre == "dragon":
 		_construire_dragon()
+	elif MODELES.has(etiquette):
+		_construire_modele(MODELES[etiquette])
 	else:
 		_construire_chasseur()
 	# Anneau doré du porteur du dragon (masqué par défaut).
@@ -55,6 +74,51 @@ func _ready() -> void:
 		nom.no_depth_test = true
 		nom.position = Vector3(0.0, 1.75, 0.0)
 		add_child(nom)
+
+
+## Instancie un modèle Meshy et fusionne ses animations annexes (les GLB
+## Meshy livrent une animation par fichier, sur le même squelette).
+func _construire_modele(infos: Dictionary) -> void:
+	var scene: PackedScene = load(infos.scene)
+	var inst: Node3D = scene.instantiate()
+	inst.scale = Vector3.ONE * float(infos.echelle)
+	inst.position.y = float(infos.offset_y) * float(infos.echelle)
+	inst.rotation.y = float(infos.cap) # aligne le visage du modèle sur +Z
+	_racine.add_child(inst)
+	_animateur = inst.find_child("AnimationPlayer", true, false)
+	_modele_statique = _animateur == null
+	if _animateur != null:
+		var bibliotheque: AnimationLibrary = _animateur.get_animation_library("")
+		# L'animation embarquée du fichier principal devient « marche ».
+		for nom in _animateur.get_animation_list():
+			var anim: Animation = _animateur.get_animation(nom)
+			anim.loop_mode = Animation.LOOP_LINEAR
+			if nom != "marche":
+				bibliotheque.add_animation("marche", anim.duplicate())
+		# Les autres fichiers apportent chacun leur clip (course, repos…).
+		var annexes: Dictionary = infos.animations
+		for cle in annexes:
+			var autre: Node3D = (load(annexes[cle]) as PackedScene).instantiate()
+			var ap: AnimationPlayer = autre.find_child("AnimationPlayer", true, false)
+			if ap != null:
+				for nom in ap.get_animation_list():
+					var anim: Animation = ap.get_animation(nom).duplicate()
+					anim.loop_mode = Animation.LOOP_LINEAR
+					bibliotheque.add_animation(cle, anim)
+			autre.queue_free()
+		_jouer_animation("repos", 0.6)
+
+
+func _jouer_animation(nom: String, vitesse := 1.0) -> void:
+	if _animateur == null or _anim_courante == nom:
+		return
+	if not _animateur.has_animation(nom):
+		# repli : la marche existe toujours
+		nom = "marche"
+		if _anim_courante == nom:
+			return
+	_anim_courante = nom
+	_animateur.play(nom, 0.25, vitesse)
 
 
 func _construire_chasseur() -> void:
@@ -127,9 +191,19 @@ func _process(delta: float) -> void:
 	# Orientation lissée vers la direction du regard.
 	_cap = lerp_angle(_cap, _cible_cap, minf(delta * 12.0, 1.0))
 	_racine.rotation.y = _cap
-	# Rebond de trottinement / respiration.
-	var saut := absf(sin(_t * 10.0)) * (0.14 if en_marche else 0.02)
-	_racine.position.y = saut
+	# Modèle Meshy riggé : les clips remplacent le rebond procédural.
+	if _animateur != null:
+		_racine.position.y = 0.0
+		if en_marche:
+			_jouer_animation("course", 1.15)
+		else:
+			_jouer_animation("repos", 0.6)
+	else:
+		# Rebond de trottinement / respiration (chibis et modèle statique).
+		var saut := absf(sin(_t * 10.0)) * (0.14 if en_marche else 0.02)
+		_racine.position.y = saut
+		if _modele_statique:
+			_racine.rotation.z = sin(_t * 12.0) * (0.06 if en_marche else 0.0)
 	# Pieds qui trottinent.
 	if _pied_g != null:
 		var pas := sin(_t * 14.0) * (0.16 if en_marche else 0.0)
@@ -140,8 +214,8 @@ func _process(delta: float) -> void:
 		var bat := sin(_t * 9.0) * 0.6
 		_aile_g.rotation.z = 0.3 + bat
 		_aile_d.rotation.z = -0.3 - bat
-	# Flash d'impact : émission blanche qui retombe.
-	if _flash > 0.0:
+	# Flash d'impact : émission blanche qui retombe (chibis uniquement).
+	if _flash > 0.0 and _mat_corps != null:
 		_flash = maxf(_flash - delta * 5.0, 0.0)
 		_mat_corps.emission_enabled = _flash > 0.0
 		_mat_corps.emission = Color.WHITE

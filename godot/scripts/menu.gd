@@ -58,10 +58,10 @@ func _ready() -> void:
 	# Caméra du diorama : même angle isométrique que le jeu, un peu basse.
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 13.0
+	camera.size = 10.5
 	camera.position = Vector3(10.0, 11.0, 10.0)
 	add_child(camera)
-	camera.look_at(Vector3(0.0, 1.2, 0.0))
+	camera.look_at(Vector3(0.0, 1.4, 0.0))
 	camera.current = true
 
 	# — Interface —
