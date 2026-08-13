@@ -88,3 +88,22 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Preuve de mise en ligne : le run n'est vert que si les URL répondent 200
+  # (le jeu Godot ET une page spike Three.js — garde anti-régression).
+  verifier:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Vérifier que le site répond (HTTP 200)
+        run: |
+          sleep 15
+          for url in \
+            "https://itluss.github.io/Iluminia/godot/" \
+            "https://itluss.github.io/Iluminia/godot/index.wasm" \
+            "https://itluss.github.io/Iluminia/godot/index.pck" \
+            "https://itluss.github.io/Iluminia/spike3d-village.html"; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' -L "$url")
+            echo "HTTP $code — $url"
+            [ "$code" = "200" ] || exit 1
+          done
