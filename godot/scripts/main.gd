@@ -5,14 +5,10 @@ extends Node3D
 ## chasseurs, effets et interface. Chaque couche est câblée ici — en v2
 ## multijoueur, le nœud Reseau s'insérera entre l'arène et les chasseurs.
 
-## Personnages : Max (joueur) et les bots de la planche Eluminia,
-## positions de départ du spike.
-const CHASSEURS := [
-	{"nom": "Max", "teinte": Identite.TEINTE_MAX, "joueur": true, "pos": Vector2(0.0, 6.0)},
-	{"nom": "Zep", "teinte": Identite.TEINTE_ZEP, "joueur": false, "pos": Vector2(0.0, -6.0)},
-	{"nom": "Nova", "teinte": Identite.TEINTE_NOVA, "joueur": false, "pos": Vector2(6.0, 3.0)},
-	{"nom": "Ficelle", "teinte": Identite.TEINTE_FICELLE, "joueur": false, "pos": Vector2(-6.0, 3.0)},
-]
+## Les quatre Lumins ; le joueur incarne celui choisi dans le lobby
+## (Profil.personnage), les autres deviennent les bots. Positions du spike.
+const NOMS := ["Max", "Zep", "Nova", "Ficelle"]
+const POSTES := [Vector2(0.0, 6.0), Vector2(0.0, -6.0), Vector2(6.0, 3.0), Vector2(-6.0, 3.0)]
 
 ## Recul isométrique de la caméra par rapport au héros.
 const DECALAGE_CAMERA := Vector3(14.0, 17.0, 14.0)
@@ -35,13 +31,19 @@ func _ready() -> void:
 	fx = FX.new()
 	add_child(fx)
 
-	for def in CHASSEURS:
+	# Le Lumin choisi au lobby en premier (joueur), les autres en bots —
+	# chacun avec sa variante de couleur de la garde-robe.
+	var noms: Array = NOMS.duplicate()
+	noms.erase(Profil.personnage)
+	noms.insert(0, Profil.personnage)
+	for i in noms.size():
+		var nom: String = noms[i]
 		var c := Chasseur.new()
 		c.arene = arene
-		c.configurer(def.nom, def.teinte, def.joueur, def.pos)
+		c.configurer(nom, Profil.couleur_de(nom), i == 0, POSTES[i])
 		arene.add_child(c)
 		arene.chasseurs.append(c)
-		if def.joueur:
+		if i == 0:
 			joueur = c
 
 	# Caméra isométrique orthographique — angle du spike, ne pas changer

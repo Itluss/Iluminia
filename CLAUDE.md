@@ -69,6 +69,13 @@ dans `godot/scripts/personnage3d.gd`), tokens de style centralisés dans
 `godot/scripts/identite.gd`, kit UI de la planche dans
 `godot/scripts/ui.gd`. Les modèles Meshy (essai) ont été retirés de la
 version Godot — ils restent dans `public/models/` pour les spikes.
+**Lobby complet et sous-écrans** (2026-08-13, « tu dois tout créer ») :
+accueil (niveau/XP de compte, étoiles, JOUER, PERSONNAGES/POUVOIRS/
+CADEAUX, son, aide), sélection de personnage appliquée en jeu, garde-robe
+de couleurs débloquées par le **coffre quotidien**, méta persistée par
+l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
+récompenses de compte au podium. Navigation testée en vrai navigateur
+(Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
 Boucle V5 fidèle au spike (QUESTION 6 s figée → JEU 45 s, vol du dragon à
 l'Onde de choc, énergie/K.O., cristaux, gel 2 s sur mauvaise zone, refus
 individuels barrés, podium à 3 min) ; valeurs reprises de

@@ -322,7 +322,7 @@ func _dessiner_boutons(c: Control) -> void:
 		var rect := Rect2(centre - Vector2(cote, cote) / 2.0, Vector2(cote, cote))
 		UI.bouton(c, rect, teinte if cd <= 0.0 else Color(0.24, 0.27, 0.4),
 			"pouvoir_%s_%s" % [action, str(cd <= 0.0)], enfonce, Identite.RAYON_MD)
-		_icone_bouton(c, centre, cote * 0.5, action)
+		UI.icone_pouvoir(c, centre, cote * 0.5, action)
 		if cd > 0.0:
 			var frac := cd / cd_max
 			c.draw_arc(centre, cote / 2.0 - 5.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - frac), 32,
@@ -331,23 +331,6 @@ func _dessiner_boutons(c: Control) -> void:
 		else:
 			UI.texte(c, centre + Vector2(0.0, cote / 2.0 + 16.0), str(b.touche), 12,
 				Color(1.0, 1.0, 1.0, 0.7), true, 4)
-
-
-func _icone_bouton(c: Control, p: Vector2, r: float, action: String) -> void:
-	match action:
-		"onde":
-			for i in 3:
-				c.draw_arc(p + Vector2(-r * 0.3, 0.0), r * (0.25 + 0.18 * i), -0.7, 0.7, 10, Identite.CONTOUR, 4.0)
-		"dash":
-			for i in 2:
-				var px := p + Vector2(-r * 0.35 + i * r * 0.4, 0.0)
-				c.draw_line(px + Vector2(-r * 0.2, -r * 0.35), px + Vector2(r * 0.15, 0.0), Identite.CONTOUR, 5.0)
-				c.draw_line(px + Vector2(-r * 0.2, r * 0.35), px + Vector2(r * 0.15, 0.0), Identite.CONTOUR, 5.0)
-		"bouclier":
-			c.draw_colored_polygon(PackedVector2Array([
-				p + Vector2(-r * 0.4, -r * 0.35), p + Vector2(r * 0.4, -r * 0.35),
-				p + Vector2(r * 0.4, r * 0.1), p + Vector2(0.0, r * 0.45), p + Vector2(-r * 0.4, r * 0.1),
-			]), Identite.CONTOUR)
 
 
 ## Indicateurs de bord d'écran : dragon et zones hors champ, avec distance.
@@ -416,6 +399,13 @@ func _dessiner_podium(c: Control) -> void:
 		UI.texte(c, Vector2(rect.position.x + 116.0, y + 7.0), ch.nom, 21,
 			Identite.OR if i == 0 else Identite.TEXTE)
 		UI.texte(c, Vector2(rect.end.x - 116.0, y + 7.0), "%d pts" % ch.score, 21, Identite.TEXTE_ATTENUE)
+	# Gains de compte (XP du lobby + étoiles).
+	var gains: Dictionary = arene.recompense_podium
+	if not gains.is_empty():
+		var texte_gains := "+%d XP    +%d ⭐" % [int(gains.xp), int(gains.etoiles)]
+		if int(gains.niveaux) > 0:
+			texte_gains += "    NIVEAU %d !" % Profil.niveau
+		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 18.0), texte_gains, 18, Identite.OR, true)
 	var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 220.0)
 	var bl := 240.0 * pulse
 	var bh := 62.0 * pulse

@@ -41,6 +41,11 @@ func _ready() -> void:
 	]))
 
 
+## Coupe ou rétablit tout le son (réglage du lobby, persisté par Profil).
+func definir_son(actif: bool) -> void:
+	AudioServer.set_bus_mute(0, not actif)
+
+
 func jouer(nom: String) -> void:
 	if not _sons.has(nom):
 		return

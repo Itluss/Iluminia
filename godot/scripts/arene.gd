@@ -44,6 +44,7 @@ var temps_etat := COMPTE_QUESTION
 var temps_match := DUREE_MATCH
 var cristal_temps := CRISTAL_PERIODE
 var message_interlude := ""
+var recompense_podium := {}     ## gains de compte affichés au podium
 var _chevrons: Array = []       ## flèches-boussole vers la zone choisie
 var _label_distance: Label3D
 var _rochers: Array = []        ## rochers flottants en orbite {noeud, rayon, vitesse, phase, hauteur}
@@ -444,6 +445,16 @@ func _fin_manche_chrono() -> void:
 func _podium() -> void:
 	etat = Etat.PODIUM
 	Audio.jouer("podium")
+	# Récompenses de compte (lobby) : XP selon le score, étoiles selon le rang.
+	if joueur != null and recompense_podium.is_empty():
+		var classement: Array = chasseurs.duplicate()
+		classement.sort_custom(func(a, b): return a.score > b.score)
+		var rang: int = classement.find(joueur)
+		var gain_xp: int = 20 + maxi(joueur.score, 0) / 2
+		var gain_etoiles: int = 5 if rang == 0 else 2
+		var niveaux := Profil.gagner_xp(float(gain_xp))
+		Profil.gagner_etoiles(gain_etoiles)
+		recompense_podium = {"xp": gain_xp, "etoiles": gain_etoiles, "niveaux": niveaux}
 	if hud != null:
 		hud.sur_podium()
 
@@ -451,6 +462,7 @@ func _podium() -> void:
 ## Nouveau match complet (depuis le podium).
 func rejouer() -> void:
 	temps_match = DUREE_MATCH
+	recompense_podium = {}
 	for c in chasseurs:
 		c.score = 0
 		c.energie = Chasseur.ENERGIE_MAX

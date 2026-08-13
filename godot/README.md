@@ -32,8 +32,27 @@ Identité propre au jeu, ancrée sur le design system existant
   boutons de réponse (vert/bleu/or/magenta).
 - **L'interface** (`ui.gd`) : le kit de la planche porté en code —
   panneaux marine, boutons joufflus glossy, hexagone « ? » violet, jauge
-  d'énergie à éclair, bannière VICTOIRE à rubans, podium à pastilles de
+  d'énergie à éclair, bannière VICTOIRE à rubans, fenêtres à titre + ✕,
+  coffre de récompense, indicateurs, badges NEW, podium à pastilles de
   rang, JOUER doré pulsé.
+
+## Le lobby et ses sous-écrans (`menu.gd`)
+
+- **Accueil** : logo étoilé, badge **niveau/XP de compte**, indicateur
+  d'**étoiles**, JOUER doré, boutons PERSONNAGES / POUVOIRS / CADEAUX
+  (badge NEW quand le coffre est prêt), boutons son et aide.
+- **Personnages** : choix du Lumin joué (appliqué en jeu — les autres
+  deviennent les bots) + **garde-robe** de 4 couleurs par personnage.
+- **Pouvoirs** : le kit équipé en slots (Onde/Dash/Bouclier) + slots « + ».
+- **Cadeaux** : **coffre quotidien** (fenêtre récompense de la planche) —
+  débloque une couleur de Lumin ou des étoiles, une fois par jour.
+- **Aide** : la boucle du jeu et les contrôles.
+
+La méta est persistée par l'autoload **`profil.gd`** (`user://profil.cfg`,
+IndexedDB sur le web) : personnage choisi, variantes débloquées, niveau/XP
+de compte (gagnés au podium : 20 + score/2, étoiles selon le rang), son.
+Crochet de dev : `ILUMINIA_ECRAN=personnages|pouvoirs|cadeaux|aide` ouvre
+un sous-écran directement (captures automatisées).
 
 Tout est 100 % procédural (aucun asset externe, sons synthétisés) : le jeu
 entier pèse ~34 Mo. Threads désactivés à l'export → fonctionne sur GitHub

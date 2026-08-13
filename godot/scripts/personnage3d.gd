@@ -16,16 +16,26 @@ extends Node3D
 ## Le bébé dragon suit le même langage (rondeurs, membrane lumineuse).
 
 ## Fiches des personnages jouables (teintes : identite.gd).
+## `variantes` : garde-robe de couleurs — la première est débloquée d'office,
+## les autres s'obtiennent via le cadeau quotidien (voir profil.gd).
 const FICHES := {
 	"Max": {"couleur": Identite.TEINTE_MAX, "crete": "etoile", "crete_couleur": Identite.OR,
-		"echarpe": Identite.OR, "accessoire": ""},
+		"echarpe": Identite.OR, "accessoire": "",
+		"variantes": [Identite.TEINTE_MAX, Identite.CYAN, Identite.OR, Identite.VERT]},
 	"Zep": {"couleur": Identite.TEINTE_ZEP, "crete": "eclair", "crete_couleur": Identite.CYAN,
-		"echarpe": Identite.CREME, "accessoire": "hoverboard"},
+		"echarpe": Identite.CREME, "accessoire": "hoverboard",
+		"variantes": [Identite.TEINTE_ZEP, Identite.MAGENTA, Identite.BLEU, Identite.ORANGE]},
 	"Nova": {"couleur": Identite.TEINTE_NOVA, "crete": "goutte", "crete_couleur": Identite.CREME,
-		"echarpe": Identite.VIOLET, "accessoire": ""},
+		"echarpe": Identite.VIOLET, "accessoire": "",
+		"variantes": [Identite.TEINTE_NOVA, Identite.VERT, Identite.VIOLET, Identite.ROUGE]},
 	"Ficelle": {"couleur": Identite.TEINTE_FICELLE, "crete": "flamme", "crete_couleur": Identite.ORANGE,
-		"echarpe": Identite.CYAN, "accessoire": ""},
+		"echarpe": Identite.CYAN, "accessoire": "",
+		"variantes": [Identite.TEINTE_FICELLE, Identite.ORANGE, Identite.CYAN, Identite.CREME]},
 }
+
+## Si vrai, la couleur vient de la fiche ; mettre à faux pour imposer une
+## variante (sélection du joueur, aperçus de la garde-robe).
+var utiliser_fiche_couleur := true
 
 var genre := "chasseur"          ## "chasseur" ou "dragon"
 var couleur := Color(0.30, 0.75, 0.72)
@@ -57,7 +67,7 @@ func _ready() -> void:
 		_construire_dragon()
 	else:
 		var fiche: Dictionary = FICHES.get(etiquette, {})
-		if not fiche.is_empty():
+		if not fiche.is_empty() and utiliser_fiche_couleur:
 			couleur = fiche.couleur
 		_construire_lumin(fiche)
 	# Anneau doré du porteur du dragon (masqué par défaut).

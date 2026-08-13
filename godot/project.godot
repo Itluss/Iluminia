@@ -13,6 +13,7 @@ config/icon="res://icon.svg"
 [autoload]
 
 Audio="*res://scripts/audio.gd"
+Profil="*res://scripts/profil.gd"
 
 [display]
 

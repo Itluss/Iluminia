@@ -120,6 +120,62 @@ static func eclair(c: Control, centre: Vector2, taille: float, teinte: Color) ->
 	c.draw_colored_polygon(pts, teinte)
 
 
+## Fenêtre standard de la planche : panneau + bandeau de titre + X rouge.
+## Retourne le rect du bouton de fermeture (pour la gestion du toucher).
+static func fenetre(c: Control, rect: Rect2, titre: String) -> Rect2:
+	panneau(c, rect)
+	c.draw_style_box(style("fenetre_titre", Identite.PANNEAU_CLAIR, Identite.CONTOUR, Identite.RAYON_SM, Identite.BORD, 0),
+		Rect2(rect.position + Vector2(14.0, -16.0), Vector2(rect.size.x - 74.0, 44.0)))
+	texte(c, Vector2(rect.position.x + 14.0 + (rect.size.x - 74.0) / 2.0, rect.position.y + 14.0),
+		titre, 20, Identite.TEXTE, true)
+	var croix := Rect2(rect.end.x - 50.0, rect.position.y - 16.0, 44.0, 44.0)
+	bouton(c, croix, Identite.ROUGE, "fermer", false, Identite.RAYON_SM)
+	texte(c, croix.get_center() + Vector2(0.0, 8.0), "✕", 22, Identite.TEXTE, true)
+	return croix
+
+
+## Coffre de récompense de la planche (fenêtre cadeau) : rayons + coffre or.
+static func coffre(c: Control, centre: Vector2, taille: float, ouvert := false) -> void:
+	# Rayons lumineux derrière le coffre.
+	for i in 8:
+		var dir := Vector2.from_angle(TAU * i / 8.0 + Time.get_ticks_msec() / 3000.0)
+		c.draw_colored_polygon(PackedVector2Array([
+			centre, centre + dir.rotated(0.12) * taille * 1.6, centre + dir.rotated(-0.12) * taille * 1.6,
+		]), Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, 0.10))
+	var l := taille
+	var corps := Rect2(centre + Vector2(-l / 2.0, -l * 0.15), Vector2(l, l * 0.55))
+	var couvercle := Rect2(centre + Vector2(-l / 2.0, -l * (0.62 if ouvert else 0.45)), Vector2(l, l * 0.34))
+	c.draw_style_box(style("coffre", Identite.OR_SOMBRE, Identite.CONTOUR, Identite.RAYON_SM, Identite.BORD_FORT, 4), corps)
+	c.draw_style_box(style("coffre_couvercle", Identite.OR, Identite.CONTOUR, Identite.RAYON_SM, Identite.BORD_FORT, 3), couvercle)
+	c.draw_circle(centre + Vector2(0.0, l * 0.08), l * 0.1 + 3.0, Identite.CONTOUR)
+	c.draw_circle(centre + Vector2(0.0, l * 0.08), l * 0.1, Identite.CYAN)
+
+
+## Icônes des trois pouvoirs (partagées HUD / écran Pouvoirs).
+static func icone_pouvoir(c: Control, p: Vector2, r: float, action: String) -> void:
+	match action:
+		"onde":
+			for i in 3:
+				c.draw_arc(p + Vector2(-r * 0.3, 0.0), r * (0.25 + 0.18 * i), -0.7, 0.7, 10, Identite.CONTOUR, 4.0)
+		"dash":
+			for i in 2:
+				var px := p + Vector2(-r * 0.35 + i * r * 0.4, 0.0)
+				c.draw_line(px + Vector2(-r * 0.2, -r * 0.35), px + Vector2(r * 0.15, 0.0), Identite.CONTOUR, 5.0)
+				c.draw_line(px + Vector2(-r * 0.2, r * 0.35), px + Vector2(r * 0.15, 0.0), Identite.CONTOUR, 5.0)
+		"bouclier":
+			c.draw_colored_polygon(PackedVector2Array([
+				p + Vector2(-r * 0.4, -r * 0.35), p + Vector2(r * 0.4, -r * 0.35),
+				p + Vector2(r * 0.4, r * 0.1), p + Vector2(0.0, r * 0.45), p + Vector2(-r * 0.4, r * 0.1),
+			]), Identite.CONTOUR)
+
+
+## Pastille-indicateur du haut de la planche (étoiles, trophées…).
+static func indicateur(c: Control, rect: Rect2, teinte: Color, valeur: String) -> void:
+	c.draw_style_box(style("indicateur", Identite.NUIT, Identite.CONTOUR, 18, Identite.BORD, 3), rect)
+	etoile(c, rect.position + Vector2(20.0, rect.size.y / 2.0), 11.0, teinte)
+	texte(c, Vector2(rect.position.x + 40.0, rect.size.y / 2.0 + rect.position.y + 6.0), valeur, 16, Identite.TEXTE)
+
+
 ## Étoile à cinq branches (logo, podium).
 static func etoile(c: Control, centre: Vector2, rayon: float, teinte: Color, contour := true) -> void:
 	var pts := PackedVector2Array()

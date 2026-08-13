@@ -72,6 +72,7 @@ func _ready() -> void:
 	visuel = Personnage3D.new()
 	visuel.genre = "chasseur"
 	visuel.couleur = teinte
+	visuel.utiliser_fiche_couleur = false # la variante de la garde-robe prime
 	visuel.etiquette = nom
 	add_child(visuel)
 
