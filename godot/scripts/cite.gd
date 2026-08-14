@@ -35,22 +35,54 @@ const PALIERS := [
 ## `source` des ressources : l'économie acceptera plus tard des entrées
 ## SOURCE_ATTACK sans toucher à ce modèle.
 const BATIMENTS := {
-	"maison": {"titre": "Maison", "palier": 0, "or": 0, "taille": 2,
-		"production": {}, "descr": "Ton premier toit."},
+	"maison": {"titre": "Maison des Aventuriers", "palier": 0, "or": 0, "taille": 3,
+		"categorie": "economie", "niveau_max": 5,
+		"production": {}, "descr": "Ton premier toit — il peut devenir un manoir."},
 	"potager": {"titre": "Potager", "palier": 1, "or": 40, "taille": 2,
+		"categorie": "economie", "niveau_max": 3,
 		"production": {"nourriture": 2}, "descr": "Produit de la nourriture."},
 	"atelier": {"titre": "Atelier", "palier": 2, "or": 120, "taille": 2,
+		"categorie": "economie", "niveau_max": 3,
 		"production": {"bois": 2}, "descr": "Produit du bois."},
 	"forge": {"titre": "Forge", "palier": 3, "or": 260, "taille": 2,
+		"categorie": "economie", "niveau_max": 4,
 		"production": {"pierre": 2}, "descr": "Travaille pierre et métal."},
 	"ecurie": {"titre": "Écurie", "palier": 4, "or": 420, "taille": 3,
+		"categorie": "economie", "niveau_max": 3,
 		"production": {}, "descr": "Accueille tes montures."},
 	"murailles": {"titre": "Murailles", "palier": 5, "or": 700, "taille": 1,
+		"categorie": "defense", "niveau_max": 3,
 		"production": {}, "descr": "Protège ta ville."},
 	"chateau": {"titre": "Château", "palier": 6, "or": 1500, "taille": 4,
+		"categorie": "prestige", "niveau_max": 5,
 		"production": {"or": 5}, "descr": "Le cœur de ta cité."},
 	"tour_celeste": {"titre": "Tour céleste", "palier": 7, "or": 3000, "taille": 3,
+		"categorie": "prestige", "niveau_max": 3,
 		"production": {}, "descr": "La magie d'Illuminia elle-même."},
+}
+
+## L'ÉVOLUTION de la Maison des Aventuriers : chaque niveau a un nom —
+## « ma petite maison peut devenir ça » (moteur de désir).
+const EVOLUTION_MAISON := ["Maison des Aventuriers", "Maison améliorée",
+	"Grande maison", "Relais des Aventuriers", "Manoir des Héros"]
+
+## FUTURS DÉBLOCAGES D'ÉCOSYSTÈME (catégorie séparée des bâtiments
+## économiques — décorations, nature, eau). ABSENTS du terrain initial
+## et du catalogue v1 : « le terrain vide est une promesse, pas un
+## manque de contenu ». Chaque élément deviendra une récompense.
+const ENVIRONNEMENT := {
+	"arbre_simple": {"titre": "Petit arbre", "palier": 2},
+	"arbre_fruitier": {"titre": "Arbre fruitier", "palier": 3},
+	"parterre_fleurs": {"titre": "Parterre de fleurs", "palier": 2},
+	"buisson": {"titre": "Buisson", "palier": 2},
+	"chemin_pierre": {"titre": "Chemin de pierre", "palier": 2},
+	"lanterne": {"titre": "Lanterne", "palier": 3},
+	"banc": {"titre": "Banc", "palier": 3},
+	"fontaine": {"titre": "Fontaine", "palier": 4},
+	"riviere": {"titre": "Rivière", "palier": 5},
+	"etang": {"titre": "Étang", "palier": 5},
+	"pont": {"titre": "Pont", "palier": 5},
+	"arbre_magique": {"titre": "Arbre magique", "palier": 7},
 }
 
 

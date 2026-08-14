@@ -1,61 +1,43 @@
 class_name Ville
 extends Node3D
-## MA VILLE — la matérialisation du progrès (vertical slice v1).
+## MA VILLE — reproduction de la maquette « Ma Ville » d'Illuminia.
 ##
-## Vue 3D inclinée « stratégique » : on contemple, on construit, on
-## organise — pas de personnage à déplacer. La ville vit sur la GRILLE
-## INVISIBLE de cite.gd ; v1 : le catalogue est réel (paliers de
-## connaissance + or) et CONSTRUIRE pose le bâtiment sur une case libre.
-## Le placement libre (choisir/déplacer/tourner) viendra sur ce modèle.
+## LE TOUT DÉBUT : le terrain est PRESQUE VIDE, c'est voulu — « le
+## terrain vide est une promesse, pas un manque de contenu ». Aucun
+## arbre, aucune rivière : chaque élément d'écosystème sera une
+## récompense future (Cite.ENVIRONNEMENT). Seule la MAISON DES
+## AVENTURIERS trône, grande et fière : la première construction.
 ##
-## DA : fantasy médiévale chaleureuse au départ — le merveilleux
-## (cristaux, magie) grandira avec la ville.
+## Grille logique INVISIBLE (placement libre, collisions, sauvegarde) —
+## elle n'apparaît qu'en MODE CONSTRUCTION avec le bâtiment fantôme
+## (vert = valide, rouge = invalide), rotation et validation.
+
+enum Mode { NORMAL, CONSTRUCTION }
+
+var mode := Mode.NORMAL
+var type_en_construction := ""
+var fantome := {"x": 6, "y": 7, "rot": 0, "valide": true}
+var selection := -1              ## indice du bâtiment sélectionné dans Profil.ville
+var catalogue_ouvert := true
 
 var _camera: Camera3D
-var _cible_camera := Vector3(0.0, 0.0, 0.0)
+var _cible_camera := Vector3.ZERO
 var _noeuds_batiments: Array = []
+var _noeud_fantome: Node3D
+var _grille: Node3D
 var surface: SurfaceVille
 var _t := 0.0
 
 
 func _ready() -> void:
 	Ambiance.installer(self, Ambiance.THEME_JOUR)
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	# Plateau d'herbe en damier doux (les cases de la grille, subtiles).
-	for gx in Cite.TAILLE_GRILLE:
-		for gy in Cite.TAILLE_GRILLE:
-			var teinte := Color(0.34, 0.64, 0.36) if (gx + gy) % 2 == 0 else Color(0.32, 0.6, 0.34)
-			var tuile := BoxMesh.new()
-			tuile.size = Vector3(1.0, 0.3, 1.0)
-			Materiaux.mesh(self, tuile, Materiaux.toon(teinte),
-				Vector3(gx - demi + 0.5, -0.15, gy - demi + 0.5), Vector3.ONE, false)
-	# Socle de terre sous le plateau.
-	var socle := BoxMesh.new()
-	socle.size = Vector3(Cite.TAILLE_GRILLE + 0.6, 1.6, Cite.TAILLE_GRILLE + 0.6)
-	Materiaux.mesh(self, socle, Materiaux.toon(Color(0.42, 0.3, 0.22)),
-		Vector3(0.0, -1.1, 0.0), Vector3.ONE, false)
-	# Arbres du pourtour (chaleur médiévale).
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260814
-	for i in 10:
-		var bord: Vector2 = [Vector2(rng.randf_range(-demi + 0.8, demi - 0.8), -demi + 0.7),
-			Vector2(rng.randf_range(-demi + 0.8, demi - 0.8), demi - 0.7),
-			Vector2(-demi + 0.7, rng.randf_range(-demi + 0.8, demi - 0.8)),
-			Vector2(demi - 0.7, rng.randf_range(-demi + 0.8, demi - 0.8))][i % 4]
-		var arbre := Node3D.new()
-		arbre.position = Vector3(bord.x, 0.0, bord.y)
-		add_child(arbre)
-		var taille := rng.randf_range(0.7, 1.1)
-		Materiaux.mesh(arbre, Materiaux.cylindre(0.13 * taille, 0.9 * taille),
-			Materiaux.toon(Color(0.45, 0.32, 0.2)), Vector3(0.0, 0.45 * taille, 0.0))
-		Materiaux.mesh(arbre, Materiaux.sphere(0.62 * taille), Materiaux.toon(Color(0.25, 0.5, 0.27)),
-			Vector3(0.0, 1.25 * taille, 0.0), Vector3(1.0, 0.9, 1.0))
+	_construire_terrain()
+	_construire_grille()
 	_reconstruire_batiments()
 
-	# Caméra inclinée stratégique, déplaçable au doigt.
 	_camera = Camera3D.new()
 	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = 12.0
+	_camera.size = 13.0
 	add_child(_camera)
 	_camera.position = _cible_camera + Vector3(9.0, 11.0, 9.0)
 	_camera.look_at(_cible_camera)
@@ -69,103 +51,332 @@ func _ready() -> void:
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	couche.add_child(surface)
 
+	# Crochet de développement : capturer directement un état d'écran.
+	match OS.get_environment("ILUMINIA_VILLE"):
+		"construction":
+			entrer_construction.call_deferred("potager")
+		"selection":
+			selection = 0
 
-## (Re)construit les bâtiments 3D depuis le modèle Profil.ville.
+
+## Le terrain sobre et beau : herbe douce à nuances, bordure de terre et
+## roche détaillée, MICRO-détails seulement (pierres, touffes, fleurs
+## minuscules, amorce de chemin) — 85 % du terrain reste libre.
+func _construire_terrain() -> void:
+	var demi := Cite.TAILLE_GRILLE / 2.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260815
+	# Une seule nappe d'herbe (aucune couture de tuiles = aucune grille
+	# perceptible) puis de GRANDES taches organiques plus claires/foncées.
+	var sol := BoxMesh.new()
+	sol.size = Vector3(Cite.TAILLE_GRILLE, 0.3, Cite.TAILLE_GRILLE)
+	Materiaux.mesh(self, sol, Materiaux.toon(Color(0.36, 0.66, 0.37)),
+		Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
+	for i in 9:
+		var variation := rng.randf_range(-0.03, 0.035)
+		var teinte := Color(0.36 + variation, 0.66 + variation, 0.37 + variation)
+		var tache := Vector2(rng.randf_range(-demi + 1.6, demi - 1.6),
+			rng.randf_range(-demi + 1.6, demi - 1.6))
+		Materiaux.mesh(self, Materiaux.sphere(1.0), Materiaux.toon(teinte),
+			Vector3(tache.x, -0.235, tache.y),
+			Vector3(rng.randf_range(1.6, 3.2), 0.25, rng.randf_range(1.3, 2.6)), false)
+	# Bordure : couche de terre puis roche, avec pierres saillantes.
+	var terre := BoxMesh.new()
+	terre.size = Vector3(Cite.TAILLE_GRILLE + 0.4, 1.0, Cite.TAILLE_GRILLE + 0.4)
+	Materiaux.mesh(self, terre, Materiaux.toon(Color(0.48, 0.34, 0.24)),
+		Vector3(0.0, -0.8, 0.0), Vector3.ONE, false)
+	var roche := BoxMesh.new()
+	roche.size = Vector3(Cite.TAILLE_GRILLE + 0.1, 1.2, Cite.TAILLE_GRILLE + 0.1)
+	Materiaux.mesh(self, roche, Materiaux.toon(Color(0.42, 0.4, 0.44)),
+		Vector3(0.0, -1.85, 0.0), Vector3.ONE, false)
+	for i in 14:
+		var cote := i % 4
+		var le_long := rng.randf_range(-demi + 0.5, demi - 0.5)
+		var p: Vector3 = [Vector3(le_long, 0, demi + 0.18), Vector3(le_long, 0, -demi - 0.18),
+			Vector3(demi + 0.18, 0, le_long), Vector3(-demi - 0.18, 0, le_long)][cote]
+		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.16, 0.3)),
+			Materiaux.toon(Color(0.5, 0.47, 0.5)),
+			p + Vector3(0.0, rng.randf_range(-1.4, -0.4), 0.0), Vector3(1.0, 0.8, 1.0), false)
+	# Micro-détails du sol (non interactifs, très discrets).
+	for i in 7:
+		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
+		Materiaux.mesh(self, Materiaux.sphere(0.045),
+			Materiaux.toon([Color(0.95, 0.75, 0.3), Color(0.9, 0.5, 0.7), Color(0.95, 0.95, 0.9)][i % 3]),
+			Vector3(p.x, 0.05, p.y), Vector3.ONE, false)
+	for i in 4:
+		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
+		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.1, 0.18)),
+			Materiaux.toon(Color(0.55, 0.53, 0.56)), Vector3(p.x, 0.04, p.y), Vector3(1.0, 0.6, 1.0), false)
+	# Amorce de chemin devant la maison (3 dalles).
+	for i in 3:
+		var dalle := BoxMesh.new()
+		dalle.size = Vector3(0.5, 0.05, 0.42)
+		Materiaux.mesh(self, dalle, Materiaux.toon(Color(0.72, 0.68, 0.6)),
+			Vector3(1.0 - demi + 4.4 + i * 0.6, 0.03, 1.0 - demi + 7.6), Vector3.ONE, false)
+	# Nuages doux au loin (le beau ciel de la maquette).
+	for i in 5:
+		var nuage := Node3D.new()
+		var ang := TAU * i / 5.0 + 0.5
+		nuage.position = Vector3(cos(ang) * 18.0, rng.randf_range(4.0, 8.0), sin(ang) * 18.0)
+		add_child(nuage)
+		for b in 3:
+			Materiaux.mesh(nuage, Materiaux.sphere(rng.randf_range(0.9, 1.5)),
+				Materiaux.toon(Color(0.98, 0.99, 1.0)),
+				Vector3(b * 1.2 - 1.2, rng.randf_range(-0.2, 0.2), 0.0), Vector3(1.0, 0.6, 0.85), false)
+
+
+## Grille de construction — INVISIBLE en mode normal.
+func _construire_grille() -> void:
+	_grille = Node3D.new()
+	_grille.visible = false
+	add_child(_grille)
+	var demi := Cite.TAILLE_GRILLE / 2.0
+	for i in Cite.TAILLE_GRILLE + 1:
+		for aligne in 2:
+			var ligne := BoxMesh.new()
+			ligne.size = Vector3(Cite.TAILLE_GRILLE, 0.01, 0.03) if aligne == 0 \
+				else Vector3(0.03, 0.01, Cite.TAILLE_GRILLE)
+			var pos := Vector3(0.0, 0.06, i - demi) if aligne == 0 else Vector3(i - demi, 0.06, 0.0)
+			Materiaux.mesh(_grille, ligne, Materiaux.verre(Color.WHITE, 0.16, 0.3), pos, Vector3.ONE, false)
+
+
 func _reconstruire_batiments() -> void:
 	for n in _noeuds_batiments:
 		n.queue_free()
 	_noeuds_batiments = []
 	var demi := Cite.TAILLE_GRILLE / 2.0
 	for b in Profil.ville:
+		var taille := int(Cite.BATIMENTS.get(str(b.type), {}).get("taille", 2))
 		var noeud := Node3D.new()
-		noeud.position = Vector3(float(b.x) - demi + 1.0, 0.0, float(b.y) - demi + 1.0)
+		noeud.position = Vector3(float(b.x) + taille / 2.0 - demi, 0.0, float(b.y) + taille / 2.0 - demi)
 		noeud.rotation.y = float(b.get("rot", 0)) * PI / 2.0
 		add_child(noeud)
-		_construire_batiment(noeud, str(b.type))
+		_construire_batiment(noeud, str(b.type), int(b.get("niveau", 1)))
 		_noeuds_batiments.append(noeud)
-	# Emplacements de chantier libres (cercles pointillés dorés).
-	for p in _emplacements_libres():
-		var anneau := Materiaux.mesh(self, Materiaux.tore(0.7, 0.04),
-			Materiaux.emissif(Identite.OR, 0.9),
-			Vector3(float(p.x) - demi + 1.0, 0.05, float(p.y) - demi + 1.0), Vector3.ONE, false)
-		_noeuds_batiments.append(anneau)
 
 
-## Cases de chantier proposées (v1 : anneau autour du centre).
-func _emplacements_libres() -> Array:
-	var occupees := {}
-	for b in Profil.ville:
-		occupees[Vector2i(int(b.x), int(b.y))] = true
-	var libres: Array = []
-	for p in [Vector2i(3, 5), Vector2i(7, 3), Vector2i(8, 7), Vector2i(4, 8), Vector2i(7, 9)]:
-		if not occupees.has(p):
-			libres.append(p)
-	return libres
+## LA MAISON DES AVENTURIERS (house_adventurer_placeholder) : bois +
+## pierre, toit orange chaud, fenêtres arquées cyan, cheminée, lanterne,
+## bannière étoilée bleue — grande, détaillée, le point focal.
+## Les niveaux d'évolution ajoutent des volumes (même identité).
+func _construire_maison(noeud: Node3D, niveau: int) -> void:
+	# Socle de pierre.
+	var socle := BoxMesh.new()
+	socle.size = Vector3(2.7, 0.5, 2.3)
+	Materiaux.mesh(noeud, socle, Materiaux.toon(Color(0.62, 0.6, 0.64)), Vector3(0.0, 0.25, 0.0))
+	# Corps à colombages (crème + poutres bois).
+	var corps := BoxMesh.new()
+	corps.size = Vector3(2.5, 1.3, 2.1)
+	Materiaux.mesh(noeud, corps, Materiaux.toon(Color(0.96, 0.9, 0.78)), Vector3(0.0, 1.15, 0.0))
+	for cote: float in [-1.0, 1.0]:
+		var poutre := BoxMesh.new()
+		poutre.size = Vector3(0.1, 1.3, 0.08)
+		Materiaux.mesh(noeud, poutre, Materiaux.toon(Color(0.45, 0.3, 0.18)),
+			Vector3(cote * 0.9, 1.15, 1.06), Vector3.ONE, false)
+	var traverse := BoxMesh.new()
+	traverse.size = Vector3(2.5, 0.1, 0.08)
+	Materiaux.mesh(noeud, traverse, Materiaux.toon(Color(0.45, 0.3, 0.18)),
+		Vector3(0.0, 1.72, 1.06), Vector3.ONE, false)
+	# Grand toit orange chaud.
+	var toit := PrismMesh.new()
+	toit.size = Vector3(3.1, 1.2, 2.7)
+	Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.83, 0.45, 0.22)), Vector3(0.0, 2.4, 0.0))
+	# Cheminée de pierre sombre (lisible contre le toit clair).
+	Materiaux.mesh(noeud, Materiaux.cylindre(0.14, 0.8), Materiaux.toon(Color(0.4, 0.38, 0.44)),
+		Vector3(0.85, 2.9, -0.5))
+	# Porte en bois + fenêtres arquées lumineuses.
+	var porte := BoxMesh.new()
+	porte.size = Vector3(0.5, 0.8, 0.08)
+	Materiaux.mesh(noeud, porte, Materiaux.toon(Color(0.5, 0.33, 0.2)), Vector3(0.0, 0.9, 1.08))
+	for cote: float in [-1.0, 1.0]:
+		Materiaux.mesh(noeud, Materiaux.sphere(0.17), Materiaux.emissif(Identite.CYAN, 0.8),
+			Vector3(cote * 0.75, 1.35, 1.08), Vector3(1.0, 1.1, 0.3), false)
+	# Lanterne dorée près de la porte.
+	Materiaux.mesh(noeud, Materiaux.sphere(0.08), Materiaux.emissif(Identite.OR, 2.0),
+		Vector3(0.42, 1.35, 1.12), Vector3.ONE, false)
+	# Bannière bleue Illuminia à étoile.
+	Materiaux.mesh(noeud, Materiaux.cylindre(0.04, 1.6), Materiaux.toon(Color(0.4, 0.28, 0.18)),
+		Vector3(-1.15, 3.2, 0.6))
+	var drapeau := BoxMesh.new()
+	drapeau.size = Vector3(0.65, 0.42, 0.04)
+	Materiaux.mesh(noeud, drapeau, Materiaux.toon(Identite.BLEU), Vector3(-0.78, 3.7, 0.6), Vector3.ONE, false)
+	Materiaux.mesh(noeud, Materiaux.sphere(0.07), Materiaux.emissif(Identite.OR, 1.6),
+		Vector3(-0.78, 3.7, 0.64), Vector3.ONE, false)
+	# Escalier d'entrée.
+	for m in 2:
+		var marche := BoxMesh.new()
+		marche.size = Vector3(0.8, 0.12, 0.3)
+		Materiaux.mesh(noeud, marche, Materiaux.toon(Color(0.66, 0.63, 0.66)),
+			Vector3(0.0, 0.06 + m * 0.12, 1.35 - m * 0.15), Vector3.ONE, false)
+	# ÉVOLUTION : chaque niveau ajoute un volume (même identité).
+	if niveau >= 2:
+		var annexe := BoxMesh.new()
+		annexe.size = Vector3(1.0, 1.0, 1.4)
+		Materiaux.mesh(noeud, annexe, Materiaux.toon(Color(0.93, 0.87, 0.75)), Vector3(1.6, 0.9, -0.2))
+		var toit_a := PrismMesh.new()
+		toit_a.size = Vector3(1.3, 0.6, 1.7)
+		Materiaux.mesh(noeud, toit_a, Materiaux.toon(Color(0.8, 0.42, 0.2)), Vector3(1.6, 1.7, -0.2))
+	if niveau >= 3:
+		var etage := BoxMesh.new()
+		etage.size = Vector3(1.6, 0.9, 1.5)
+		Materiaux.mesh(noeud, etage, Materiaux.toon(Color(0.96, 0.9, 0.78)), Vector3(-0.3, 2.5, -0.2))
+		var toit_e := PrismMesh.new()
+		toit_e.size = Vector3(2.0, 0.8, 1.9)
+		Materiaux.mesh(noeud, toit_e, Materiaux.toon(Color(0.83, 0.45, 0.22)), Vector3(-0.3, 3.35, -0.2))
+	if niveau >= 4:
+		Materiaux.mesh(noeud, Materiaux.cylindre(0.4, 2.6), Materiaux.toon(Color(0.9, 0.86, 0.78)),
+			Vector3(1.3, 1.3, 0.9))
+		Materiaux.mesh(noeud, Materiaux.cone(0.55, 0.9), Materiaux.toon(Identite.BLEU),
+			Vector3(1.3, 3.0, 0.9))
+	if niveau >= 5:
+		for cote: float in [-1.0, 1.0]:
+			Materiaux.mesh(noeud, Materiaux.cylindre(0.35, 3.2), Materiaux.toon(Color(0.9, 0.86, 0.78)),
+				Vector3(cote * 1.5, 1.6, -0.9))
+			Materiaux.mesh(noeud, Materiaux.cone(0.5, 0.9), Materiaux.toon(Identite.VIOLET),
+				Vector3(cote * 1.5, 3.65, -0.9))
 
 
-## Bâtiments 3D procéduraux — fantasy médiévale chaleureuse.
-func _construire_batiment(noeud: Node3D, type: String) -> void:
+func _construire_batiment(noeud: Node3D, type: String, niveau := 1) -> void:
 	match type:
 		"maison":
-			var murs := BoxMesh.new()
-			murs.size = Vector3(1.5, 1.0, 1.3)
-			Materiaux.mesh(noeud, murs, Materiaux.toon(Identite.CREME), Vector3(0.0, 0.5, 0.0))
-			var toit := PrismMesh.new()
-			toit.size = Vector3(1.7, 0.8, 1.5)
-			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.75, 0.34, 0.26)), Vector3(0.0, 1.4, 0.0))
-			var porte := BoxMesh.new()
-			porte.size = Vector3(0.34, 0.55, 0.06)
-			Materiaux.mesh(noeud, porte, Materiaux.toon(Color(0.45, 0.3, 0.18)), Vector3(0.0, 0.28, 0.66))
-			Materiaux.mesh(noeud, Materiaux.cylindre(0.09, 0.5), Materiaux.toon(Color(0.6, 0.6, 0.64)),
-				Vector3(0.55, 1.85, -0.3)) # cheminée
+			# Grande et fière : le point focal du terrain (le débord de
+			# toit peut dépasser l'emprise logique, l'ancrage reste au sol).
+			noeud.scale = Vector3(1.32, 1.32, 1.32)
+			_construire_maison(noeud, niveau)
 		"potager":
 			for r in 3:
 				var rangee := BoxMesh.new()
-				rangee.size = Vector3(1.5, 0.14, 0.3)
-				Materiaux.mesh(noeud, rangee, Materiaux.toon(Color(0.4, 0.27, 0.18)),
-					Vector3(0.0, 0.07, -0.5 + r * 0.5))
-				for l in 3:
+				rangee.size = Vector3(1.6, 0.14, 0.32)
+				Materiaux.mesh(noeud, rangee, Materiaux.toon(Color(0.44, 0.3, 0.2)),
+					Vector3(0.0, 0.07, -0.55 + r * 0.55))
+				for l in 4:
 					Materiaux.mesh(noeud, Materiaux.sphere(0.1), Materiaux.toon(Identite.VERT),
-						Vector3(-0.5 + l * 0.5, 0.2, -0.5 + r * 0.5), Vector3.ONE, false)
+						Vector3(-0.6 + l * 0.4, 0.2, -0.55 + r * 0.55), Vector3.ONE, false)
+			var barriere := BoxMesh.new()
+			barriere.size = Vector3(1.9, 0.28, 0.05)
+			Materiaux.mesh(noeud, barriere, Materiaux.toon(Color(0.6, 0.44, 0.28)),
+				Vector3(0.0, 0.2, 0.95), Vector3.ONE, false)
 		"atelier":
 			var murs := BoxMesh.new()
-			murs.size = Vector3(1.5, 0.9, 1.2)
-			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.62, 0.46, 0.3)), Vector3(0.0, 0.45, 0.0))
+			murs.size = Vector3(1.6, 1.0, 1.3)
+			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.68, 0.5, 0.32)), Vector3(0.0, 0.5, 0.0))
 			var toit := PrismMesh.new()
-			toit.size = Vector3(1.7, 0.6, 1.4)
-			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.4, 0.28, 0.2)), Vector3(0.0, 1.2, 0.0))
-			Materiaux.mesh(noeud, Materiaux.cylindre(0.16, 0.7), Materiaux.toon(Color(0.5, 0.36, 0.24)),
-				Vector3(0.75, 0.35, 0.5)) # billot
+			toit.size = Vector3(1.9, 0.7, 1.6)
+			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.45, 0.32, 0.22)), Vector3(0.0, 1.35, 0.0))
 		"forge":
 			var murs := BoxMesh.new()
-			murs.size = Vector3(1.6, 1.0, 1.3)
-			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.52, 0.52, 0.58)), Vector3(0.0, 0.5, 0.0))
+			murs.size = Vector3(1.7, 1.1, 1.4)
+			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.52, 0.52, 0.58)), Vector3(0.0, 0.55, 0.0))
 			var toit := PrismMesh.new()
-			toit.size = Vector3(1.8, 0.7, 1.5)
-			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.28, 0.28, 0.34)), Vector3(0.0, 1.35, 0.0))
-			Materiaux.mesh(noeud, Materiaux.cylindre(0.12, 0.8), Materiaux.toon(Color(0.35, 0.35, 0.4)),
-				Vector3(0.55, 2.0, -0.3))
-			Materiaux.mesh(noeud, Materiaux.sphere(0.14), Materiaux.emissif(Identite.ORANGE, 1.8),
-				Vector3(0.0, 0.6, 0.68), Vector3.ONE, false) # foyer
+			toit.size = Vector3(2.0, 0.8, 1.7)
+			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.3, 0.3, 0.36)), Vector3(0.0, 1.5, 0.0))
+			Materiaux.mesh(noeud, Materiaux.sphere(0.16), Materiaux.emissif(Identite.ORANGE, 1.8),
+				Vector3(0.0, 0.62, 0.74), Vector3.ONE, false)
 		_:
 			var bloc := BoxMesh.new()
-			bloc.size = Vector3(1.4, 1.0, 1.4)
+			bloc.size = Vector3(1.5, 1.0, 1.5)
 			Materiaux.mesh(noeud, bloc, Materiaux.toon(Identite.PANNEAU_CLAIR), Vector3(0.0, 0.5, 0.0))
 
 
-## CONSTRUIRE : la connaissance ouvre le droit, l'or paie le chantier.
-func construire(type: String) -> bool:
-	if not Cite.constructible(type, Profil.connaissance_xp, Profil.pieces):
-		return false
-	var libres := _emplacements_libres()
-	if libres.is_empty():
-		return false
-	var b: Dictionary = Cite.BATIMENTS[type]
-	Profil.pieces -= int(b["or"])
-	Profil.ville.append({"type": type, "x": int(libres[0].x), "y": int(libres[0].y), "rot": 0})
+# ------------------------------------------------------- mode construction
+
+func entrer_construction(type: String) -> void:
+	mode = Mode.CONSTRUCTION
+	type_en_construction = type
+	selection = -1
+	fantome = {"x": 6, "y": 7, "rot": 0, "valide": false}
+	_grille.visible = true
+	_valider_fantome()
+	_reconstruire_fantome()
+
+
+func sortir_construction() -> void:
+	mode = Mode.NORMAL
+	type_en_construction = ""
+	_grille.visible = false
+	if _noeud_fantome != null:
+		_noeud_fantome.queue_free()
+		_noeud_fantome = null
+
+
+## Cases occupées par les bâtiments posés.
+func _cases_occupees() -> Dictionary:
+	var occ := {}
+	for b in Profil.ville:
+		var taille := int(Cite.BATIMENTS.get(str(b.type), {}).get("taille", 2))
+		for dx in taille:
+			for dy in taille:
+				occ[Vector2i(int(b.x) + dx, int(b.y) + dy)] = true
+	return occ
+
+
+func _valider_fantome() -> void:
+	var taille := int(Cite.BATIMENTS.get(type_en_construction, {}).get("taille", 2))
+	var occ := _cases_occupees()
+	var valide := true
+	for dx in taille:
+		for dy in taille:
+			var c := Vector2i(int(fantome.x) + dx, int(fantome.y) + dy)
+			if c.x < 0 or c.y < 0 or c.x >= Cite.TAILLE_GRILLE or c.y >= Cite.TAILLE_GRILLE or occ.has(c):
+				valide = false
+	fantome.valide = valide
+
+
+func _reconstruire_fantome() -> void:
+	if _noeud_fantome != null:
+		_noeud_fantome.queue_free()
+	_noeud_fantome = Node3D.new()
+	add_child(_noeud_fantome)
+	var taille := int(Cite.BATIMENTS.get(type_en_construction, {}).get("taille", 2))
+	var demi := Cite.TAILLE_GRILLE / 2.0
+	_noeud_fantome.position = Vector3(float(fantome.x) + taille / 2.0 - demi, 0.0,
+		float(fantome.y) + taille / 2.0 - demi)
+	_noeud_fantome.rotation.y = int(fantome.rot) * PI / 2.0
+	var teinte := Color(0.25, 0.95, 0.5) if bool(fantome.valide) else Color(0.98, 0.25, 0.25)
+	# Emprise au sol bien lisible + volume translucide + poteaux d'angle.
+	var emprise := BoxMesh.new()
+	emprise.size = Vector3(taille, 0.1, taille)
+	Materiaux.mesh(_noeud_fantome, emprise, Materiaux.emissif(teinte, 0.7),
+		Vector3(0.0, 0.06, 0.0), Vector3.ONE, false)
+	var volume := BoxMesh.new()
+	volume.size = Vector3(taille * 0.8, 1.0, taille * 0.8)
+	Materiaux.mesh(_noeud_fantome, volume, Materiaux.verre(teinte, 0.3, 1.2),
+		Vector3(0.0, 0.62, 0.0), Vector3.ONE, false)
+	for cx: float in [-1.0, 1.0]:
+		for cz: float in [-1.0, 1.0]:
+			Materiaux.mesh(_noeud_fantome, Materiaux.cylindre(0.05, 1.3),
+				Materiaux.emissif(teinte, 1.6),
+				Vector3(cx * taille / 2.0, 0.65, cz * taille / 2.0), Vector3.ONE, false)
+
+
+func valider_construction() -> void:
+	if not bool(fantome.valide):
+		Audio.jouer("denied")
+		surface.toast("Cet emplacement est occupé — choisis une case libre !")
+		return
+	if not Cite.constructible(type_en_construction, Profil.connaissance_xp, Profil.pieces):
+		Audio.jouer("denied")
+		return
+	Profil.pieces -= int(Cite.BATIMENTS[type_en_construction]["or"])
+	Profil.ville.append({"type": type_en_construction, "x": int(fantome.x), "y": int(fantome.y),
+		"rot": int(fantome.rot), "niveau": 1})
 	Profil.sauver()
+	Audio.jouer("victoire")
+	surface.toast("%s construit(e) — ta ville grandit !" % str(Cite.BATIMENTS[type_en_construction].titre))
+	sortir_construction()
 	_reconstruire_batiments()
-	return true
+
+
+## Tap sur le terrain → case de la grille (rayon caméra → plan du sol).
+func _case_sous(pos_ecran: Vector2) -> Vector2i:
+	var origine := _camera.project_ray_origin(pos_ecran)
+	var direction := _camera.project_ray_normal(pos_ecran)
+	if absf(direction.y) < 0.001:
+		return Vector2i(-1, -1)
+	var t := -origine.y / direction.y
+	var p := origine + direction * t
+	var demi := Cite.TAILLE_GRILLE / 2.0
+	return Vector2i(int(floor(p.x + demi)), int(floor(p.z + demi)))
 
 
 func _process(delta: float) -> void:
@@ -178,12 +389,32 @@ func _input(event: InputEvent) -> void:
 		var action := surface.action_sous(event.position)
 		if action != "":
 			_executer(action)
-	elif event is InputEventScreenDrag:
-		# Déplacement de la caméra au doigt (contempler sa ville).
+			return
+		if mode == Mode.CONSTRUCTION:
+			# Déplacer le fantôme sur la case touchée (placement LIBRE).
+			var taille := int(Cite.BATIMENTS.get(type_en_construction, {}).get("taille", 2))
+			var case_v := _case_sous(event.position)
+			if case_v.x >= 0:
+				fantome.x = clampi(case_v.x - taille / 2, 0, Cite.TAILLE_GRILLE - taille)
+				fantome.y = clampi(case_v.y - taille / 2, 0, Cite.TAILLE_GRILLE - taille)
+				_valider_fantome()
+				_reconstruire_fantome()
+		else:
+			# Sélection d'un bâtiment (tap sur son emprise).
+			var case_v := _case_sous(event.position)
+			selection = -1
+			for i in Profil.ville.size():
+				var b: Dictionary = Profil.ville[i]
+				var taille := int(Cite.BATIMENTS.get(str(b.type), {}).get("taille", 2))
+				if case_v.x >= int(b.x) and case_v.x < int(b.x) + taille \
+						and case_v.y >= int(b.y) and case_v.y < int(b.y) + taille:
+					selection = i
+					Audio.jouer("clic")
+	elif event is InputEventScreenDrag and mode == Mode.NORMAL:
 		var d: Vector2 = event.relative * 0.02
 		_cible_camera += Vector3(-d.x - d.y, 0.0, d.x - d.y) * 0.7
-		_cible_camera.x = clampf(_cible_camera.x, -5.0, 5.0)
-		_cible_camera.z = clampf(_cible_camera.z, -5.0, 5.0)
+		_cible_camera.x = clampf(_cible_camera.x, -4.0, 4.0)
+		_cible_camera.z = clampf(_cible_camera.z, -4.0, 4.0)
 		_camera.position = _cible_camera + Vector3(9.0, 11.0, 9.0)
 
 
@@ -193,15 +424,76 @@ func _executer(action: String) -> void:
 		"retour":
 			Audio.jouer("clic")
 			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
+		"collection", "progression":
+			Audio.jouer("clic")
+			OS.set_environment("ILUMINIA_ECRAN", morceaux[0])
+			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
 		"construire":
-			if construire(morceaux[1]):
-				Audio.jouer("victoire")
-				surface.toast("%s construit(e) ! Ta ville grandit." % str(Cite.BATIMENTS[morceaux[1]].titre))
-			else:
-				Audio.jouer("denied")
+			Audio.jouer("clic")
+			entrer_construction(morceaux[1])
+		"catalogue":
+			Audio.jouer("clic")
+			catalogue_ouvert = not catalogue_ouvert
+		"pivoter":
+			Audio.jouer("clic")
+			fantome.rot = (int(fantome.rot) + 1) % 4
+			_reconstruire_fantome()
+		"valider":
+			valider_construction()
+		"annuler":
+			Audio.jouer("clic")
+			sortir_construction()
+		"deplacer":
+			# Déplacement = mode construction sur le bâtiment existant.
+			if selection >= 0:
+				Audio.jouer("clic")
+				var b: Dictionary = Profil.ville[selection]
+				var type := str(b.type)
+				Profil.ville.remove_at(selection)
+				selection = -1
+				_reconstruire_batiments()
+				entrer_construction(type)
+				Profil.pieces += int(Cite.BATIMENTS[type]["or"]) # replacé sans re-payer
+		"infos":
+			if selection >= 0:
+				Audio.jouer("clic")
+				var b: Dictionary = Profil.ville[selection]
+				surface.toast(str(Cite.BATIMENTS[str(b.type)].descr))
+		"ameliorer":
+			_ameliorer()
+		"boutique":
+			Audio.jouer("clic")
+			surface.toast("La boutique arrive — jamais de raccourci sur la connaissance !")
+		"son":
+			Profil.basculer_son()
+			Audio.jouer("clic")
 
 
-## Interface de la ville : économie, catalogue, retour à l'arbre.
+func _ameliorer() -> void:
+	if selection < 0:
+		return
+	var b: Dictionary = Profil.ville[selection]
+	var fiche: Dictionary = Cite.BATIMENTS[str(b.type)]
+	var niveau := int(b.get("niveau", 1))
+	if niveau >= int(fiche.get("niveau_max", 1)):
+		Audio.jouer("denied")
+		surface.toast("Niveau maximum atteint !")
+		return
+	var cout := 60 * niveau
+	if Profil.pieces < cout:
+		Audio.jouer("denied")
+		surface.toast("Il te faut %d or pour améliorer." % cout)
+		return
+	Profil.pieces -= cout
+	b.niveau = niveau + 1
+	Profil.sauver()
+	Audio.jouer("victoire")
+	surface.toast("%s — niveau %d !" % [str(fiche.titre), niveau + 1])
+	_reconstruire_batiments()
+
+
+## L'interface de Ma Ville (maquette) : en-tête connaissance, menu
+## gauche, catalogue, actions de sélection, évolution, hibou, nav.
 class SurfaceVille extends Control:
 	var ville: Ville = null
 	var _actions: Array = []
@@ -222,55 +514,303 @@ class SurfaceVille extends Control:
 	func _draw() -> void:
 		_actions = []
 		_toast_temps = maxf(_toast_temps - get_process_delta_time(), 0.0)
+		_entete()
+		_menu_gauche()
+		if ville.catalogue_ouvert and ville.mode == Ville.Mode.NORMAL:
+			_catalogue()
+		if ville.mode == Ville.Mode.CONSTRUCTION:
+			_ui_construction()
+		elif ville.selection >= 0:
+			_ui_selection()
+		else:
+			_pied()
+		if _toast_temps > 0.0:
+			UI.banniere(self, Vector2(size.x / 2.0, size.y - 104.0), 480.0, _toast, 15)
+
+	# --------------------------------------------------------- entête
+
+	func _entete() -> void:
+		var profil := Rect2(8.0, 8.0, 238.0, 66.0)
+		UI.panneau(self, profil)
+		draw_circle(profil.position + Vector2(33.0, 33.0), 28.0, Identite.CONTOUR)
+		draw_circle(profil.position + Vector2(33.0, 33.0), 25.0, Identite.VIOLET)
+		UI.image(self, "avatar-%s" % Profil.personnage.to_lower(),
+			Rect2(profil.position + Vector2(10.0, 10.0), Vector2(46.0, 46.0)))
+		UI.texte(self, profil.position + Vector2(66.0, 24.0), Profil.personnage, 16, Identite.TEXTE)
+		UI.texte(self, profil.position + Vector2(66.0, 42.0),
+			Profil.classe if Profil.classe != "" else "…", 12, Identite.CYAN)
+		UI.pastille(self, profil.position + Vector2(76.0, 54.0), 9.0, Identite.VIOLET, str(Profil.niveau), 10)
+		UI.barre(self, Rect2(profil.position + Vector2(90.0, 48.0), Vector2(138.0, 13.0)),
+			Profil.progres_niveau(), Identite.BLEU)
+		# NIVEAU DE CONNAISSANCE + prochain déblocage : même depuis la
+		# ville, « si j'apprends encore, je pourrai obtenir ça ».
+		var centre := Rect2(254.0, 8.0, 330.0, 66.0)
+		UI.panneau(self, centre)
+		UI.texte(self, Vector2(centre.get_center().x - 20.0, centre.position.y + 18.0),
+			"NIVEAU DE CONNAISSANCE", 11, Identite.TEXTE_ATTENUE, true, 4)
 		var palier := Cite.palier(Profil.connaissance_xp)
-		# En-tête : retour, nom du palier, économie.
-		UI.bouton(self, Rect2(10.0, 10.0, 66.0, 50.0), Identite.BLEU, "ville_retour", false, Identite.RAYON_SM)
-		UI.texte(self, Vector2(43.0, 42.0), "←", 22, Identite.TEXTE, true)
-		_actions.append({"rect": Rect2(10.0, 10.0, 66.0, 50.0), "action": "retour"})
-		UI.banniere(self, Vector2(250.0, 32.0), 320.0,
-			"MA VILLE — %s" % str(Cite.PALIERS[palier].nom).to_upper(), 15)
-		UI.capsule(self, Rect2(440.0, 14.0, 120.0, 40.0), Identite.OR, str(Profil.pieces), "piece", false)
-		var res: Dictionary = Profil.ressources
-		UI.texte(self, Vector2(572.0, 40.0),
-			"🪵 %d  🪨 %d  🌾 %d" % [int(res.bois), int(res.pierre), int(res.nourriture)],
-			13, Identite.TEXTE_ATTENUE)
-		# CATALOGUE (droite) : la connaissance ouvre, l'or paie.
-		var rect := Rect2(size.x - 262.0, 78.0, 252.0, size.y - 90.0)
+		var prochain := Cite.prochain_palier(Profil.connaissance_xp)
+		UI.etoile(self, centre.position + Vector2(22.0, 42.0), 12.0, Identite.VIOLET)
+		if not prochain.is_empty():
+			var xp_p := int(Cite.PALIERS[int(prochain.indice)].xp)
+			var xp_a := int(Cite.PALIERS[palier].xp)
+			var frac := float(Profil.connaissance_xp - xp_a) / maxf(float(xp_p - xp_a), 1.0)
+			UI.barre(self, Rect2(centre.position + Vector2(40.0, 30.0), Vector2(110.0, 22.0)), frac, Identite.VIOLET)
+			UI.texte(self, centre.position + Vector2(95.0, 46.0), "%d %%" % int(frac * 100.0), 13, Identite.TEXTE, true, 4)
+			UI.texte(self, centre.position + Vector2(160.0, 36.0), "Encore %d XP" % int(prochain.xp_manquant), 12, Identite.TEXTE)
+			UI.texte(self, centre.position + Vector2(160.0, 52.0), "pour débloquer", 10, Identite.TEXTE_ATTENUE)
+			var nom_rec := ""
+			for d in prochain.debloque:
+				var m := str(d).split(":")
+				nom_rec = str(Cite.BATIMENTS.get(m[0], {}).get("titre", m[m.size() - 1]))
+				break
+			_mini_batiment_type(centre.position + Vector2(288.0, 32.0), 20.0, "atelier")
+			UI.texte(self, Vector2(centre.position.x + 288.0, centre.position.y + 60.0),
+				nom_rec.to_upper().left(14), 9, Identite.OR, true, 3)
+		# Ressources + boutique + son.
+		var res := Rect2(592.0, 8.0, 146.0, 66.0)
+		UI.panneau(self, res)
+		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(10.0, 6.0), Vector2(18.0, 18.0))):
+			draw_circle(res.position + Vector2(19.0, 15.0), 8.0, Identite.OR)
+		UI.texte(self, res.position + Vector2(34.0, 20.0), str(Profil.pieces), 13, Identite.TEXTE)
+		_gemme(res.position + Vector2(19.0, 36.0), 9.0, Identite.VIOLET)
+		UI.texte(self, res.position + Vector2(34.0, 41.0), str(int(Profil.ressources.pierre)), 12, Identite.TEXTE)
+		_gemme(res.position + Vector2(19.0, 56.0), 9.0, Identite.CYAN)
+		UI.texte(self, res.position + Vector2(34.0, 61.0), str(int(Profil.ressources.bois)), 12, Identite.TEXTE)
+		var b1 := Rect2(746.0, 8.0, 52.0, 50.0)
+		UI.bouton(self, b1, Identite.PANNEAU_CLAIR, "v_boutique", false, Identite.RAYON_SM)
+		UI.coffre(self, b1.get_center() + Vector2(0.0, 2.0), 22.0)
+		_actions.append({"rect": b1, "action": "boutique"})
+		var b2 := Rect2(804.0, 8.0, 52.0, 50.0)
+		UI.bouton(self, b2, Identite.PANNEAU_CLAIR, "v_retour", false, Identite.RAYON_SM)
+		UI.texte(self, b2.get_center() + Vector2(0.0, 7.0), "←", 20, Identite.TEXTE, true)
+		_actions.append({"rect": b2, "action": "retour"})
+
+	func _gemme(p: Vector2, r: float, teinte: Color) -> void:
+		draw_colored_polygon(PackedVector2Array([
+			p + Vector2(0.0, -r * 0.62), p + Vector2(r * 0.46, 0.0), p + Vector2(0.0, r * 0.62),
+			p + Vector2(-r * 0.46, 0.0)]), teinte)
+		draw_circle(p + Vector2(-r * 0.1, -r * 0.2), r * 0.13, Color(1, 1, 1, 0.5))
+
+	## Miniatures de bâtiments (catalogue et aperçus).
+	func _mini_batiment_type(p: Vector2, r: float, type: String) -> void:
+		match type:
+			"maison":
+				draw_rect(Rect2(p + Vector2(-r * 0.55, -r * 0.05), Vector2(r * 1.1, r * 0.62)), Color("f4e6c8"))
+				draw_colored_polygon(PackedVector2Array([
+					p + Vector2(-r * 0.7, -r * 0.05), p + Vector2(0.0, -r * 0.6), p + Vector2(r * 0.7, -r * 0.05)]),
+					Color("d4703a"))
+				draw_rect(Rect2(p + Vector2(-r * 0.1, r * 0.22), Vector2(r * 0.2, r * 0.35)), Color("6a4630"))
+			"potager":
+				for l in 3:
+					draw_rect(Rect2(p + Vector2(-r * 0.55, -r * 0.35 + l * r * 0.32), Vector2(r * 1.1, r * 0.16)), Color("6a4630"))
+					for c in 3:
+						draw_circle(p + Vector2(-r * 0.35 + c * r * 0.35, -r * 0.27 + l * r * 0.32), r * 0.1, Identite.VERT)
+			"atelier":
+				draw_rect(Rect2(p + Vector2(-r * 0.5, -r * 0.05), Vector2(r, r * 0.55)), Color("a87848"))
+				draw_colored_polygon(PackedVector2Array([
+					p + Vector2(-r * 0.62, -r * 0.05), p + Vector2(0.0, -r * 0.5), p + Vector2(r * 0.62, -r * 0.05)]),
+					Color("6a4a32"))
+			"forge":
+				draw_rect(Rect2(p + Vector2(-r * 0.5, -r * 0.05), Vector2(r, r * 0.55)), Color("8a8a94"))
+				draw_colored_polygon(PackedVector2Array([
+					p + Vector2(-r * 0.62, -r * 0.05), p + Vector2(0.0, -r * 0.5), p + Vector2(r * 0.62, -r * 0.05)]),
+					Color("4a4a54"))
+				draw_circle(p + Vector2(0.0, r * 0.25), r * 0.14, Identite.ORANGE)
+			"ecurie":
+				draw_rect(Rect2(p + Vector2(-r * 0.6, -r * 0.05), Vector2(r * 1.2, r * 0.5)), Color("b08a58"))
+				draw_colored_polygon(PackedVector2Array([
+					p + Vector2(-r * 0.72, -r * 0.05), p + Vector2(0.0, -r * 0.45), p + Vector2(r * 0.72, -r * 0.05)]),
+					Color("7a5a38"))
+			"murailles":
+				for c in 3:
+					draw_rect(Rect2(p + Vector2(-r * 0.6 + c * r * 0.45, -r * 0.3), Vector2(r * 0.32, r * 0.75)), Color("9a9aa4"))
+			_:
+				draw_rect(Rect2(p + Vector2(-r * 0.5, -r * 0.3), Vector2(r, r * 0.8)), Color("d8d2e8"))
+				draw_colored_polygon(PackedVector2Array([
+					p + Vector2(-r * 0.6, -r * 0.3), p + Vector2(0.0, -r * 0.7), p + Vector2(r * 0.6, -r * 0.3)]),
+					Color("8a55f5"))
+
+	# --------------------------------------------------------- menu gauche
+
+	func _menu_gauche() -> void:
+		var entrees: Array = [["vue", "VUE GLOBALE", true, false],
+			["chantier", "CONSTRUIRE", true, Cite.constructible("potager", Profil.connaissance_xp, Profil.pieces)],
+			["deco", "DÉCORATIONS", false, false], ["obtentions", "OBTENTIONS", false, false]]
+		for i in entrees.size():
+			var e: Array = entrees[i]
+			var rect := Rect2(8.0, 90.0 + i * 56.0, 128.0, 48.0)
+			var actif: bool = i == 0
+			var dispo: bool = bool(e[2])
+			if actif:
+				UI.rect_degrade(self, rect.grow(3.0), Identite.RAYON_MD + 3,
+					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.4),
+					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.15))
+				UI.bouton(self, rect, Identite.BLEU, "vm_%d" % i, false, Identite.RAYON_MD)
+			elif dispo:
+				UI.bouton(self, rect, Identite.PANNEAU_CLAIR, "vm_%d" % i, false, Identite.RAYON_MD)
+			else:
+				# Futur système : présent, désirable, verrouillé avec élégance.
+				UI.rect_degrade(self, rect.grow(2.0), Identite.RAYON_MD + 2, Identite.CONTOUR, Identite.CONTOUR)
+				UI.rect_degrade(self, rect, Identite.RAYON_MD, Color("1a2c55"), Color("101c3d"))
+				UI.image(self, "icon-lock", Rect2(rect.end - Vector2(22.0, 24.0), Vector2(14.0, 14.0)))
+			UI.texte(self, rect.position + Vector2(12.0, 29.0), str(e[1]), 10,
+				Identite.TEXTE if actif or dispo else Identite.TEXTE_ATTENUE, false, 4)
+			if bool(e[3]):
+				UI.badge_notif(self, rect.position + Vector2(rect.size.x - 4.0, 4.0), "!")
+			if str(e[0]) == "chantier":
+				_actions.append({"rect": rect, "action": "catalogue"})
+
+	# --------------------------------------------------------- catalogue
+
+	func _catalogue() -> void:
+		var rect := Rect2(size.x - 254.0, 84.0, 246.0, size.y - 148.0)
 		UI.panneau(self, rect)
-		UI.texte(self, rect.position + Vector2(16.0, 26.0), "CATALOGUE", 15, Identite.OR)
-		var y := rect.position.y + 40.0
-		for type in Cite.BATIMENTS:
-			var b: Dictionary = Cite.BATIMENTS[type]
+		var x := rect.position.x + 14.0
+		UI.texte(self, Vector2(x, rect.position.y + 22.0), "CATALOGUE DE CONSTRUCTION", 12, Identite.TEXTE)
+		UI.texte(self, Vector2(x, rect.position.y + 38.0), "La CONNAISSANCE débloque le", 9, Identite.TEXTE_ATTENUE)
+		UI.texte(self, Vector2(x, rect.position.y + 50.0), "catalogue — l'or ne suffit jamais.", 9, Identite.TEXTE_ATTENUE)
+		var palier := Cite.palier(Profil.connaissance_xp)
+		var y := rect.position.y + 58.0
+		var visibles: Array = ["maison", "potager", "atelier", "forge", "ecurie", "murailles"]
+		# Le pas s'adapte à la hauteur du panneau : les 6 entrées ET le
+		# pied « VOIR LES BÂTIMENTS VERROUILLÉS » tiennent toujours dedans.
+		var pas: float = (rect.size.y - 82.0) / visibles.size()
+		for type in visibles:
+			var fiche: Dictionary = Cite.BATIMENTS[type]
 			var construit := false
 			for pose in Profil.ville:
 				if str(pose.type) == type:
 					construit = true
-			var accessible: bool = palier >= int(b.palier)
-			var ligne := Rect2(rect.position.x + 10.0, y, rect.size.x - 20.0, 40.0)
-			self.draw_style_box(UI.style("cat_%s_%s" % [type, str(accessible)],
-				Identite.NUIT if accessible else Color(0.08, 0.1, 0.2),
-				Identite.VERT_SOMBRE if construit else (Identite.CONTOUR if accessible else Color(0.2, 0.22, 0.3)),
-				Identite.RAYON_SM, 2, 0), ligne)
-			UI.texte(self, ligne.position + Vector2(10.0, 18.0), str(b.titre), 13,
+			var accessible: bool = palier >= int(fiche.palier)
+			var ligne := Rect2(x - 4.0, y, rect.size.x - 20.0, pas - 5.0)
+			var h := ligne.size.y
+			UI.rect_degrade(self, ligne, 10.0,
+				Color("14264d") if accessible else Color("0d1734"),
+				Color("0c1a3a") if accessible else Color("091126"))
+			if construit:
+				UI.contour_arrondi(self, ligne, 10.0, Identite.VERT, 2.0)
+			_mini_batiment_type(ligne.position + Vector2(24.0, h / 2.0), 14.0, type)
+			UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 - 3.0),
+				str(fiche.titre).to_upper().left(22), 10,
 				Identite.TEXTE if accessible else Identite.TEXTE_ATTENUE)
 			if construit:
-				UI.texte(self, ligne.position + Vector2(10.0, 34.0), "✓ construit", 10, Identite.VERT)
+				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0), "Construite : 1/1", 9, Identite.VERT)
+				UI.pastille(self, ligne.position + Vector2(ligne.size.x - 20.0, h / 2.0), 10.0, Identite.VERT, "✓", 12)
 			elif not accessible:
-				UI.image(self, "icon-lock", Rect2(ligne.end - Vector2(30.0, 34.0), Vector2(18.0, 18.0)))
-				UI.texte(self, ligne.position + Vector2(10.0, 34.0),
-					"Palier %d (connaissance)" % int(b.palier), 10, Identite.ORANGE)
+				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0),
+					"Niv. connaissance %d requis" % int(fiche.palier), 9, Identite.TEXTE_ATTENUE)
+				UI.image(self, "icon-lock", Rect2(ligne.position + Vector2(ligne.size.x - 30.0, h / 2.0 - 9.0), Vector2(18.0, 18.0)))
 			else:
-				UI.texte(self, ligne.position + Vector2(10.0, 34.0), "%d or" % int(b["or"]), 10, Identite.OR)
+				if not UI.image(self, "res-coin", Rect2(ligne.position + Vector2(46.0, h / 2.0 + 2.0), Vector2(13.0, 13.0))):
+					draw_circle(ligne.position + Vector2(52.0, h / 2.0 + 8.0), 6.0, Identite.OR)
+				UI.texte(self, ligne.position + Vector2(63.0, h / 2.0 + 13.0), str(int(fiche["or"])), 10, Identite.OR)
 				var peut: bool = Cite.constructible(type, Profil.connaissance_xp, Profil.pieces)
-				var bouton := Rect2(ligne.end.x - 96.0, ligne.position.y + 4.0, 88.0, 32.0)
+				var bouton := Rect2(ligne.end.x - 96.0, ligne.position.y + (h - 28.0) / 2.0, 88.0, 28.0)
 				UI.bouton(self, bouton, Identite.VERT if peut else Color(0.3, 0.32, 0.42),
-					"construire_%s" % type, false, Identite.RAYON_SM)
-				UI.texte(self, bouton.get_center() + Vector2(0.0, 5.0), "BÂTIR", 12, Identite.TEXTE, true, 4)
+					"vc_%s" % type, false, Identite.RAYON_SM)
+				UI.texte(self, bouton.get_center() + Vector2(0.0, 4.0), "CONSTRUIRE", 10, Identite.TEXTE, true, 4)
 				if peut:
 					_actions.append({"rect": bouton, "action": "construire:%s" % type})
-			y += 46.0
-		# Le rappel du moteur : apprendre = le droit de construire.
-		UI.texte(self, Vector2((size.x - 262.0) / 2.0, size.y - 20.0),
-			"La CONNAISSANCE débloque le catalogue — l'or ne suffit jamais.", 12, Identite.CREME, true, 4)
-		if _toast_temps > 0.0:
-			UI.banniere(self, Vector2((size.x - 262.0) / 2.0, size.y - 60.0), 420.0, _toast, 15)
+			y += pas
+		UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 12.0),
+			"VOIR LES BÂTIMENTS VERROUILLÉS", 9, Identite.TEXTE_ATTENUE, true, 3)
+
+	# --------------------------------------------------------- construction
+
+	func _ui_construction() -> void:
+		var fiche: Dictionary = Cite.BATIMENTS.get(ville.type_en_construction, {})
+		UI.banniere(self, Vector2(size.x / 2.0, 100.0), 440.0,
+			"MODE CONSTRUCTION — %s" % str(fiche.get("titre", "")).to_upper(), 15)
+		UI.texte(self, Vector2(size.x / 2.0, 128.0),
+			"1. CHOISIS une case    2. PLACE le bâtiment    3. VALIDE", 11, Identite.CREME, true, 4)
+		var y := size.y - 66.0
+		var b_annuler := Rect2(size.x / 2.0 - 180.0, y, 104.0, 52.0)
+		UI.bouton(self, b_annuler, Identite.ROUGE, "vb_annuler", false, Identite.RAYON_MD)
+		UI.texte(self, b_annuler.get_center() + Vector2(0.0, 6.0), "ANNULER", 13, Identite.TEXTE, true)
+		_actions.append({"rect": b_annuler, "action": "annuler"})
+		var b_pivoter := Rect2(size.x / 2.0 - 56.0, y, 112.0, 52.0)
+		UI.bouton(self, b_pivoter, Identite.BLEU, "vb_pivoter", false, Identite.RAYON_MD)
+		UI.texte(self, b_pivoter.get_center() + Vector2(0.0, 6.0), "PIVOTER", 13, Identite.TEXTE, true)
+		_actions.append({"rect": b_pivoter, "action": "pivoter"})
+		var b_valider := Rect2(size.x / 2.0 + 76.0, y, 104.0, 52.0)
+		UI.bouton(self, b_valider, Identite.VERT if bool(ville.fantome.valide) else Color(0.3, 0.32, 0.42),
+			"vb_valider", false, Identite.RAYON_MD)
+		UI.texte(self, b_valider.get_center() + Vector2(0.0, 6.0), "VALIDER", 13, Identite.TEXTE, true)
+		_actions.append({"rect": b_valider, "action": "valider"})
+
+	# --------------------------------------------------------- sélection
+
+	func _ui_selection() -> void:
+		var b: Dictionary = Profil.ville[ville.selection]
+		var fiche: Dictionary = Cite.BATIMENTS[str(b.type)]
+		var niveau := int(b.get("niveau", 1))
+		# Trois actions tactiles (maquette : DÉPLACER / INFOS / AMÉLIORER).
+		var y := size.y - 116.0
+		var libelles: Array = [["deplacer", "DÉPLACER", Identite.BLEU],
+			["infos", "INFOS", Identite.PANNEAU_CLAIR], ["ameliorer", "AMÉLIORER", Identite.VERT]]
+		for i in libelles.size():
+			var l: Array = libelles[i]
+			var rect := Rect2(size.x / 2.0 - 186.0 + i * 128.0, y, 120.0, 48.0)
+			UI.bouton(self, rect, l[2], "vs_%s" % str(l[0]), false, Identite.RAYON_MD)
+			UI.texte(self, rect.get_center() + Vector2(0.0, 5.0), str(l[1]), 12, Identite.TEXTE, true)
+			_actions.append({"rect": rect, "action": str(l[0])})
+		# Bandeau ÉVOLUTION (maison) : « ma petite maison peut devenir ça ».
+		if str(b.type) == "maison":
+			var bande := Rect2(size.x / 2.0 - 310.0, size.y - 60.0, 620.0, 54.0)
+			UI.panneau(self, bande)
+			UI.texte(self, Vector2(bande.get_center().x, bande.position.y + 14.0),
+				"MAISON DES AVENTURIERS — ÉVOLUTION", 10, Identite.OR, true, 4)
+			for n in 5:
+				var p := bande.position + Vector2(70.0 + n * 124.0, 34.0)
+				var atteint: bool = n < niveau
+				_mini_batiment_type(p, 9.0 + n * 3.0, "maison")
+				if not atteint:
+					draw_circle(p, 11.0 + n * 3.0, Color(0.05, 0.08, 0.2, 0.55))
+				UI.texte(self, p + Vector2(0.0, 20.0), "Niv. %d" % (n + 1), 8,
+					Identite.OR if atteint else Identite.TEXTE_ATTENUE, true, 3)
+				if n < 4:
+					UI.texte(self, p + Vector2(62.0, 4.0), "→", 12, Identite.TEXTE_ATTENUE, true, 3)
+
+	# --------------------------------------------------------- pied
+
+	func _pied() -> void:
+		var y := size.y - 56.0
+		# Hibou : conseillé pour toi (secondaire).
+		var conseil := Rect2(8.0, y, 292.0, 48.0)
+		UI.rect_degrade(self, conseil.grow(2.0), Identite.RAYON_MD, Identite.CONTOUR, Identite.CONTOUR)
+		UI.rect_degrade(self, conseil, Identite.RAYON_MD, Color("221d45"), Color("161231"))
+		_dessiner_hibou(conseil.position + Vector2(26.0, 24.0), 16.0)
+		UI.texte(self, conseil.position + Vector2(50.0, 19.0), "Conseillé pour toi", 11, Identite.OR)
+		var conseil_txt := "Tu pourrais débloquer le Potager !"
+		for pose in Profil.ville:
+			if str(pose.type) == "potager":
+				conseil_txt = "Continue d'apprendre pour l'Atelier !"
+		UI.texte(self, conseil.position + Vector2(50.0, 36.0), conseil_txt, 10, Identite.TEXTE)
+		# Message produit compact.
+		UI.texte(self, Vector2(316.0, y + 20.0), "APPRENDRE POUR CONSTRUIRE", 10, Identite.OR)
+		UI.texte(self, Vector2(316.0, y + 36.0), "La connaissance est ta force.", 9, Identite.TEXTE_ATTENUE)
+		# Navigation basse (MA VILLE actif).
+		var nav: Array = [["retour_actif", "MA VILLE"], ["collection", "COLLECTION"], ["progression", "PROGRESSION"]]
+		for i in nav.size():
+			var n: Array = nav[i]
+			var rect := Rect2(size.x - 336.0 + i * 112.0, y, 106.0, 48.0)
+			if i == 0:
+				UI.rect_degrade(self, rect.grow(3.0), Identite.RAYON_MD + 3,
+					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.4),
+					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.12))
+				UI.bouton(self, rect, Identite.BLEU, "vn_%d" % i, false, Identite.RAYON_MD)
+			else:
+				UI.bouton(self, rect, Identite.PANNEAU_CLAIR, "vn_%d" % i, false, Identite.RAYON_MD)
+				_actions.append({"rect": rect, "action": str(n[0])})
+			UI.texte(self, rect.get_center() + Vector2(0.0, 5.0), str(n[1]), 10, Identite.TEXTE, true)
+
+	func _dessiner_hibou(p: Vector2, r: float) -> void:
+		draw_circle(p + Vector2(0.0, r * 0.15), r * 0.62, Color("8a55f5"))
+		draw_circle(p + Vector2(0.0, -r * 0.3), r * 0.5, Color("9d6ff8"))
+		for c in [-1.0, 1.0]:
+			draw_circle(p + Vector2(c * r * 0.2, -r * 0.32), r * 0.2, Color("fff3d5"))
+			draw_circle(p + Vector2(c * r * 0.2, -r * 0.32), r * 0.1, Color("071633"))
+		draw_colored_polygon(PackedVector2Array([
+			p + Vector2(0.0, -r * 0.18), p + Vector2(-r * 0.1, -r * 0.05), p + Vector2(r * 0.1, -r * 0.05)]),
+			Color("ffc928"))

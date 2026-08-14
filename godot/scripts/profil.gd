@@ -183,7 +183,7 @@ func _semer_demo_pivot() -> void:
 		competences[id] = {"etat": etats_demo[id][0], "score": etats_demo[id][1]}
 	connaissance_xp = 150
 	if ville.is_empty():
-		ville = [{"type": "maison", "x": 5, "y": 5, "rot": 0}]
+		ville = [{"type": "maison", "x": 4, "y": 4, "rot": 0, "niveau": 1}]
 	pieces = maxi(pieces, 120)
 	ressources = {"bois": 32, "pierre": 185, "nourriture": 12}
 	sauver()
