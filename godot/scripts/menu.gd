@@ -24,13 +24,37 @@ var surface: SurfaceMenu
 
 func _ready() -> void:
 	Jeu.declarer_actions_clavier()
-	Ambiance.installer(self)
+	# Le lobby vit en PLEIN JOUR (planche Home : ciel bleu, monde coloré).
+	Ambiance.installer(self, Ambiance.THEME_JOUR)
 
-	# — Île de nuit du diorama —
-	Materiaux.mesh(self, Materiaux.cylindre(9.0, 0.3), Materiaux.toon(Identite.PELOUSE_NUIT),
+	# — Île ensoleillée du diorama —
+	Materiaux.mesh(self, Materiaux.cylindre(9.0, 0.3), Materiaux.toon(Ambiance.THEME_JOUR.pelouse),
 		Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
-	Materiaux.mesh(self, Materiaux.tore(9.1, 0.12), Materiaux.emissif(Identite.LUEUR_LISIERE, 1.4),
+	Materiaux.mesh(self, Materiaux.tore(9.1, 0.12), Materiaux.emissif(Identite.OR, 0.8),
 		Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
+	# PIÉDESTAL DE PIERRE de la planche, sous les héros.
+	var vers_cam := Vector3(1.0, 0.0, 1.0).normalized()
+	var socle := Vector3.ZERO - vers_cam * 1.6
+	Materiaux.mesh(self, Materiaux.cylindre(5.4, 0.5), Materiaux.toon(Color(0.72, 0.46, 0.53)),
+		socle + Vector3(0.0, 0.12, 0.0), Vector3.ONE, false)
+	Materiaux.mesh(self, Materiaux.cylindre(5.0, 0.14), Materiaux.toon(Color(0.82, 0.66, 0.66)),
+		socle + Vector3(0.0, 0.42, 0.0), Vector3.ONE, false)
+	Materiaux.mesh(self, Materiaux.tore(5.1, 0.09), Materiaux.toon(Color(0.58, 0.36, 0.44)),
+		socle + Vector3(0.0, 0.44, 0.0), Vector3.ONE, false)
+	# Nuages joufflus qui flottent au loin.
+	var rng_nuages := RandomNumberGenerator.new()
+	rng_nuages.seed = 42
+	for i in 6:
+		var nuage := Node3D.new()
+		var ang := TAU * i / 6.0 + rng_nuages.randf_range(-0.4, 0.4)
+		nuage.position = Vector3(cos(ang) * rng_nuages.randf_range(14.0, 22.0),
+			rng_nuages.randf_range(4.0, 9.0), sin(ang) * rng_nuages.randf_range(14.0, 22.0))
+		add_child(nuage)
+		for b in 3:
+			Materiaux.mesh(nuage, Materiaux.sphere(rng_nuages.randf_range(0.9, 1.6)),
+				Materiaux.toon(Color(0.98, 0.99, 1.0)),
+				Vector3(b * 1.3 - 1.3, rng_nuages.randf_range(-0.2, 0.3), 0.0),
+				Vector3(1.0, 0.62, 0.85), false)
 	var falaise := CylinderMesh.new()
 	falaise.top_radius = 9.4
 	falaise.bottom_radius = 1.6
@@ -123,7 +147,7 @@ func _reconstruire_persos() -> void:
 		perso.etiquette = nom
 		perso.couleur = Profil.couleur_de(nom)
 		perso.utiliser_fiche_couleur = false
-		perso.position = perpendiculaire * (i - 1.5) * 2.6 - vers_camera * 1.6
+		perso.position = perpendiculaire * (i - 1.5) * 2.6 - vers_camera * 1.6 + Vector3(0.0, 0.49, 0.0)
 		add_child(perso)
 		perso.regarder(Vector2(1.0, 1.0).normalized())
 		_persos[nom] = perso
@@ -144,18 +168,26 @@ func _reconstruire_dragon() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
-	_dragon_pivot.rotation.y += delta * 0.5
-	_dragon.position.y = 2.6 + sin(_t * 2.0) * 0.3
-	_dragon.en_marche = true
 	var perpendiculaire := Vector3(-1.0, 0.0, 1.0).normalized()
 	var vers_camera := Vector3(1.0, 0.0, 1.0).normalized()
+	var socle := -vers_camera * 1.6
+	# Le compagnon dragon volette à côté du héros, comme le chien de la
+	# planche Home (plus d'orbite : il reste près du piédestal).
+	_dragon_pivot.rotation.y = 0.0
+	var cible_dragon := socle + perpendiculaire * -2.0 + vers_camera * 0.7
+	cible_dragon.y = 1.05 + sin(_t * 2.0) * 0.2
+	_dragon.position = _dragon.position.lerp(cible_dragon, minf(delta * 4.0, 1.0))
+	_dragon.regarder(Vector2(1.0, 1.0).normalized())
+	_dragon.en_marche = true
 	for nom in _persos:
 		var perso: Personnage3D = _persos[nom]
 		var i := NOMS.find(nom)
 		perso.en_marche = fmod(_t + float(i) * 1.7, 5.0) < 1.2
-		perso.montrer_anneau(nom == Profil.personnage)
+		perso.montrer_anneau(ecran == Ecran.PERSONNAGES and nom == Profil.personnage)
+		perso.montrer_nom(ecran == Ecran.PERSONNAGES)
 		var cible: Vector3
 		var echelle := 1.0
+		var visible_ecran := true
 		if ecran == Ecran.PERSONNAGES:
 			if i == perso_focus:
 				# Centré dans la bande libre entre les cartes et la fiche.
@@ -166,7 +198,13 @@ func _process(delta: float) -> void:
 				cible = perpendiculaire * (rang - 1.0) * 2.4 - vers_camera * 2.6
 				echelle = 0.85
 		else:
-			cible = perpendiculaire * (i - 1.5) * 2.6 - vers_camera * 1.6
+			# Accueil (planche Home) : SEUL le héros équipé, en grand, sur
+			# le piédestal avec son compagnon.
+			cible = socle + perpendiculaire * 0.4 + vers_camera * 0.5
+			echelle = 2.2
+			visible_ecran = nom == Profil.personnage
+		perso.visible = visible_ecran
+		cible.y = 0.49 # les héros du lobby se tiennent sur le piédestal
 		perso.position = perso.position.lerp(cible, minf(delta * 7.0, 1.0))
 		perso.scale = perso.scale.lerp(Vector3.ONE * echelle, minf(delta * 7.0, 1.0))
 	surface.queue_redraw()
@@ -392,10 +430,10 @@ class SurfaceMenu extends Control:
 		_entete_commun()
 		var t := Time.get_ticks_msec() / 1000.0
 		var centre_x := size.x / 2.0
-		# Logo compact au-dessus du diorama.
-		UI.etoile(self, Vector2(centre_x, 96.0 + sin(t * 1.6) * 3.0), 15.0, Identite.OR)
-		UI.texte(self, Vector2(centre_x, 138.0 + sin(t * 1.6) * 3.0), "ILUMINIA", 44, Identite.OR, true, 10)
-		UI.texte(self, Vector2(centre_x, 160.0 + sin(t * 1.6) * 3.0), "La chasse au dragon", 16, Identite.MAGENTA, true, 5)
+		# Logo compact, calé sous l'en-tête pour laisser la scène au héros.
+		UI.etoile(self, Vector2(centre_x, 84.0 + sin(t * 1.6) * 2.0), 12.0, Identite.OR)
+		UI.texte(self, Vector2(centre_x, 118.0 + sin(t * 1.6) * 2.0), "ILUMINIA", 34, Identite.OR, true, 9)
+		UI.texte(self, Vector2(centre_x, 136.0 + sin(t * 1.6) * 2.0), "La chasse au dragon", 14, Identite.MAGENTA, true, 5)
 		# NAVIGATION gauche (planche : icône + libellé + badge).
 		var nav: Array = [
 			["personnages", "PERSONNAGES", Identite.BLEU],

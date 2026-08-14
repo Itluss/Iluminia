@@ -8,6 +8,53 @@ extends RefCounted
 static var _styles := {}
 
 
+# -------------------------------------------------- rendu dégradé (planche)
+
+## Sommets d'un rectangle arrondi (sens horaire), pour les polygones dégradés.
+static func _points_arrondis(rect: Rect2, rayon: float, segments := 5) -> PackedVector2Array:
+	rayon = minf(rayon, minf(rect.size.x, rect.size.y) / 2.0)
+	var pts := PackedVector2Array()
+	var coins: Array = [
+		[rect.position + Vector2(rayon, rayon), PI, PI * 1.5],
+		[Vector2(rect.end.x - rayon, rect.position.y + rayon), PI * 1.5, TAU],
+		[rect.end - Vector2(rayon, rayon), 0.0, PI * 0.5],
+		[Vector2(rect.position.x + rayon, rect.end.y - rayon), PI * 0.5, PI],
+	]
+	for coin: Array in coins:
+		var centre: Vector2 = coin[0]
+		for s in segments + 1:
+			var a: float = lerpf(float(coin[1]), float(coin[2]), float(s) / segments)
+			var p := centre + Vector2(cos(a), sin(a)) * rayon
+			# Pas de sommets dupliqués (rayon = demi-hauteur) : la
+			# triangulation de draw_polygon les refuse.
+			if pts.is_empty() or pts[pts.size() - 1].distance_to(p) > 0.05:
+				pts.append(p)
+	return pts
+
+
+## Rectangle arrondi à DÉGRADÉ VERTICAL (le rendu « candy » de la planche).
+static func rect_degrade(c: Control, rect: Rect2, rayon: float, haut: Color, bas: Color) -> void:
+	if rect.size.x < 2.0 or rect.size.y < 2.0:
+		return
+	var pts := _points_arrondis(rect, rayon)
+	# Dernier sommet parfois confondu avec le premier (boucle fermée).
+	if pts.size() > 2 and pts[0].distance_to(pts[pts.size() - 1]) <= 0.05:
+		pts.remove_at(pts.size() - 1)
+	if pts.size() < 3:
+		return
+	var couleurs := PackedColorArray()
+	for p in pts:
+		couleurs.append(haut.lerp(bas, clampf((p.y - rect.position.y) / maxf(rect.size.y, 1.0), 0.0, 1.0)))
+	c.draw_polygon(pts, couleurs)
+
+
+## Contour d'un rectangle arrondi (trait fermé).
+static func contour_arrondi(c: Control, rect: Rect2, rayon: float, couleur: Color, epaisseur: float) -> void:
+	var pts := _points_arrondis(rect, rayon)
+	pts.append(pts[0])
+	c.draw_polyline(pts, couleur, epaisseur, true)
+
+
 ## StyleBoxFlat en cache : fond arrondi, gros bord marine, ombre portée.
 static func style(cle: String, fond: Color, bord: Color, rayon := Identite.RAYON_MD,
 		epaisseur := Identite.BORD, ombre := 5) -> StyleBoxFlat:
@@ -26,9 +73,14 @@ static func style(cle: String, fond: Color, bord: Color, rayon := Identite.RAYON
 	return sb
 
 
-## Panneau standard marine.
+## Panneau de la planche : dégradé marine + gros contour + liseré interne.
 static func panneau(c: Control, rect: Rect2) -> void:
-	c.draw_style_box(style("panneau", Identite.PANNEAU, Identite.CONTOUR), rect)
+	# Ombre portée douce.
+	rect_degrade(c, Rect2(rect.position + Vector2(0.0, 5.0), rect.size), Identite.RAYON_MD,
+		Color(0.0, 0.0, 0.0, 0.35), Color(0.0, 0.0, 0.0, 0.35))
+	rect_degrade(c, rect.grow(3.0), Identite.RAYON_MD + 3, Identite.CONTOUR, Identite.CONTOUR)
+	rect_degrade(c, rect, Identite.RAYON_MD, Identite.PANNEAU_CLAIR.lerp(Identite.PANNEAU, 0.35), Identite.PANNEAU)
+	contour_arrondi(c, rect.grow(-3.0), Identite.RAYON_MD - 3, Color(1.0, 1.0, 1.0, 0.07), 2.0)
 
 
 ## Texte à contour marine épais (lisibilité BD).
@@ -43,37 +95,42 @@ static func texte(c: Control, pos: Vector2, txt: String, taille: int, teinte: Co
 	c.draw_string(police, p, txt, HORIZONTAL_ALIGNMENT_LEFT, -1, taille, teinte)
 
 
-## Bouton de la planche : BISEAU 3D — face colorée, tranche sombre en
-## dessous (volume cartoon), highlight supérieur. Pressé = la face descend
-## sur la tranche.
-static func bouton(c: Control, rect: Rect2, fond: Color, cle: String,
+## Bouton « candy pro » de la planche (à la Clash Royale) : face en
+## DÉGRADÉ vertical, tranche sombre en dessous (volume), gros contour
+## marine, liseré brillant en haut. Pressé = la face descend sur la tranche.
+static func bouton(c: Control, rect: Rect2, fond: Color, _cle: String,
 		enfonce := false, rayon := Identite.RAYON_MD) -> void:
-	var epaisseur := minf(6.0, rect.size.y * 0.12)
+	var epaisseur := clampf(rect.size.y * 0.11, 4.0, 8.0)
 	var face := Rect2(rect.position, rect.size - Vector2(0.0, epaisseur))
 	if enfonce:
 		face.position.y += epaisseur - 1.0
-	# Tranche du bas (le « volume » de la planche).
-	c.draw_style_box(style("%s_tranche" % cle, fond.darkened(0.45), Identite.CONTOUR,
-		rayon, Identite.BORD_FORT, 4),
-		Rect2(rect.position + Vector2(0.0, rect.size.y - epaisseur - rayon), Vector2(rect.size.x, epaisseur + rayon)))
-	c.draw_style_box(style(cle, fond, Identite.CONTOUR, rayon, Identite.BORD_FORT, 0), face)
-	# Highlight supérieur.
-	c.draw_style_box(style("gloss_%d" % rayon, Color(1.0, 1.0, 1.0, 0.20), Color(0, 0, 0, 0),
-		maxi(rayon - 6, 4), 0, 0),
-		Rect2(face.position + Vector2(6.0, 4.0), Vector2(face.size.x - 12.0, face.size.y * 0.42)))
+	# Ombre portée courte (planche : « ombre portée courte + highlight »).
+	rect_degrade(c, Rect2(rect.position + Vector2(0.0, 6.0), rect.size), rayon,
+		Color(0.0, 0.0, 0.0, 0.35), Color(0.0, 0.0, 0.0, 0.35))
+	# Contour marine englobant (face + tranche).
+	rect_degrade(c, rect.grow(3.0), rayon + 3, Identite.CONTOUR, Identite.CONTOUR)
+	# Tranche : la même teinte, saturée et assombrie.
+	rect_degrade(c, Rect2(face.position + Vector2(0.0, 6.0), Vector2(rect.size.x, rect.size.y - 6.0)),
+		rayon, fond.darkened(0.35), fond.darkened(0.5))
+	# Face en dégradé clair → saturé.
+	rect_degrade(c, face, rayon, fond.lightened(0.22), fond.darkened(0.08))
+	# Liseré brillant supérieur.
+	var gloss := Rect2(face.position + Vector2(5.0, 3.0), Vector2(face.size.x - 10.0, face.size.y * 0.42))
+	rect_degrade(c, gloss, maxf(rayon - 5.0, 4.0), Color(1.0, 1.0, 1.0, 0.30), Color(1.0, 1.0, 1.0, 0.02))
 
 
-## Barre glossy (énergie, décompte) : fond navy + remplissage + reflet.
+## Barre brillante de la planche : fond navy, remplissage en dégradé + reflet.
 static func barre(c: Control, rect: Rect2, ratio: float, teinte: Color) -> void:
-	c.draw_style_box(style("barre_fond", Identite.NUIT, Identite.CONTOUR, Identite.RAYON_SM, Identite.BORD, 3), rect)
+	rect_degrade(c, rect.grow(2.0), Identite.RAYON_SM + 2, Identite.CONTOUR, Identite.CONTOUR)
+	rect_degrade(c, rect, Identite.RAYON_SM, Identite.NUIT.darkened(0.2), Identite.NUIT.lightened(0.06))
 	var r := clampf(ratio, 0.0, 1.0)
 	if r > 0.02:
 		var interieur := Rect2(rect.position + Vector2(3.0, 3.0),
 			Vector2((rect.size.x - 6.0) * r, rect.size.y - 6.0))
-		var cle := "barre_%s_%d" % [teinte.to_html(false), int(r * 24.0)]
-		c.draw_style_box(style(cle, teinte, teinte.darkened(0.35), Identite.RAYON_SM - 3, 2, 0), interieur)
-		c.draw_rect(Rect2(interieur.position + Vector2(2.0, 1.0),
-			Vector2(interieur.size.x - 4.0, interieur.size.y * 0.4)), Color(1.0, 1.0, 1.0, 0.22))
+		rect_degrade(c, interieur, Identite.RAYON_SM - 3, teinte.lightened(0.25), teinte.darkened(0.1))
+		rect_degrade(c, Rect2(interieur.position + Vector2(2.0, 1.0),
+			Vector2(interieur.size.x - 4.0, interieur.size.y * 0.42)), 4.0,
+			Color(1.0, 1.0, 1.0, 0.30), Color(1.0, 1.0, 1.0, 0.05))
 
 
 ## Pastille ronde à lettre (A/B/C/D, rangs du podium).

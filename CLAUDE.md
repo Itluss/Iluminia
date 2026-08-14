@@ -76,6 +76,19 @@ de couleurs débloquées par le **coffre quotidien**, méta persistée par
 l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
 récompenses de compte au podium. Navigation testée en vrai navigateur
 (Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
+**Fidélité aux planches pro (V9)** (2026-08-14, « je veux un rendu proche
+et pro, comme Clash Royale — sans les Meshy ») : rendu DÉGRADÉ du kit UI
+(ui.gd : polygones arrondis à dégradé par sommet — bouton candy à
+tranche + liseré brillant, panneaux à liseré interne, barres brillantes ;
+attention aux sommets dupliqués → triangulation) ; HÉROS HUMANOÏDES des
+planches en 3D procédural (personnage3d.gd : enfants à grosse tête,
+mèches/couettes/cheveux longs, sweat à lettre, short, baskets ; Zep
+lunettes d'aviateur, Ficelle casque audio ; yeux POSÉS EN AVANT de la
+surface du crâne sinon invisibles) ; LOBBY DE JOUR (Ambiance.THEME_JOUR :
+ciel bleu, soleil chaud — énergies 0.72/0.45 sinon surexposition
+llvmpipe) avec piédestal de pierre rose et nuages ; accueil = héros
+équipé SEUL en grand + compagnon (planche Home), étiquettes de nom
+masquées hors écran Personnages (montrer_nom).
 **UI planche « Écran Personnages / Home Illuminia »** (2026-08-14, planches
 fournies par Camille) : kit ui.gd au style de la planche — boutons à
 BISEAU 3D (tranche sombre + highlight), capsules de ressources avec « + »,
