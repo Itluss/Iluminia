@@ -147,6 +147,7 @@ func _reconstruire_persos() -> void:
 		perso.etiquette = nom
 		perso.couleur = Profil.couleur_de(nom)
 		perso.utiliser_fiche_couleur = false
+		perso.puissance = Profil.puissance_de(nom)
 		perso.position = perpendiculaire * (i - 1.5) * 2.6 - vers_camera * 1.6 + Vector3(0.0, 0.49, 0.0)
 		add_child(perso)
 		perso.regarder(Vector2(1.0, 1.0).normalized())
@@ -270,6 +271,8 @@ func _executer(action: String) -> void:
 		"ameliorer":
 			if Profil.ameliorer_puissance(NOMS[perso_focus]):
 				Audio.jouer("victoire")
+				# La transformation se voit TOUT DE SUITE sur le diorama.
+				_reconstruire_persos()
 			else:
 				Audio.jouer("denied")
 		"ouvrir_cadeau":
@@ -552,45 +555,58 @@ class SurfaceMenu extends Control:
 		]
 		for s in lignes_stats.size():
 			var ligne: Array = lignes_stats[s]
-			var y := rect.position.y + 84.0 + s * 26.0
+			var y := rect.position.y + 84.0 + s * 24.0
 			UI.texte(self, Vector2(x, y + 14.0), str(ligne[0]), 12, Identite.TEXTE_ATTENUE)
 			UI.barre_stat(self, Rect2(x + 76.0, y, 160.0, 18.0), float(ligne[1]), ligne[3])
 			UI.texte(self, Vector2(x + 244.0, y + 14.0), str(ligne[2]), 12, Identite.TEXTE)
 		# COMPÉTENCES (cartes de la planche) : les 3 pouvoirs + le Super.
 		var p := Profil.puissance_de(nom)
-		UI.texte(self, Vector2(x, rect.position.y + 178.0), "COMPÉTENCES", 13, Identite.TEXTE_ATTENUE)
+		UI.texte(self, Vector2(x, rect.position.y + 168.0), "COMPÉTENCES", 13, Identite.TEXTE_ATTENUE)
 		var comps: Array = [["onde", Identite.ORANGE], ["dash", Identite.BLEU],
 			["bouclier", Identite.VIOLET], ["super", Identite.OR]]
 		for ci in comps.size():
 			var comp: Array = comps[ci]
-			var carte := Rect2(x + ci * 74.0, rect.position.y + 188.0, 64.0, 60.0)
+			var carte := Rect2(x + ci * 74.0, rect.position.y + 176.0, 64.0, 54.0)
 			self.draw_style_box(UI.style("comp_%s" % str(comp[0]), Identite.NUIT, comp[1],
 				Identite.RAYON_SM, Identite.BORD, 2), carte)
 			if str(comp[0]) == "super":
-				UI.etoile(self, carte.get_center() + Vector2(0.0, -6.0), 13.0, Identite.OR)
+				UI.etoile(self, carte.get_center() + Vector2(0.0, -5.0), 12.0, Identite.OR)
 			else:
-				UI.icone_pouvoir(self, carte.get_center() + Vector2(0.0, -6.0), 20.0, str(comp[0]))
-			UI.texte(self, Vector2(carte.get_center().x, carte.end.y - 7.0), "Niv. %d" % p, 11, Identite.TEXTE, true, 3)
-		UI.texte(self, Vector2(x, rect.position.y + 266.0),
+				UI.icone_pouvoir(self, carte.get_center() + Vector2(0.0, -5.0), 18.0, str(comp[0]))
+			UI.texte(self, Vector2(carte.get_center().x, carte.end.y - 6.0), "Niv. %d" % p, 11, Identite.TEXTE, true, 3)
+		UI.texte(self, Vector2(x, rect.position.y + 246.0),
 			"SUPER : %s" % str(Chasseur.NOMS_SUPERS.get(nom, "")), 12, Identite.OR)
-		# TENUES (vignettes de la planche) : la garde-robe de couleurs.
-		UI.texte(self, Vector2(x, rect.position.y + 288.0),
-			"TENUES  (déblocage : niveau du héros ou %d pièces)" % Profil.PRIX_VARIANTE, 12, Identite.TEXTE_ATTENUE)
+		# PISTE D'ÉVOLUTION : le but visible — chaque palier de Puissance
+		# transforme le héros pour de bon, jusqu'à la FORME ÉCLAT.
+		UI.texte(self, Vector2(x, rect.position.y + 268.0), "ÉVOLUTION", 13, Identite.TEXTE_ATTENUE)
+		for e in 5:
+			UI.etoile(self, Vector2(x + 96.0 + e * 26.0, rect.position.y + 263.0), 9.0,
+				Identite.OR if p > e else Color(0.3, 0.33, 0.47))
+		var noms_paliers: Array = ["", "Bracelets de lumière", "Cape d'éclat",
+			"Aura d'éclat", "FORME ÉCLAT"]
+		if p >= 5:
+			UI.texte(self, Vector2(x, rect.position.y + 286.0),
+				"FORME ÉCLAT atteinte — couronne, cape et lumière éternelle !", 11, Identite.OR)
+		else:
+			UI.texte(self, Vector2(x, rect.position.y + 286.0),
+				"Prochain palier : %s (Puissance %d)" % [str(noms_paliers[p]), p + 1], 11, Identite.CYAN)
+		# TENUES : libellé et vignettes sur la même ligne (place comptée).
+		UI.texte(self, Vector2(x, rect.position.y + 312.0), "TENUES", 12, Identite.TEXTE_ATTENUE)
 		var palette: Array = fiche.variantes
 		for v in palette.size():
-			var centre := Vector2(x + 22.0 + v * 60.0, rect.position.y + 316.0)
+			var centre := Vector2(x + 84.0 + v * 54.0, rect.position.y + 308.0)
 			var accessible := Profil.variante_accessible(nom, v)
 			var teinte: Color = palette[v]
-			draw_circle(centre, 22.0, Identite.CONTOUR)
-			draw_circle(centre, 18.0, teinte if accessible else Color(0.3, 0.32, 0.42))
+			draw_circle(centre, 20.0, Identite.CONTOUR)
+			draw_circle(centre, 16.0, teinte if accessible else Color(0.3, 0.32, 0.42))
 			if accessible:
-				draw_circle(centre + Vector2(0.0, -6.0), 9.0, Color(1.0, 1.0, 1.0, 0.22))
+				draw_circle(centre + Vector2(0.0, -5.0), 8.0, Color(1.0, 1.0, 1.0, 0.22))
 			if int(Profil.variantes.get(nom, 0)) == v:
-				draw_arc(centre, 25.0, 0.0, TAU, 32, Identite.OR, 4.0)
-				UI.pastille(self, centre + Vector2(15.0, 13.0), 8.0, Identite.VERT, "✓", 10)
+				draw_arc(centre, 23.0, 0.0, TAU, 32, Identite.OR, 4.0)
+				UI.pastille(self, centre + Vector2(14.0, 12.0), 7.0, Identite.VERT, "✓", 9)
 			if not accessible:
-				UI.texte(self, centre + Vector2(0.0, 4.0), "Niv %d" % Profil.PALIERS_VARIANTES[v], 10, Identite.TEXTE, true, 3)
-			_actions.append({"rect": Rect2(centre - Vector2(26.0, 26.0), Vector2(52.0, 52.0)),
+				UI.texte(self, centre + Vector2(0.0, 4.0), "N%d" % Profil.PALIERS_VARIANTES[v], 10, Identite.TEXTE, true, 3)
+			_actions.append({"rect": Rect2(centre - Vector2(24.0, 24.0), Vector2(48.0, 48.0)),
 				"action": "variante:%s:%d" % [nom, v]})
 		# Pied de fiche : AMÉLIORER (bouton or de la planche) + état.
 		var cout := Profil.cout_puissance(nom)

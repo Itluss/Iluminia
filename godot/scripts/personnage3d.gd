@@ -29,25 +29,25 @@ extends Node3D
 const PEAU := Color(1.0, 0.82, 0.64)
 const FICHES := {
 	"Max": {"couleur": Identite.TEINTE_MAX, "cheveux": Color(0.36, 0.22, 0.12),
-		"coiffure": "meches", "lettre": "M", "accessoire": "",
+		"coiffure": "meches", "lettre": "M", "accessoire": "", "effet": "etincelles",
 		"variantes": [Identite.TEINTE_MAX, Identite.CYAN, Identite.OR, Identite.VERT],
 		"rarete": "Épique", "role": "Aventurier",
 		"descr": "Curieux et courageux, prêt à relever tous les défis !",
 		"stats": {"vitesse": 1.0, "energie": 100.0, "portee": 0.0}},
 	"Zep": {"couleur": Identite.TEINTE_ZEP, "cheveux": Color(0.91, 0.45, 0.17),
-		"coiffure": "meches", "lettre": "Z", "accessoire": "lunettes",
+		"coiffure": "meches", "lettre": "Z", "accessoire": "lunettes", "effet": "eclairs",
 		"variantes": [Identite.TEINTE_ZEP, Identite.MAGENTA, Identite.BLEU, Identite.ORANGE],
 		"rarete": "Rare", "role": "Fusée",
 		"descr": "Lunettes d'aviateur vissées : le plus rapide, mais fragile !",
 		"stats": {"vitesse": 1.08, "energie": 85.0, "portee": 0.0}},
 	"Nova": {"couleur": Identite.TEINTE_NOVA, "cheveux": Color(0.95, 0.82, 0.42),
-		"coiffure": "long", "lettre": "N", "accessoire": "",
+		"coiffure": "long", "lettre": "N", "accessoire": "", "effet": "etoiles",
 		"variantes": [Identite.TEINTE_NOVA, Identite.VERT, Identite.VIOLET, Identite.ROUGE],
 		"rarete": "Rare", "role": "Étoile guide",
 		"descr": "Calme et précise : son onde porte plus loin que les autres.",
 		"stats": {"vitesse": 0.97, "energie": 100.0, "portee": 0.5}},
 	"Ficelle": {"couleur": Identite.TEINTE_FICELLE, "cheveux": Color(0.96, 0.45, 0.68),
-		"coiffure": "couettes", "lettre": "F", "accessoire": "casque_audio",
+		"coiffure": "couettes", "lettre": "F", "accessoire": "casque_audio", "effet": "braises",
 		"variantes": [Identite.TEINTE_FICELLE, Identite.ORANGE, Identite.CYAN, Identite.CREME],
 		"rarete": "Légendaire", "role": "Gardienne",
 		"descr": "Couettes roses et casque audio : lente, mais très endurante.",
@@ -96,6 +96,14 @@ var _eveil := 0                  ## niveau d'Éveil affiché (0..3)
 var _echelle_base := Vector3.ONE ## grossit avec l'Éveil (squash la préserve)
 var _anneaux_eveil: Array = []   ## anneaux au sol, un par niveau
 var _ailes_lumiere: Array = []   ## ailes de lumière du niveau 3
+
+## Palier d'ÉVOLUTION PERMANENTE du héros (la Puissance, 1..5) — à fixer
+## AVANT l'ajout à l'arbre. Chaque palier ajoute un attribut visible
+## partout (lobby ET match) : 2 bracelets de lumière, 3 cape d'éclat,
+## 4 aura au sol, 5 FORME ÉCLAT (couronne, grande cape, effets permanents).
+var puissance := 1
+var _effet: CPUParticles3D       ## particules signatures du héros
+var _aura: MeshInstance3D        ## aura du palier 4
 
 
 func _ready() -> void:
@@ -222,6 +230,105 @@ func _construire_lumin(fiche: Dictionary) -> void:
 	# Halo fresnel discret : la lumière d'Iluminia nimbe la silhouette.
 	Materiaux.mesh(_racine, Materiaux.sphere(0.5), Nuanceurs.fresnel(couleur.lightened(0.3), 0.45),
 		Vector3(0.0, 0.8, 0.0), Vector3(0.72, 1.55, 0.62), false)
+	# Effet signature + attributs d'évolution permanente.
+	_construire_effet(str(fiche.get("effet", "etincelles")))
+	_appliquer_evolution()
+
+
+## Les PARTICULES SIGNATURES : chaque héros sème sa propre lumière en
+## courant (en permanence à la Forme Éclat). Max des étincelles d'or,
+## Zep des éclairs cyan, Nova de la poussière d'étoiles, Ficelle des
+## braises roses.
+func _construire_effet(type: String) -> void:
+	_effet = CPUParticles3D.new()
+	_effet.amount = 12
+	_effet.lifetime = 0.8
+	_effet.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	_effet.emission_sphere_radius = 0.22
+	_effet.position = Vector3(0.0, 0.3, 0.0)
+	_effet.spread = 65.0
+	_effet.direction = Vector3.UP
+	var forme := SphereMesh.new()
+	forme.radial_segments = 6
+	forme.rings = 3
+	var teinte := Identite.OR
+	match type:
+		"etincelles": # Max : étincelles d'or qui sautent des pas.
+			teinte = Identite.OR
+			_effet.initial_velocity_min = 1.2
+			_effet.initial_velocity_max = 2.2
+			_effet.gravity = Vector3(0.0, -6.0, 0.0)
+			forme.radius = 0.045
+		"eclairs": # Zep : crépitements cyan.
+			teinte = Identite.CYAN
+			_effet.initial_velocity_min = 0.4
+			_effet.initial_velocity_max = 1.0
+			_effet.gravity = Vector3.ZERO
+			_effet.lifetime = 0.35
+			_effet.emission_sphere_radius = 0.4
+			_effet.position = Vector3(0.0, 0.6, 0.0)
+			forme.radius = 0.035
+			forme.height = 0.2 # éclats étirés
+		"etoiles": # Nova : poussière d'étoiles qui flotte.
+			teinte = Identite.CREME
+			_effet.initial_velocity_min = 0.2
+			_effet.initial_velocity_max = 0.6
+			_effet.gravity = Vector3(0.0, 0.8, 0.0)
+			_effet.lifetime = 1.3
+			forme.radius = 0.035
+		"braises": # Ficelle : braises roses qui montent.
+			teinte = Identite.MAGENTA
+			_effet.initial_velocity_min = 0.5
+			_effet.initial_velocity_max = 1.1
+			_effet.gravity = Vector3(0.0, 2.2, 0.0)
+			_effet.lifetime = 1.0
+			forme.radius = 0.04
+	if forme.height <= forme.radius * 2.0:
+		forme.height = forme.radius * 2.0
+	forme.material = Materiaux.emissif(teinte, 2.4)
+	_effet.mesh = forme
+	_effet.emitting = false
+	add_child(_effet)
+
+
+## Les ATTRIBUTS D'ÉVOLUTION : le but visible de la progression — chaque
+## palier de Puissance change le héros pour de bon.
+func _appliquer_evolution() -> void:
+	var p := clampi(puissance, 1, 5)
+	if p >= 2:
+		# Palier 2 : BRACELETS DE LUMIÈRE aux poignets.
+		var cotes: Array = [-1.0, 1.0]
+		for i in 2:
+			var pivot: Node3D = [_bras_g, _bras_d][i]
+			var bracelet := Materiaux.mesh(pivot, Materiaux.tore(0.065, 0.02),
+				Materiaux.emissif(couleur.lightened(0.25), 1.8),
+				Vector3(float(cotes[i]) * 0.05, -0.2, 0.0), Vector3.ONE, false)
+			bracelet.rotation_degrees = Vector3(0.0, 0.0, 90.0)
+	if p >= 3:
+		# Palier 3 : CAPE D'ÉCLAT (grande à la Forme Éclat).
+		var cape := BoxMesh.new()
+		cape.size = Vector3(0.4, 0.78 if p >= 5 else 0.52, 0.045)
+		var mi := Materiaux.mesh(_racine, cape,
+			Materiaux.toon(couleur.darkened(0.35)),
+			Vector3(0.0, 0.86 - cape.size.y / 2.0, -0.21))
+		mi.rotation_degrees = Vector3(-8.0, 0.0, 0.0)
+		# Doublure émissive : la cape porte la lumière du héros.
+		var doublure := BoxMesh.new()
+		doublure.size = Vector3(0.34, cape.size.y - 0.08, 0.012)
+		Materiaux.mesh(mi, doublure, Materiaux.emissif(couleur.lightened(0.2), 0.7),
+			Vector3(0.0, 0.0, 0.032), Vector3.ONE, false)
+	if p >= 4:
+		# Palier 4 : AURA AU SOL, en rotation lente.
+		_aura = Materiaux.mesh(self, Materiaux.tore(0.52, 0.03),
+			Materiaux.emissif(couleur.lightened(0.15), 1.5),
+			Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
+	if p >= 5:
+		# Palier 5 — FORME ÉCLAT : couronne d'or, effets permanents.
+		Materiaux.mesh(_racine, Materiaux.tore(0.13, 0.025), Materiaux.emissif(Identite.OR, 2.0),
+			Vector3(0.0, 1.4, 0.0), Vector3.ONE, false)
+		for i in 3:
+			Materiaux.mesh(_racine, Materiaux.cone(0.03, 0.1), Materiaux.emissif(Identite.OR, 2.0),
+				Vector3(-0.09 + i * 0.09, 1.47, 0.0), Vector3.ONE, false)
 
 
 ## Basket de la planche : semelle blanche, empeigne colorée, lacets clairs.
@@ -372,8 +479,15 @@ func _aile(cote: float) -> Node3D:
 
 func _process(delta: float) -> void:
 	_t += delta
+	var cap_avant := _cap
 	_cap = lerp_angle(_cap, _cible_cap, minf(delta * 12.0, 1.0))
 	_racine.rotation.y = _cap
+	# GAME FEEL de course : penché vers l'avant quand on court, roulis
+	# dans les virages (le personnage « prend » son virage).
+	var pente_cible := 0.14 if en_marche else 0.0
+	_racine.rotation.x = lerpf(_racine.rotation.x, pente_cible, minf(delta * 8.0, 1.0))
+	var virage := clampf(wrapf(_cap - cap_avant, -PI, PI) / maxf(delta, 0.001) * 0.06, -0.3, 0.3)
+	_racine.rotation.z = lerpf(_racine.rotation.z, -virage if en_marche else 0.0, minf(delta * 6.0, 1.0))
 	# Rebond de trottinement / respiration.
 	var saut := absf(sin(_t * 10.0)) * (0.14 if en_marche else 0.02)
 	_racine.position.y = saut
@@ -386,6 +500,11 @@ func _process(delta: float) -> void:
 		var balancier := sin(_t * 14.0) * (0.7 if en_marche else 0.05)
 		_bras_g.rotation.x = -balancier
 		_bras_d.rotation.x = balancier
+	# Particules signatures : en course, en permanence à la Forme Éclat.
+	if _effet != null:
+		_effet.emitting = en_marche or puissance >= 5
+	if _aura != null:
+		_aura.rotation.y += delta * 0.8
 	# Anneaux d'Éveil qui tournent, ailes de lumière qui battent.
 	for i in _anneaux_eveil.size():
 		var anneau_eveil: MeshInstance3D = _anneaux_eveil[i]

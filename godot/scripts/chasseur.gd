@@ -82,6 +82,7 @@ var surcharge_restant := 0.0 ## Overdrive de Zep (vitesse boostée)
 
 var visuel: Personnage3D
 var _traine_delai := 0.0  ## cadence de la traînée dorée du porteur
+var _poussiere_delai := 0.0  ## cadence des nuages de poussière de course
 var _pause_ia := 0.0      ## temps de réaction des bots (laisse jouer l'humain)
 
 
@@ -119,6 +120,10 @@ func _ready() -> void:
 	visuel.couleur = teinte
 	visuel.utiliser_fiche_couleur = false # la variante de la garde-robe prime
 	visuel.etiquette = nom
+	# L'évolution du héros (Puissance) se voit aussi en match.
+	# (ILUMINIA_PUISSANCE : crochet de capture pour forcer un palier.)
+	var puissance_forcee := OS.get_environment("ILUMINIA_PUISSANCE")
+	visuel.puissance = int(puissance_forcee) if puissance_forcee != "" else Profil.puissance_de(nom)
 	add_child(visuel)
 	# Le compagnon du joueur : son dragon du Sanctuaire, visible par tous.
 	if est_joueur and Personnage3D.ESPECES.has(Profil.compagnon):
@@ -267,6 +272,12 @@ func _process(delta: float) -> void:
 		# Traînée cyan de l'Overdrive de Zep.
 		if surcharge_restant > 0.0 and visuel.en_marche:
 			arene.fx.traine(pos2(), Identite.CYAN)
+		# Poussière sous les pas : la course se sent.
+		if visuel.en_marche:
+			_poussiere_delai -= delta
+			if _poussiere_delai <= 0.0:
+				_poussiere_delai = 0.22
+				arene.fx.poussiere(pos2())
 
 	fixer_pos2(arene.borner(pos2()))
 

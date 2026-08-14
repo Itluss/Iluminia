@@ -76,6 +76,18 @@ de couleurs débloquées par le **coffre quotidien**, méta persistée par
 l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
 récompenses de compte au podium. Navigation testée en vrai navigateur
 (Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
+**Game feel + évolution désirable (V10)** (2026-08-14, « déplacements pas
+dingues / effets personnalisés / une évolution qui donne vraiment
+envie ») : locomotion vivante (penché vers l'avant en course, roulis dans
+les virages, poussière sous les pas via fx.poussiere) ; PARTICULES
+SIGNATURES par héros (fiche `effet` : étincelles d'or Max, éclairs cyan
+Zep, poussière d'étoiles Nova, braises roses Ficelle — actives en course,
+permanentes en Forme Éclat) ; ÉVOLUTION PERMANENTE par Puissance
+(Personnage3D.puissance, visible lobby ET match) : P2 bracelets de
+lumière, P3 cape d'éclat à doublure émissive, P4 aura au sol, P5 FORME
+ÉCLAT (couronne d'or, grande cape, effets permanents) ; piste
+d'évolution sur la fiche Personnages (5 étoiles + « Prochain palier :
+… ») ; crochet de capture ILUMINIA_PUISSANCE=n.
 **Fidélité aux planches pro (V9)** (2026-08-14, « je veux un rendu proche
 et pro, comme Clash Royale — sans les Meshy ») : rendu DÉGRADÉ du kit UI
 (ui.gd : polygones arrondis à dégradé par sommet — bouton candy à

@@ -115,6 +115,27 @@ func cone(pos: Vector2, dir: Vector2, portee: float, teinte := Color(1.0, 0.95, 
 	get_tree().create_timer(0.9).timeout.connect(p.queue_free)
 
 
+## Petit nuage de poussière sous les pas (game feel de course).
+func poussiere(pos: Vector2) -> void:
+	var mi := MeshInstance3D.new()
+	var forme := SphereMesh.new()
+	forme.radius = 0.1
+	forme.height = 0.2
+	forme.radial_segments = 6
+	forme.rings = 3
+	mi.mesh = forme
+	var mat := Materiaux.verre(Color(0.95, 0.95, 1.0), 0.4, 0.4)
+	mi.material_override = mat
+	mi.position = en_3d(pos + Vector2(randf_range(-0.15, 0.15), randf_range(-0.15, 0.15)), 0.08)
+	add_child(mi)
+	var tw := create_tween()
+	tw.set_parallel(true)
+	tw.tween_property(mi, "scale", Vector3.ONE * 2.2, 0.4)
+	tw.tween_property(mi, "position:y", 0.35, 0.4)
+	tw.tween_property(mat, "albedo_color:a", 0.0, 0.4)
+	tw.chain().tween_callback(mi.queue_free)
+
+
 ## Rond de traînée du dash : petite sphère émissive qui s'estompe.
 func traine(pos: Vector2, teinte: Color) -> void:
 	var mi := MeshInstance3D.new()
