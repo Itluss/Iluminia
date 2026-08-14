@@ -88,6 +88,24 @@ lumière, P3 cape d'éclat à doublure émissive, P4 aura au sol, P5 FORME
 ÉCLAT (couronne d'or, grande cape, effets permanents) ; piste
 d'évolution sur la fiche Personnages (5 étoiles + « Prochain palier :
 … ») ; crochet de capture ILUMINIA_PUISSANCE=n.
+**PIVOT PRODUIT MAJEUR (V14)** (2026-08-14) : « APPRENDRE EST LA FAÇON DE
+DEVENIR PUISSANT DANS ILLUMINIA. » L'arène/chasse au dragon est
+ABANDONNÉE (fichiers supprimés, historique git les garde). Nouveau cœur :
+savoir.gd (arbre des connaissances multi-matières : matières → domaines →
+compétences, prérequis, états verrouillee/decouverte/apprentissage/
+acquise/maitrisee/a_consolider — représentation visuelle UNIQUEMENT dans
+l'UI), cite.gd (paliers de connaissance fortement croissants + catalogue
+de bâtiments : palier de connaissance requis ET or — jamais de
+pay-to-win pédagogique ; économie prête pour SOURCE_ATTACK future),
+profil.gd étendu (classe déclarée, connaissance_xp, competences,
+ressources, ville sur grille invisible, stats_semaine parent ; XP
+uniquement aux CHANGEMENTS d'état — anti-farm). Écrans : accueil.gd
+(HOME = ARBRE des connaissances avec recommandation + liberté, header
+« encore N XP → prochain déblocage », Collection, Progression/paliers,
+ESPACE PARENT séparé, choix de classe au premier lancement — pas de test
+initial), ville.gd (vue 3D inclinée, catalogue réel, BÂTIR pose sur la
+grille, caméra au doigt). Sessions d'apprentissage (diagnostic →
+micro-leçon → validation) = PROCHAIN chantier, non commencé sur consigne.
 **MOTEUR PÉDAGOGIQUE 5ᵉ (V13)** (2026-08-14, « jeu éducatif pour mes
 élèves de 5ᵉ — aucune notion n'est enseignée ») : questions.gd devient le
 moteur maths 5ᵉ (cycle 4) — 6 NOTIONS (relatifs, fractions, littéral,

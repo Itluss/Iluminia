@@ -95,6 +95,95 @@ var jour_quetes := 0
 var chapitre := "mixte"               ## clé de Questions.NOTIONS ou "mixte"
 var maitrise := {}                    ## notion → 0..100
 
+## ---- PIVOT « la connaissance est la source du pouvoir » ----
+## PlayerLearningProfile + City (voir savoir.gd et cite.gd).
+var classe := ""                      ## niveau scolaire déclaré ("" = à choisir)
+var connaissance_xp := 0              ## l'XP DE CONNAISSANCE (paliers de la ville)
+var competences := {}                 ## id → {"etat": String, "score": 0..100}
+var ressources := {"bois": 0, "pierre": 0, "nourriture": 0}
+var ville: Array = []                 ## [{type, x, y, rot}] sur la grille invisible
+var stats_semaine := {"acquises": 0, "maitrisees": 0, "difficultes": 0, "corrigees": 0,
+	"minutes_apprentissage": 0}       ## le résumé de l'Espace Parent
+var semaine_stats := 0                ## n° de semaine des stats (remise à zéro auto)
+
+
+## État BRUT d'une compétence (sans la logique de prérequis — voir
+## Savoir.etat() pour l'état effectif affiché).
+func etat_competence_brut(id: String) -> String:
+	return str(competences.get(id, {}).get("etat", "decouverte"))
+
+
+func score_competence(id: String) -> float:
+	return float(competences.get(id, {}).get("score", 0.0))
+
+
+## Changement d'état d'une compétence + XP de connaissance à la clé.
+## L'XP majeure vient de la PROGRESSION RÉELLE (nouvel état), jamais de
+## la répétition de ce qui est déjà maîtrisé.
+func fixer_etat_competence(id: String, etat: String, score := -1.0) -> int:
+	_basculer_semaine_si_besoin()
+	var avant := etat_competence_brut(id)
+	var entree: Dictionary = competences.get(id, {"etat": "decouverte", "score": 0.0})
+	entree.etat = etat
+	if score >= 0.0:
+		entree.score = clampf(score, 0.0, 100.0)
+	competences[id] = entree
+	var gain := 0
+	var fiche := Savoir.competence(id)
+	if not fiche.is_empty() and avant != etat:
+		# XP à la première acquisition / maîtrise uniquement (anti-farm).
+		if etat == "acquise" and not ["acquise", "maitrisee"].has(avant):
+			gain = int(fiche.xp)
+			stats_semaine.acquises += 1
+		elif etat == "maitrisee" and avant != "maitrisee":
+			gain = int(fiche.xp) / 2
+			stats_semaine.maitrisees += 1
+		elif etat == "a_consolider":
+			stats_semaine.difficultes += 1
+	connaissance_xp += gain
+	sauver()
+	return gain
+
+
+## Maîtrise moyenne d'un domaine (Espace Parent).
+func maitrise_domaine(sujet: String, domaine: String) -> float:
+	var liste: Array = Savoir.SUJETS.get(sujet, {}).get("domaines", {}).get(domaine, {}).get("competences", [])
+	if liste.is_empty():
+		return 0.0
+	var total := 0.0
+	for c in liste:
+		total += score_competence(str(c.id))
+	return total / liste.size()
+
+
+func _basculer_semaine_si_besoin() -> void:
+	var semaine := int(Time.get_unix_time_from_system() / 604800.0)
+	if semaine != semaine_stats:
+		semaine_stats = semaine
+		stats_semaine = {"acquises": 0, "maitrisees": 0, "difficultes": 0,
+			"corrigees": 0, "minutes_apprentissage": 0}
+
+
+## AMORCE DE DÉMO du vertical slice : au tout premier lancement, quelques
+## compétences reçoivent des états variés pour que l'arbre soit parlant.
+## (Sera remplacé par le diagnostic progressif invisible.)
+func _semer_demo_pivot() -> void:
+	if not competences.is_empty():
+		return
+	var etats_demo := {
+		"calc_addition": ["maitrisee", 92.0], "calc_dizaine": ["apprentissage", 45.0],
+		"nb_lire": ["maitrisee", 88.0], "nb_comparer": ["acquise", 76.0],
+		"fr_comprendre": ["acquise", 70.0], "fr_comparer": ["apprentissage", 35.0],
+		"geo_perimetres": ["acquise", 72.0], "fr_equivalentes": ["a_consolider", 55.0],
+	}
+	for id in etats_demo:
+		competences[id] = {"etat": etats_demo[id][0], "score": etats_demo[id][1]}
+	connaissance_xp = 150
+	if ville.is_empty():
+		ville = [{"type": "maison", "x": 5, "y": 5, "rot": 0}]
+	pieces = maxi(pieces, 120)
+	sauver()
+
 
 # ---------------------------------------------------------------- pédagogie
 
@@ -130,6 +219,7 @@ func _ready() -> void:
 		puissance[nom] = 1
 	charger()
 	_regenerer_quetes_si_nouveau_jour()
+	_semer_demo_pivot()
 	Audio.definir_son(son_actif)
 
 
@@ -480,6 +570,13 @@ func sauver() -> void:
 	cfg.set_value("profil", "jour_quetes", jour_quetes)
 	cfg.set_value("profil", "chapitre", chapitre)
 	cfg.set_value("profil", "maitrise", maitrise)
+	cfg.set_value("profil", "classe", classe)
+	cfg.set_value("profil", "connaissance_xp", connaissance_xp)
+	cfg.set_value("profil", "competences", competences)
+	cfg.set_value("profil", "ressources", ressources)
+	cfg.set_value("profil", "ville", ville)
+	cfg.set_value("profil", "stats_semaine", stats_semaine)
+	cfg.set_value("profil", "semaine_stats", semaine_stats)
 	cfg.save(CHEMIN)
 
 
@@ -523,6 +620,21 @@ func charger() -> void:
 	var ma = cfg.get_value("profil", "maitrise", maitrise)
 	if ma is Dictionary:
 		maitrise = ma
+	classe = str(cfg.get_value("profil", "classe", classe))
+	connaissance_xp = int(cfg.get_value("profil", "connaissance_xp", connaissance_xp))
+	var co = cfg.get_value("profil", "competences", competences)
+	if co is Dictionary:
+		competences = co
+	var re = cfg.get_value("profil", "ressources", ressources)
+	if re is Dictionary:
+		ressources = re
+	var vi = cfg.get_value("profil", "ville", ville)
+	if vi is Array:
+		ville = vi
+	var ss = cfg.get_value("profil", "stats_semaine", stats_semaine)
+	if ss is Dictionary:
+		stats_semaine = ss
+	semaine_stats = int(cfg.get_value("profil", "semaine_stats", semaine_stats))
 	var rr = cfg.get_value("profil", "route_reclamee", null)
 	if rr is Array:
 		route_reclamee = rr
