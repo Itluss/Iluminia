@@ -25,6 +25,7 @@ var _toast := ""
 var _toast_temps := 0.0
 var _toast_pedago_delai := 0.0
 var _flash_mauvaise := 0.0
+var _explication: Array = []     ## la règle à afficher après une erreur
 var _guide_etape := 0            ## tutoriel de première partie (0 = éteint)
 var _guide_depart := Vector2.ZERO
 var surface: Control
@@ -50,8 +51,10 @@ func sur_nouvelle_question() -> void:
 	_flash_mauvaise = 0.0
 
 
-func sur_mauvaise_reponse() -> void:
-	_flash_mauvaise = 1.6
+## L'erreur ENSEIGNE : le panneau d'explication reste affiché 5 s.
+func sur_mauvaise_reponse(explication: Array = []) -> void:
+	_explication = explication
+	_flash_mauvaise = 5.0 if not explication.is_empty() else 1.6
 
 
 func sur_podium() -> void:
@@ -270,8 +273,18 @@ func _dessiner(c: Control) -> void:
 			elif joueur.gel_restant > 0.0:
 				UI.texte(c, c.size / 2.0, "Gelé %.1f s…" % joueur.gel_restant, 24, Identite.CYAN, true)
 			if _flash_mauvaise > 0.0:
-				UI.texte(c, Vector2(c.size.x / 2.0, c.size.y * 0.3), "✗ MAUVAISE RÉPONSE",
-					32, Color(Identite.ROUGE.r, Identite.ROUGE.g, Identite.ROUGE.b, minf(_flash_mauvaise, 1.0)), true)
+				UI.texte(c, Vector2(c.size.x / 2.0, c.size.y * 0.26), "✗ MAUVAISE RÉPONSE",
+					30, Color(Identite.ROUGE.r, Identite.ROUGE.g, Identite.ROUGE.b, minf(_flash_mauvaise, 1.0)), true)
+				# LE PANNEAU QUI ENSEIGNE : la règle appliquée à CE calcul.
+				if not _explication.is_empty():
+					var largeur := minf(c.size.x - 240.0, 560.0)
+					var h := 44.0 + _explication.size() * 24.0
+					var rect := Rect2((c.size.x - largeur) / 2.0 - 60.0, c.size.y * 0.3, largeur, h)
+					UI.panneau(c, rect)
+					UI.texte(c, rect.position + Vector2(16.0, 26.0), "📖 LA RÈGLE :", 15, Identite.OR)
+					for li in _explication.size():
+						UI.texte(c, rect.position + Vector2(16.0, 50.0 + li * 24.0),
+							str(_explication[li]), 14, Identite.TEXTE)
 		Arene.Etat.INTERLUDE:
 			_dessiner_pilules(c)
 			_dessiner_energie(c)
@@ -315,7 +328,11 @@ func _dessiner_question_grande(c: Control) -> void:
 	# Barre de décompte dorée.
 	UI.barre(c, Rect2(rect.position + Vector2(70.0, 20.0), Vector2(largeur - 90.0, 16.0)),
 		arene.temps_etat / Arene.COMPTE_QUESTION, Identite.OR)
-	UI.texte(c, Vector2(c.size.x / 2.0, rect.position.y + 84.0), str(arene.question.enonce), 26, Identite.TEXTE, true)
+	# Chip pédagogique : la notion travaillée et son niveau.
+	UI.texte(c, Vector2(c.size.x / 2.0, rect.position.y + 56.0),
+		"%s — Niveau %d" % [Questions.titre(str(arene.question.notion)), int(arene.question.niveau)],
+		14, Identite.CYAN, true, 4)
+	UI.texte(c, Vector2(c.size.x / 2.0, rect.position.y + 88.0), str(arene.question.enonce), 25, Identite.TEXTE, true)
 	_dessiner_reponses(c, Rect2(rect.position + Vector2(24.0, 104.0), Vector2(largeur - 48.0, hauteur - 122.0)), 44.0, 20)
 	UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y + 30.0),
 		"Choisis ta réponse — tu pourras changer jusqu'au départ !", 15, Identite.TEXTE_ATTENUE, true)
@@ -519,6 +536,21 @@ func _dessiner_podium(c: Control) -> void:
 		if int(gains.niveaux_heros) > 0:
 			l2 += " — NIVEAU %d !" % Profil.niveau_heros(str(gains.heros))
 		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 12.0), l2, 15, Identite.TEXTE_ATTENUE, true)
+	# BILAN PÉDAGOGIQUE : ce que l'élève a travaillé pendant ce match.
+	var y_bilan := rect.end.y + 88.0
+	var bonnes := 0
+	var total := 0
+	for notion in arene.bilan:
+		bonnes += int(arene.bilan[notion][0])
+		total += int(arene.bilan[notion][1])
+	if total > 0:
+		var notions: Array = arene.bilan.keys()
+		var detail := " — ".join(notions.map(func(n): return "%s : %d %%" % [
+			Questions.titre(str(n)), int(Profil.maitrise.get(n, 0.0))]))
+		UI.texte(c, Vector2(c.size.x / 2.0, y_bilan), "MATHS : %d / %d bonnes réponses" % [bonnes, total],
+			16, Identite.CYAN, true, 5)
+		UI.texte(c, Vector2(c.size.x / 2.0, y_bilan + 22.0), "Maîtrise  %s" % detail,
+			13, Identite.TEXTE_ATTENUE, true, 4)
 	var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 220.0)
 	var bl := 260.0 * pulse
 	var bh := 62.0 * pulse

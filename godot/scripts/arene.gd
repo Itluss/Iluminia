@@ -17,7 +17,7 @@ extends Node3D
 enum Etat { QUESTION, JEU, INTERLUDE, PODIUM }
 
 const RAYON_ARENE := 15.5
-const COMPTE_QUESTION := 6.0    ## questionCountdown
+const COMPTE_QUESTION := 8.0    ## lecture d'un énoncé de 5ème : 8 s
 ## LA MANCHE DURE 60 SECONDES, POINT. Un dépôt réussi ne termine plus la
 ## manche : il rapporte +100, le dragon renaît ailleurs et une NOUVELLE
 ## question tombe — l'action est continue (format « Gem Grab »).
@@ -46,7 +46,9 @@ var dragon: Dragon = null
 var zones: Array = []           ## {pos, teinte, lettre, colonne, mat, label, croix}
 var buissons: Array = []        ## {pos, rayon} — fourrés où se CACHER
 var cristaux: Array = []
-var question := {"enonce": "", "reponses": ["", "", "", ""], "bonne": 0}
+var question := {"enonce": "", "reponses": ["", "", "", ""], "bonne": 0,
+	"explication": [], "notion": "", "niveau": 1}
+var bilan := {}                 ## notion → [bonnes, total] DU JOUEUR (podium)
 var etat := Etat.QUESTION
 var temps_etat := COMPTE_QUESTION
 var manche_courante := 1
@@ -402,10 +404,30 @@ func _animer_chevrons() -> void:
 
 # ---------------------------------------------------------------- manches
 
+## Question du chapitre choisi (ou notion au hasard en révision mixte),
+## au niveau piloté par la MAÎTRISE de l'élève.
+func _generer_question() -> Dictionary:
+	var notion: String = Profil.chapitre
+	if not Questions.NOTIONS.has(notion):
+		var cles: Array = Questions.NOTIONS.keys()
+		notion = cles[randi() % cles.size()]
+	return Questions.generer(notion, Profil.niveau_notion(notion))
+
+
+## Suivi pédagogique DU JOUEUR : maîtrise (profil) + bilan du match.
+func _noter(notion: String, bonne: bool) -> void:
+	Profil.enregistrer_reponse(notion, bonne)
+	if not bilan.has(notion):
+		bilan[notion] = [0, 0]
+	bilan[notion][1] += 1
+	if bonne:
+		bilan[notion][0] += 1
+
+
 func _nouvelle_manche() -> void:
 	etat = Etat.QUESTION
 	temps_etat = COMPTE_QUESTION
-	question = Questions.generer()
+	question = _generer_question()
 	if dragon != null:
 		dragon.queue_free()
 		dragon = null
@@ -517,6 +539,9 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 		Audio.jouer("victoire")
 		# Réussir en maths fait ÉVOLUER le Lumin : l'Éveil monte d'un niveau.
 		c.monter_eveil()
+		# Suivi pédagogique : seules les réponses DU JOUEUR comptent.
+		if c.est_joueur:
+			_noter(str(question.notion), true)
 		if c.est_joueur:
 			fx.secousse(0.4)
 			_quete("deposer")
@@ -537,15 +562,18 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 		Audio.jouer("mauvaise")
 		if c.est_joueur:
 			fx.secousse(0.5)
+			_noter(str(question.notion), false)
+			# L'ERREUR ENSEIGNE : le HUD affiche la règle appliquée à CE
+			# calcul pendant le gel — c'est là que l'élève apprend.
 			if hud != null:
-				hud.sur_mauvaise_reponse()
+				hud.sur_mauvaise_reponse(question.get("explication", []))
 
 
 ## Nouvelle question EN PLEINE MANCHE (après chaque dépôt réussi) :
 ## tout le monde re-choisit, les bots relisent un instant.
 func _nouvelle_question_en_cours() -> void:
 	canal = {}
-	question = Questions.generer()
+	question = _generer_question()
 	for c in chasseurs:
 		c.choix = -1
 		c.testees = []
@@ -613,6 +641,7 @@ func rejouer() -> void:
 	manche_courante = 1
 	delai_dragon = 0.0
 	recompense_podium = {}
+	bilan = {}
 	for c in chasseurs:
 		c.score = 0
 		c.energie = c.energie_max

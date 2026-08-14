@@ -88,6 +88,18 @@ lumière, P3 cape d'éclat à doublure émissive, P4 aura au sol, P5 FORME
 ÉCLAT (couronne d'or, grande cape, effets permanents) ; piste
 d'évolution sur la fiche Personnages (5 étoiles + « Prochain palier :
 … ») ; crochet de capture ILUMINIA_PUISSANCE=n.
+**MOTEUR PÉDAGOGIQUE 5ᵉ (V13)** (2026-08-14, « jeu éducatif pour mes
+élèves de 5ᵉ — aucune notion n'est enseignée ») : questions.gd devient le
+moteur maths 5ᵉ (cycle 4) — 6 NOTIONS (relatifs, fractions, littéral,
+proportionnalité, priorités, angles & aires) × 3 NIVEAUX, chaque notion
+avec sa LEÇON (règle + exemples) et chaque question avec son EXPLICATION.
+On ENSEIGNE : erreur du joueur → panneau « 📖 LA RÈGLE » appliquée à CE
+calcul (5 s) ; bonnes réponses → MAÎTRISE par notion (Profil.maitrise,
+persistée) qui pilote le niveau des questions (‹40 %→N1, ‹75→N2, sinon
+N3) ; écran CHAPITRES au lobby (choix du chapitre ou révision mixte,
+barres de maîtrise, fenêtres de leçon) ; chip notion+niveau sur le
+panneau de question ; BILAN pédagogique au podium (X/Y bonnes réponses +
+maîtrise par notion). Décompte de question porté à 8 s (énoncés de 5ᵉ).
 **Fidélité aux planches pro (V9)** (2026-08-14, « je veux un rendu proche
 et pro, comme Clash Royale — sans les Meshy ») : rendu DÉGRADÉ du kit UI
 (ui.gd : polygones arrondis à dégradé par sommet — bouton candy à

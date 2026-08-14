@@ -89,6 +89,38 @@ var route_reclamee: Array = []        ## seuils déjà réclamés
 var quetes: Array = []                ## les 3 quêtes du jour
 var jour_quetes := 0
 
+## PÉDAGOGIE (maths 5ème) : le chapitre travaillé et la MAÎTRISE par
+## notion (0..100). La maîtrise monte avec les bonnes réponses, descend
+## doucement avec les erreurs, et pilote le NIVEAU des questions (1→3).
+var chapitre := "mixte"               ## clé de Questions.NOTIONS ou "mixte"
+var maitrise := {}                    ## notion → 0..100
+
+
+# ---------------------------------------------------------------- pédagogie
+
+## Niveau de question adapté à la maîtrise de la notion.
+func niveau_notion(notion: String) -> int:
+	var m := float(maitrise.get(notion, 0.0))
+	if m < 40.0:
+		return 1
+	if m < 75.0:
+		return 2
+	return 3
+
+
+## Enregistre une réponse DU JOUEUR : la maîtrise bouge, le niveau suit.
+## Retourne le delta appliqué (affichage).
+func enregistrer_reponse(notion: String, bonne: bool) -> float:
+	var delta := 3.0 if bonne else -1.5
+	maitrise[notion] = clampf(float(maitrise.get(notion, 0.0)) + delta, 0.0, 100.0)
+	sauver()
+	return delta
+
+
+func choisir_chapitre(cle: String) -> void:
+	chapitre = cle
+	sauver()
+
 
 func _ready() -> void:
 	for nom in Personnage3D.FICHES:
@@ -446,6 +478,8 @@ func sauver() -> void:
 	cfg.set_value("profil", "route_reclamee", route_reclamee)
 	cfg.set_value("profil", "quetes", quetes)
 	cfg.set_value("profil", "jour_quetes", jour_quetes)
+	cfg.set_value("profil", "chapitre", chapitre)
+	cfg.set_value("profil", "maitrise", maitrise)
 	cfg.save(CHEMIN)
 
 
@@ -485,6 +519,10 @@ func charger() -> void:
 	for nom in Personnage3D.FICHES:
 		if pu.has(nom):
 			puissance[nom] = int(pu[nom])
+	chapitre = str(cfg.get_value("profil", "chapitre", chapitre))
+	var ma = cfg.get_value("profil", "maitrise", maitrise)
+	if ma is Dictionary:
+		maitrise = ma
 	var rr = cfg.get_value("profil", "route_reclamee", null)
 	if rr is Array:
 		route_reclamee = rr

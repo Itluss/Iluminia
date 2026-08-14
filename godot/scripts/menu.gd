@@ -6,12 +6,13 @@ extends Node3D
 ## (cadeau du jour, œufs), PERSONNAGES (héros, niveaux, garde-robe), AIDE.
 ## Diorama 3D animé derrière tout ; le dragon qui vole = ton compagnon.
 
-enum Ecran { ACCUEIL, PERSONNAGES, SANCTUAIRE, BOUTIQUE, ROUTE, QUETES, AIDE }
+enum Ecran { ACCUEIL, PERSONNAGES, SANCTUAIRE, BOUTIQUE, ROUTE, QUETES, AIDE, CHAPITRES }
 
 const NOMS := ["Max", "Zep", "Nova", "Ficelle"]
 
 var ecran := Ecran.ACCUEIL
 var perso_focus := 0             ## héros affiché sur l'écran Personnages
+var lecon_ouverte := ""          ## notion dont la leçon est affichée
 var recompense := {}             ## dernier cadeau du jour ouvert
 var recompense_oeuf := {}        ## dernière éclosion (fenêtre de révélation)
 var _dragon_pivot: Node3D
@@ -132,6 +133,8 @@ func _ready() -> void:
 			ecran = Ecran.QUETES
 		"aide":
 			ecran = Ecran.AIDE
+		"chapitres":
+			ecran = Ecran.CHAPITRES
 
 
 func _reconstruire_persos() -> void:
@@ -253,6 +256,12 @@ func _executer(action: String) -> void:
 		"aide":
 			Audio.jouer("clic")
 			ecran = Ecran.AIDE
+		"chapitres":
+			Audio.jouer("clic")
+			ecran = Ecran.CHAPITRES
+		"fermer_lecon":
+			Audio.jouer("clic")
+			lecon_ouverte = ""
 		"son":
 			Profil.basculer_son()
 			Audio.jouer("clic")
@@ -298,6 +307,12 @@ func _executer(action: String) -> void:
 			if morceaux[0] == "focus":
 				Audio.jouer("clic")
 				perso_focus = clampi(int(morceaux[1]), 0, NOMS.size() - 1)
+			elif morceaux[0] == "chapitre":
+				Audio.jouer("clic")
+				Profil.choisir_chapitre(morceaux[1])
+			elif morceaux[0] == "lecon":
+				Audio.jouer("clic")
+				lecon_ouverte = morceaux[1]
 			elif morceaux[0] == "variante":
 				_choisir_ou_acheter_variante(morceaux[1], int(morceaux[2]))
 			elif morceaux[0] == "compagnon":
@@ -392,6 +407,9 @@ class SurfaceMenu extends Control:
 			Menu.Ecran.AIDE:
 				_entete_sous_ecran("COMMENT JOUER")
 				_dessiner_aide()
+			Menu.Ecran.CHAPITRES:
+				_entete_sous_ecran("CHAPITRES DE 5ᵉ")
+				_dessiner_chapitres()
 
 	# ---------------------------------------------------------- entêtes
 
@@ -447,12 +465,12 @@ class SurfaceMenu extends Control:
 		# NAVIGATION gauche (planche : icône + libellé + badge).
 		var nav: Array = [
 			["personnages", "PERSONNAGES", Identite.BLEU],
+			["chapitres", "CHAPITRES", Identite.VERT_SOMBRE],
 			["sanctuaire", "SANCTUAIRE", Identite.VIOLET],
-			["boutique", "BOUTIQUE", Identite.BLEU],
 			["route", "RÉCOMPENSES", Identite.VIOLET],
 		]
 		var icones_nav := {"personnages": "avatar-max", "sanctuaire": "icon-dragon",
-			"boutique": "icon-pouch", "route": "xp-star"}
+			"chapitres": "icon-book", "route": "xp-star"}
 		for i in nav.size():
 			var b: Array = nav[i]
 			var rect := Rect2(16.0, 96.0 + i * 70.0, 226.0, 60.0)
@@ -491,10 +509,15 @@ class SurfaceMenu extends Control:
 		UI.triangle_jouer(self, Vector2(jouer.position.x + 56.0, jouer.get_center().y - 3.0), 26.0, Identite.TEXTE)
 		UI.texte(self, Vector2(jouer.get_center().x + 26.0, jouer.get_center().y + 10.0), "JOUER", 38, Identite.TEXTE, true, 11)
 		_actions.append({"rect": jouer, "action": "jouer"})
-		# Le héros équipé, nommé sous la scène centrale.
+		# Le héros équipé + LE CHAPITRE TRAVAILLÉ (tap → écran Chapitres).
 		UI.texte(self, Vector2(centre_x, size.y - 20.0),
 			"%s — Puissance %d" % [Profil.personnage, Profil.puissance_de(Profil.personnage)],
 			16, Identite.TEXTE, true, 5)
+		var nom_chap := "Révision mixte" if Profil.chapitre == "mixte" else Questions.titre(Profil.chapitre)
+		var rect_chap := Rect2(jouer.position.x, jouer.position.y - 40.0, jouer.size.x, 32.0)
+		UI.texte(self, Vector2(rect_chap.get_center().x, rect_chap.position.y + 22.0),
+			"📖 Chapitre : %s" % nom_chap, 15, Identite.CYAN, true, 5)
+		_actions.append({"rect": rect_chap, "action": "chapitres"})
 
 	## Carte événement de la colonne droite ; retourne l'y suivant.
 	func _carte_evenement(y: float, action: String, teinte: Color, titre: String, detail: String) -> float:
@@ -864,6 +887,52 @@ class SurfaceMenu extends Control:
 					"+%d P" % int(q.pieces), 16, Identite.OR, true)
 		UI.texte(self, Vector2(size.x / 2.0, 152.0 + 3.0 * 96.0 + 16.0),
 			"Trois nouvelles quêtes chaque jour !", 14, Identite.TEXTE_ATTENUE, true)
+
+	# ---------------------------------------------------------- chapitres
+
+	## L'ÉCRAN PÉDAGOGIQUE : choisir le chapitre de 5ᵉ à travailler, voir
+	## sa MAÎTRISE et le niveau de question atteint, relire chaque LEÇON.
+	func _dessiner_chapitres() -> void:
+		var lignes: Array = [["mixte", "Révision mixte (toutes les notions)"]]
+		for cle in Questions.NOTIONS:
+			lignes.append([cle, str(Questions.NOTIONS[cle].titre)])
+		var largeur := minf(size.x - 140.0, 640.0)
+		var x0 := (size.x - largeur) / 2.0
+		for i in lignes.size():
+			var cle: String = lignes[i][0]
+			var choisi: bool = Profil.chapitre == cle
+			var rect := Rect2(x0, 128.0 + i * 49.0, largeur, 42.0)
+			self.draw_style_box(UI.style("chap_%s" % str(choisi),
+				Identite.PANNEAU_CLAIR if choisi else Identite.PANNEAU,
+				Identite.OR if choisi else Identite.CONTOUR, Identite.RAYON_SM,
+				Identite.BORD, 2), rect)
+			if choisi:
+				UI.pastille(self, rect.position + Vector2(20.0, 21.0), 10.0, Identite.VERT, "✓", 12)
+			UI.texte(self, rect.position + Vector2(40.0, 27.0), str(lignes[i][1]), 15,
+				Identite.OR if choisi else Identite.TEXTE)
+			if cle != "mixte":
+				# Maîtrise + niveau de question atteint.
+				var m := float(Profil.maitrise.get(cle, 0.0))
+				UI.barre(self, Rect2(rect.position + Vector2(largeur - 320.0, 11.0), Vector2(110.0, 20.0)),
+					m / 100.0, Identite.VERT if m >= 75.0 else Identite.BLEU)
+				UI.texte(self, rect.position + Vector2(largeur - 202.0, 27.0), "%d %%" % int(m), 13, Identite.TEXTE_ATTENUE)
+				UI.pastille(self, rect.position + Vector2(largeur - 140.0, 21.0), 12.0, Identite.VIOLET,
+					"N%d" % Profil.niveau_notion(cle), 11)
+				_bouton_action(Rect2(rect.position + Vector2(largeur - 112.0, 5.0), Vector2(100.0, 34.0)),
+					"lecon:%s" % cle, Identite.BLEU, "LEÇON", 13, Identite.RAYON_SM)
+			_actions.append({"rect": Rect2(rect.position, Vector2(largeur - 120.0, rect.size.y)),
+				"action": "chapitre:%s" % cle})
+		# Fenêtre de LEÇON (règle + exemples travaillés).
+		if menu.lecon_ouverte != "" and Questions.NOTIONS.has(menu.lecon_ouverte):
+			var infos: Dictionary = Questions.NOTIONS[menu.lecon_ouverte]
+			var lecon: Array = infos.lecon
+			var fen := Rect2(size.x / 2.0 - 310.0, 120.0, 620.0, 96.0 + lecon.size() * 26.0)
+			var croix := UI.fenetre(self, fen, "Leçon — %s" % str(infos.titre))
+			_actions.append({"rect": croix, "action": "fermer_lecon"})
+			for li in lecon.size():
+				UI.texte(self, fen.position + Vector2(28.0, 60.0 + li * 26.0), str(lecon[li]), 14, Identite.TEXTE)
+			UI.texte(self, Vector2(fen.get_center().x, fen.end.y - 18.0),
+				"Réponds juste en match pour faire monter ta maîtrise !", 13, Identite.OR, true, 4)
 
 	# ---------------------------------------------------------- aide
 
