@@ -124,6 +124,16 @@ func _construire_sol() -> void:
 	# Lisière-lumière : l'anneau qui borde l'île (zones au sol de la planche).
 	Materiaux.mesh(self, Materiaux.tore(RAYON_ARENE + 0.15, 0.14),
 		Materiaux.emissif(lisiere, 1.4), Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
+	# VEINES DE LUMIÈRE : l'île respire — des ondes concentriques pulsent
+	# depuis le sanctuaire central (shader, l'identité visuelle d'Iluminia).
+	var veines := QuadMesh.new()
+	veines.size = Vector2(RAYON_ARENE * 2.0, RAYON_ARENE * 2.0)
+	var mi_veines := MeshInstance3D.new()
+	mi_veines.mesh = veines
+	mi_veines.material_override = Nuanceurs.sol(lisiere, Identite.VIOLET)
+	mi_veines.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	mi_veines.position = Vector3(0.0, 0.025, 0.0)
+	add_child(mi_veines)
 	# Falaise sous l'île : cône de roche violette qui s'effile dans le vide.
 	var falaise := CylinderMesh.new()
 	falaise.top_radius = RAYON_ARENE + 0.4
@@ -453,6 +463,8 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 		fx.anneau(pos_zone, RAYON_ZONE * 2.0, zones[i].teinte)
 		fx.texte_flottant(pos_zone, "+100 %s !" % c.nom, Color(1.0, 0.95, 0.6))
 		Audio.jouer("victoire")
+		# Réussir en maths fait ÉVOLUER le Lumin : l'Éveil monte d'un niveau.
+		c.monter_eveil()
 		if c.est_joueur:
 			fx.secousse(0.4)
 			_quete("deposer")
@@ -520,7 +532,9 @@ func _podium() -> void:
 		var rang: int = classement.find(joueur)
 		var gain_xp: int = 20 + maxi(joueur.score, 0) / 2
 		var delta_trophees := Profil.gagner_trophees(rang)
-		var gain_pieces: int = 10 + maxi(joueur.score, 0) / 5 + (20 if rang == 0 else 0)
+		# L'Éveil atteint paie aussi en pièces : +10 par niveau.
+		var gain_pieces: int = 10 + maxi(joueur.score, 0) / 5 + (20 if rang == 0 else 0) \
+			+ joueur.eveil * 10
 		Profil.gagner_pieces(gain_pieces)
 		var oeuf: bool = rang == 0 or (rang == 1 and randf() < 0.3)
 		if oeuf:
@@ -552,6 +566,10 @@ func rejouer() -> void:
 		c.energie = Chasseur.ENERGIE_MAX
 		c.ko_restant = 0.0
 		c.visible = true
+		c.eveil = 0
+		c.charge_super = 0
+		c.surcharge_restant = 0.0
+		c.visuel.fixer_eveil(0)
 	for cr in cristaux:
 		cr.queue_free()
 	cristaux = []
@@ -610,8 +628,9 @@ func ramasser_cristaux(c: Chasseur) -> void:
 		if is_instance_valid(cr) and c.pos2().distance_to(cr.pos2()) < 0.8:
 			cristaux.erase(cr)
 			c.energie = minf(c.energie + CRISTAL_ENERGIE, Chasseur.ENERGIE_MAX)
+			c.charger_super(1)
 			fx.eclat_etoiles(cr.pos2(), Color(0.5, 0.95, 1.0), 10)
-			fx.texte_flottant(cr.pos2(), "+20", Color(0.5, 0.95, 1.0))
+			fx.texte_flottant(cr.pos2(), "+1 ÉCLAT", Color(0.5, 0.95, 1.0))
 			Audio.jouer("cristal")
 			if c.est_joueur:
 				_quete("cristaux")
@@ -664,10 +683,10 @@ func menace_proche(c: Chasseur, rayon: float) -> bool:
 func meilleure_cible_onde(lanceur: Chasseur) -> Chasseur:
 	var porteur: Chasseur = dragon.porteur if dragon != null else null
 	if porteur != null and porteur != lanceur and porteur.ko_restant <= 0.0 \
-			and lanceur.pos2().distance_to(porteur.pos2()) <= Chasseur.PORTEE_ONDE + 0.35:
+			and lanceur.pos2().distance_to(porteur.pos2()) <= lanceur.portee_onde() + 0.35:
 		return porteur
 	var meilleur: Chasseur = null
-	var meilleure_d: float = Chasseur.PORTEE_ONDE + 0.35
+	var meilleure_d: float = lanceur.portee_onde() + 0.35
 	for c in chasseurs:
 		if c == lanceur or c.ko_restant > 0.0:
 			continue

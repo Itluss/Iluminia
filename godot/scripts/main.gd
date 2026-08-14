@@ -89,6 +89,25 @@ func _ready() -> void:
 	arene.demarrer()
 	hud.toast("Attrape le dragon et dépose-le dans la zone de TA réponse !")
 
+	# Crochet de dev (captures et tests de rendu automatisés) :
+	# ILUMINIA_DEMO="eveil" → Éveil élevé + Super prêt ;
+	# ILUMINIA_DEMO="supers" → passe en JEU et déclenche les 4 Supers.
+	match OS.get_environment("ILUMINIA_DEMO"):
+		"eveil":
+			for c in arene.chasseurs:
+				if not c.est_joueur:
+					c.eveil = 2
+					c.visuel.fixer_eveil(2)
+			joueur.eveil = 2
+			joueur.visuel.fixer_eveil(2)
+			joueur.monter_eveil()
+			joueur.charger_super(Chasseur.COUT_SUPER)
+		"supers":
+			arene._lancer_jeu()
+			for c in arene.chasseurs:
+				c.charger_super(Chasseur.COUT_SUPER)
+				c.utiliser_super()
+
 
 func _process(delta: float) -> void:
 	# Suivi lissé du héros (le look_at initial fixe l'angle une fois pour toutes).
@@ -119,6 +138,7 @@ static func declarer_actions_clavier() -> void:
 	_action("comp_onde", [KEY_E])
 	_action("comp_dash", [KEY_R])
 	_action("comp_bouclier", [KEY_SPACE])
+	_action("comp_super", [KEY_F])
 	_action("rep_1", [KEY_1, KEY_KP_1])
 	_action("rep_2", [KEY_2, KEY_KP_2])
 	_action("rep_3", [KEY_3, KEY_KP_3])

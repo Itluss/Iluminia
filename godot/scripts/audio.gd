@@ -34,6 +34,17 @@ func _ready() -> void:
 		_ton(523.0, 523.0, 0.12, "sinus", 0.6), _ton(659.0, 659.0, 0.12, "sinus", 0.6),
 		_ton(784.0, 784.0, 0.12, "sinus", 0.6), _ton(1047.0, 1047.0, 0.3, "sinus", 0.6),
 	]))
+	_sons["eveil"] = _wav(_enchainer([
+		_ton(440.0, 660.0, 0.1, "sinus", 0.55), _ton(660.0, 990.0, 0.12, "sinus", 0.55),
+		_ton(990.0, 1320.0, 0.22, "sinus", 0.5),
+	])) # transformation : arpège ascendant
+	_sons["super_pret"] = _wav(_enchainer([
+		_ton(784.0, 784.0, 0.08, "sinus", 0.5), _ton(1047.0, 1047.0, 0.16, "sinus", 0.55),
+	]))
+	_sons["super"] = _wav(_enchainer([
+		_ton(0.0, 0.0, 0.06, "bruit", 0.5), _ton(200.0, 900.0, 0.16, "scie", 0.45),
+		_ton(900.0, 1400.0, 0.2, "sinus", 0.5),
+	])) # déflagration héroïque
 	_sons["podium"] = _wav(_enchainer([
 		_ton(392.0, 392.0, 0.11, "sinus", 0.6), _ton(523.0, 523.0, 0.11, "sinus", 0.6),
 		_ton(659.0, 659.0, 0.11, "sinus", 0.6), _ton(784.0, 784.0, 0.11, "sinus", 0.6),

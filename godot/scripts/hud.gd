@@ -31,6 +31,12 @@ var surface: Control
 
 
 func _ready() -> void:
+	# Vignette : léger assombrissement des bords, le regard reste sur l'action.
+	var vignette := ColorRect.new()
+	vignette.material = Nuanceurs.vignette(0.5)
+	vignette.set_anchors_preset(Control.PRESET_FULL_RECT)
+	vignette.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(vignette)
 	surface = Surface.new()
 	surface.hud = self
 	surface.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -136,6 +142,8 @@ func _calculer_boutons() -> Array:
 			"cd": joueur.cd_dash, "cd_max": Chasseur.CD_DASH, "teinte": Identite.BLEU},
 		{"centre": Vector2(t.x - 132.0, t.y - 168.0), "cote": 92.0, "action": "bouclier", "touche": "␣",
 			"cd": joueur.cd_bouclier, "cd_max": Chasseur.CD_BOUCLIER, "teinte": Identite.VIOLET},
+		{"centre": Vector2(t.x - 452.0, t.y - 56.0), "cote": 96.0, "action": "super", "touche": "F",
+			"cd": 0.0, "cd_max": 1.0, "teinte": joueur.teinte},
 	]
 
 
@@ -210,6 +218,11 @@ func _declencher(action: String) -> void:
 				refus("bouclier")
 			else:
 				joueur.utiliser_bouclier()
+		"super":
+			if not joueur.super_pret():
+				refus("super")
+			else:
+				joueur.utiliser_super()
 
 
 # ---------------------------------------------------------------- dessin
@@ -353,6 +366,10 @@ func _dessiner_energie(c: Control) -> void:
 	UI.barre(c, rect, ratio, teinte)
 	UI.eclair(c, Vector2(26.0, 108.0), 26.0, Identite.OR)
 	UI.texte(c, rect.position + Vector2(rect.size.x / 2.0, 20.0), str(int(joueur.energie)), 15, Identite.TEXTE, true, 4)
+	# Étoiles d'Éveil : l'évolution du héros dans CE match, toujours visible.
+	for i in Chasseur.EVEIL_MAX:
+		UI.etoile(c, Vector2(268.0 + i * 26.0, 108.0), 10.0,
+			Identite.OR if joueur.eveil > i else Color(0.3, 0.33, 0.47))
 
 
 ## Boutons de pouvoirs : carrés arrondis + anneau de recharge doré.
@@ -360,6 +377,9 @@ func _dessiner_boutons(c: Control) -> void:
 	for b in _boutons:
 		var centre: Vector2 = b.centre
 		var action := str(b.action)
+		if action == "super":
+			_dessiner_bouton_super(c, b)
+			continue
 		var cd := float(b.cd)
 		var cd_max := float(b.cd_max)
 		var teinte: Color = b.teinte
@@ -369,7 +389,7 @@ func _dessiner_boutons(c: Control) -> void:
 		# L'onde pulse en doré quand le porteur adverse est à portée de vol.
 		if action == "onde" and cd <= 0.0 and arene.dragon != null and arene.dragon.porteur != null \
 				and not arene.dragon.porteur.est_joueur \
-				and joueur.pos2().distance_to(arene.dragon.porteur.pos2()) <= Chasseur.PORTEE_ONDE + 0.35:
+				and joueur.pos2().distance_to(arene.dragon.porteur.pos2()) <= joueur.portee_onde() + 0.35:
 			var halo := cote / 2.0 + 9.0 + sin(Time.get_ticks_msec() / 90.0) * 3.0
 			c.draw_circle(centre, halo, Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, 0.45))
 		var enfonce: bool = _doigts_boutons.values().has(action)
@@ -385,6 +405,33 @@ func _dessiner_boutons(c: Control) -> void:
 		else:
 			UI.texte(c, centre + Vector2(0.0, cote / 2.0 + 16.0), str(b.touche), 12,
 				Color(1.0, 1.0, 1.0, 0.7), true, 4)
+
+
+## Le bouton SUPER : rond, aux couleurs du héros, cerclé par la jauge
+## d'éclats — il rayonne et pulse quand le Super est prêt.
+func _dessiner_bouton_super(c: Control, b: Dictionary) -> void:
+	var centre: Vector2 = b.centre
+	var rayon := float(b.cote) / 2.0
+	if _refus.get("super", 0.0) > 0.0:
+		centre += Vector2(randf_range(-3.0, 3.0), randf_range(-3.0, 3.0))
+	var pret := joueur.super_pret()
+	if pret:
+		var halo := rayon + 8.0 + sin(Time.get_ticks_msec() / 110.0) * 4.0
+		c.draw_circle(centre, halo, Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, 0.4))
+	c.draw_circle(centre, rayon + 4.0, Identite.CONTOUR)
+	c.draw_circle(centre, rayon, joueur.teinte if pret else Color(0.24, 0.27, 0.4))
+	c.draw_circle(centre + Vector2(0.0, -rayon * 0.35), rayon * 0.5,
+		Color(1.0, 1.0, 1.0, 0.18 if pret else 0.07))
+	UI.etoile(c, centre, rayon * 0.5, Identite.OR if pret else Color(0.5, 0.53, 0.66))
+	# Jauge d'éclats en arc autour du bouton.
+	var frac := float(joueur.charge_super) / float(Chasseur.COUT_SUPER)
+	c.draw_arc(centre, rayon + 4.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Identite.OR, 5.0)
+	if pret:
+		UI.texte(c, centre + Vector2(0.0, rayon + 20.0), "SUPER ! (F)", 13, Identite.OR, true, 4)
+	else:
+		UI.texte(c, centre + Vector2(0.0, rayon + 20.0),
+			"%d/%d éclats" % [joueur.charge_super, Chasseur.COUT_SUPER], 12,
+			Color(1.0, 1.0, 1.0, 0.75), true, 4)
 
 
 ## Indicateurs de bord d'écran : dragon et zones hors champ, avec distance.

@@ -76,6 +76,16 @@ de couleurs débloquées par le **coffre quotidien**, méta persistée par
 l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
 récompenses de compte au podium. Navigation testée en vrai navigateur
 (Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
+**Éveil + Supers + identité shaders** (2026-08-14, « un vrai gameplay qui
+donne envie de devenir plus fort / une vraie identité graphique ») :
+chaque bonne dépose fait ÉVOLUER le Lumin en plein match (Éveil 1-3 :
++9 % vitesse, −8 % recharge, +portée d'onde ; visuel : plus grand,
+anneaux au sol, crête amplifiée, AILES DE LUMIÈRE au niveau 3) ; un SUPER
+signature par héros (Nova Solaire / Overdrive / Appel de l'étoile /
+Cercle de braise) chargé par 3 éclats (cristaux) ou K.O. infligés, touche
+F, gros bouton rond étoilé, bots inclus. Identité visuelle
+`nuanceurs.gd` : halo fresnel des personnages, veines de lumière du sol,
+ciel-aurore animé par thème, vignette.
 Boucle V6 (2026-08-14, « la partie doit durer ~1 min ») : QUESTION 6 s
 figée → JEU en **manche fixe de 60 s** — un dépôt réussi ne termine PLUS
 la manche (+100, dragon qui renaît 2 s après, nouvelle question en pleine

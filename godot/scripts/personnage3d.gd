@@ -71,6 +71,10 @@ var _planche: Node3D             ## hoverboard éventuel
 var _anneau: MeshInstance3D
 var _bulle: MeshInstance3D
 var _mat_bulle: StandardMaterial3D
+var _eveil := 0                  ## niveau d'Éveil affiché (0..3)
+var _echelle_base := Vector3.ONE ## grossit avec l'Éveil (squash la préserve)
+var _anneaux_eveil: Array = []   ## anneaux au sol, un par niveau
+var _ailes_lumiere: Array = []   ## ailes de lumière du niveau 3
 
 
 func _ready() -> void:
@@ -114,6 +118,10 @@ func _construire_lumin(fiche: Dictionary) -> void:
 	# Corps rond et joufflu.
 	Materiaux.mesh(_racine, Materiaux.sphere(0.5), _mat_corps,
 		Vector3(0.0, 0.55, 0.0), Vector3(1.0, 0.95, 1.0))
+	# HALO FRESNEL — la signature d'Iluminia : la lumière intérieure du
+	# Lumin déborde sur sa silhouette et pulse doucement dans la nuit.
+	Materiaux.mesh(_racine, Materiaux.sphere(0.56), Nuanceurs.fresnel(couleur.lightened(0.3), 1.1),
+		Vector3(0.0, 0.55, 0.0), Vector3(1.0, 0.95, 1.0), false)
 	# Ventre crème lumineux (les Lumins portent la lumière en eux).
 	var ventre := Materiaux.toon(Identite.CREME)
 	ventre.emission_enabled = true
@@ -204,6 +212,9 @@ func _construire_dragon() -> void:
 	_mat_corps = Materiaux.toon(couleur)
 	Materiaux.mesh(_racine, Materiaux.sphere(0.42), _mat_corps,
 		Vector3(0.0, 0.45, 0.0), Vector3(1.0, 0.95, 1.1))
+	# Halo fresnel : le dragon-lumière irradie, on le repère de loin.
+	Materiaux.mesh(_racine, Materiaux.sphere(0.5), Nuanceurs.fresnel(couleur.lightened(0.35), 1.5),
+		Vector3(0.0, 0.45, 0.0), Vector3(1.0, 0.95, 1.1), false)
 	# Ventre-lanterne : c'est LUI, la lumière que tout le monde se dispute.
 	var ventre := Materiaux.toon(Identite.CREME)
 	ventre.emission_enabled = true
@@ -268,6 +279,14 @@ func _process(delta: float) -> void:
 	# Le pan d'écharpe se soulève quand on court.
 	if _pan_echarpe != null:
 		_pan_echarpe.rotation.x = deg_to_rad(-25.0) - (sin(_t * 9.0) * 0.25 + 0.5) * (0.6 if en_marche else 0.08)
+	# Anneaux d'Éveil qui tournent, ailes de lumière qui battent.
+	for i in _anneaux_eveil.size():
+		var anneau_eveil: MeshInstance3D = _anneaux_eveil[i]
+		anneau_eveil.rotation.y = _t * (0.8 + 0.4 * i) * (1.0 if i % 2 == 0 else -1.0)
+	for i in _ailes_lumiere.size():
+		var pivot_aile: Node3D = _ailes_lumiere[i]
+		var cote_aile := -1.0 if i == 0 else 1.0
+		pivot_aile.rotation.z = cote_aile * (0.12 + (sin(_t * 6.0) * 0.5 + 0.5) * 0.3)
 	# Battement d'ailes du dragon.
 	if _aile_g != null:
 		var bat := sin(_t * 9.0) * 0.6
@@ -291,12 +310,53 @@ func flash() -> void:
 	_flash = 1.0
 
 
-## Squash & stretch : écrasé à l'impact, puis retour élastique.
+## Squash & stretch : écrasé à l'impact, puis retour élastique
+## (vers l'échelle d'Éveil courante, pas vers 1 : l'évolution se garde).
 func squash(force := 0.25) -> void:
-	_racine.scale = Vector3(1.0 + force, 1.0 - force, 1.0 + force)
+	_racine.scale = _echelle_base * Vector3(1.0 + force, 1.0 - force, 1.0 + force)
 	var tw := create_tween()
-	tw.tween_property(_racine, "scale", Vector3.ONE, 0.2) \
+	tw.tween_property(_racine, "scale", _echelle_base, 0.2) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+## L'ÉVEIL rend l'évolution VISIBLE : le Lumin grandit, gagne un anneau de
+## lumière au sol par niveau, sa crête s'amplifie… et au niveau 3, des
+## AILES DE LUMIÈRE se déploient dans son dos.
+func fixer_eveil(n: int) -> void:
+	n = clampi(n, 0, 3)
+	if n == _eveil:
+		return
+	_eveil = n
+	_echelle_base = Vector3.ONE * (1.0 + 0.08 * n)
+	_racine.scale = _echelle_base
+	squash(0.3) # petit pop de transformation
+	if _crete != null:
+		_crete.scale = Vector3.ONE * (1.0 + 0.25 * n)
+	# Anneaux d'Éveil au sol (un par niveau, rayons croissants).
+	for a in _anneaux_eveil:
+		a.queue_free()
+	_anneaux_eveil = []
+	for i in n:
+		var anneau := Materiaux.mesh(self, Materiaux.tore(0.62 + 0.16 * i, 0.035),
+			Materiaux.emissif(couleur.lightened(0.25), 1.6 + 0.4 * i),
+			Vector3(0.0, 0.04 + 0.02 * i, 0.0), Vector3.ONE, false)
+		_anneaux_eveil.append(anneau)
+	# Ailes de lumière (niveau 3) : membranes translucides dans le dos.
+	if n >= 3 and _ailes_lumiere.is_empty():
+		for cote: float in [-1.0, 1.0]:
+			var pivot := Node3D.new()
+			pivot.position = Vector3(cote * 0.28, 0.75, -0.25)
+			_racine.add_child(pivot)
+			var membrane := PrismMesh.new()
+			membrane.size = Vector3(0.85, 0.62, 0.05)
+			var mi := Materiaux.mesh(pivot, membrane, Materiaux.verre(couleur.lightened(0.35), 0.5, 1.8),
+				Vector3(cote * 0.45, 0.2, -0.05))
+			mi.rotation_degrees = Vector3(0.0, 0.0, cote * -24.0)
+			_ailes_lumiere.append(pivot)
+	elif n < 3:
+		for aile in _ailes_lumiere:
+			aile.queue_free()
+		_ailes_lumiere = []
 
 
 func montrer_anneau(oui: bool) -> void:

@@ -31,6 +31,26 @@ const DUREE_KO := 3.0
 const BOUCLIER_REAPPARITION := 1.5
 const PENALITE_KO := 5
 
+## L'ÉVEIL : chaque bonne dépose fait ÉVOLUER le Lumin en plein match.
+## Réussir en maths rend PLUS FORT, visiblement : plus grand, plus rapide,
+## recharges plus courtes, onde plus longue — ailes de lumière au niveau 3.
+const EVEIL_MAX := 3
+const EVEIL_VITESSE := 0.09     ## +9 % de vitesse par niveau
+const EVEIL_RECHARGE := 0.08    ## -8 % de recharge par niveau
+const EVEIL_PORTEE := 0.35      ## +0,35 u de portée d'onde par niveau
+
+## LE SUPER : un pouvoir signature par héros, chargé en ramassant des
+## éclats (cristaux) et en mettant K.O. — l'action paie, façon Brawl Stars.
+const COUT_SUPER := 3
+const NOMS_SUPERS := {
+	"Max": "Nova Solaire", "Zep": "Overdrive",
+	"Nova": "Appel de l'étoile", "Ficelle": "Cercle de braise",
+}
+const RAYON_NOVA_SOLAIRE := 5.5
+const DUREE_OVERDRIVE := 4.0
+const PORTEE_APPEL := 9.0
+const RAYON_BRAISE := 3.6
+
 var arene: Arene
 var hud: HUD                 ## renseigné uniquement pour le joueur
 var est_joueur := false
@@ -55,6 +75,10 @@ var bouclier_spawn := 0.0
 var immunite := 0.0
 var gel_restant := 0.0
 var ko_restant := 0.0
+
+var eveil := 0               ## niveau d'Éveil du match (0..3)
+var charge_super := 0        ## éclats accumulés vers le Super
+var surcharge_restant := 0.0 ## Overdrive de Zep (vitesse boostée)
 
 var visuel: Personnage3D
 var _traine_delai := 0.0  ## cadence de la traînée dorée du porteur
@@ -117,10 +141,64 @@ func protege() -> bool:
 	return bouclier_restant > 0.0 or bouclier_spawn > 0.0
 
 
+# ---------------------------------------------------------------- Éveil / Super
+
+## Vitesse réelle : base × Éveil × Overdrive éventuel.
+func vitesse_effective() -> float:
+	var v := vitesse * (1.0 + EVEIL_VITESSE * eveil)
+	if surcharge_restant > 0.0:
+		v *= 1.65
+	return v
+
+
+## Facteur de recharge réel : Puissance (méta) × Éveil (match).
+func facteur_recharge() -> float:
+	return facteur_cd * (1.0 - EVEIL_RECHARGE * eveil)
+
+
+func portee_onde() -> float:
+	return PORTEE_ONDE + EVEIL_PORTEE * eveil
+
+
+func super_pret() -> bool:
+	return charge_super >= COUT_SUPER
+
+
+## +1 niveau d'Éveil (bonne dépose) : transformation visible + annonce.
+func monter_eveil() -> void:
+	if eveil >= EVEIL_MAX:
+		return
+	eveil += 1
+	visuel.fixer_eveil(eveil)
+	arene.fx.anneau(pos2(), 2.4, teinte)
+	arene.fx.eclat_etoiles(pos2(), teinte.lightened(0.2), 26)
+	arene.fx.texte_flottant(pos2(), "ÉVEIL %d !" % eveil, teinte.lightened(0.35))
+	Audio.jouer("eveil")
+	if est_joueur:
+		arene.fx.secousse(0.35)
+		if hud != null:
+			hud.toast(["", "ÉVEIL I — tu cours plus vite !",
+				"ÉVEIL II — recharges plus courtes, onde plus longue !",
+				"ÉVEIL III — AILES DE LUMIÈRE ! Tu es au maximum !"][eveil])
+
+
+## +n éclats vers le Super ; annonce quand il devient prêt.
+func charger_super(n := 1) -> void:
+	var etait_pret := super_pret()
+	charge_super = mini(charge_super + n, COUT_SUPER)
+	if super_pret() and not etait_pret:
+		arene.fx.texte_flottant(pos2(), "SUPER PRÊT !", Identite.OR)
+		if est_joueur:
+			Audio.jouer("super_pret")
+			if hud != null:
+				hud.toast("SUPER PRÊT — %s ! (bouton étoile ou F)" % NOMS_SUPERS.get(nom, "Super"))
+
+
 func _process(delta: float) -> void:
 	cd_onde = maxf(cd_onde - delta, 0.0)
 	cd_dash = maxf(cd_dash - delta, 0.0)
 	cd_bouclier = maxf(cd_bouclier - delta, 0.0)
+	surcharge_restant = maxf(surcharge_restant - delta, 0.0)
 	immunite = maxf(immunite - delta, 0.0)
 	bouclier_restant = maxf(bouclier_restant - delta, 0.0)
 	bouclier_spawn = maxf(bouclier_spawn - delta, 0.0)
@@ -171,12 +249,15 @@ func _process(delta: float) -> void:
 	else:
 		var dir := _direction_voulue()
 		if dir.length() > 0.05:
-			fixer_pos2(pos2() + dir.normalized() * vitesse * minf(dir.length(), 1.0) * delta)
+			fixer_pos2(pos2() + dir.normalized() * vitesse_effective() * minf(dir.length(), 1.0) * delta)
 			derniere_dir = dir.normalized()
 			visuel.en_marche = true
 		else:
 			visuel.en_marche = false
 		visuel.regarder(derniere_dir)
+		# Traînée cyan de l'Overdrive de Zep.
+		if surcharge_restant > 0.0 and visuel.en_marche:
+			arene.fx.traine(pos2(), Identite.CYAN)
 
 	fixer_pos2(arene.borner(pos2()))
 
@@ -227,6 +308,11 @@ func _entrees_pouvoirs() -> void:
 			hud.refus("bouclier")
 		else:
 			utiliser_bouclier()
+	if Input.is_action_just_pressed("comp_super"):
+		if not super_pret() and hud != null:
+			hud.refus("super")
+		else:
+			utiliser_super()
 
 
 func _ia_direction() -> Vector2:
@@ -249,6 +335,11 @@ func _ia_direction() -> Vector2:
 		var cristal := arene.cristal_le_plus_proche(pos2())
 		if cristal != null and pos2().distance_to(cristal.pos2()) < 7.0:
 			return (cristal.pos2() - pos2()).normalized()
+	# Un éclat tout proche vaut le détour tant que le Super n'est pas prêt.
+	if not super_pret():
+		var eclat := arene.cristal_le_plus_proche(pos2())
+		if eclat != null and pos2().distance_to(eclat.pos2()) < 4.0:
+			return (eclat.pos2() - pos2()).normalized()
 	if dr.libre():
 		return (dr.pos2() - pos2()).normalized()
 	if dr.porteur != self:
@@ -282,6 +373,22 @@ func _ia_pouvoirs(delta: float) -> void:
 	if porte_dragon() and cd_bouclier <= 0.0 and randf() < 0.5 * delta \
 			and arene.menace_proche(self, 3.2):
 		utiliser_bouclier()
+	# SUPER : chaque bot déclenche le sien au bon moment (~0,8 chance/s).
+	if super_pret() and randf() < 0.8 * delta:
+		match nom:
+			"Max":
+				if porteur != null and porteur != self \
+						and pos2().distance_to(porteur.pos2()) <= RAYON_NOVA_SOLAIRE - 0.5:
+					utiliser_super()
+			"Zep":
+				if cible_pos != Vector2.INF and pos2().distance_to(cible_pos) > 7.0:
+					utiliser_super()
+			"Nova":
+				if dr.porteur != self and pos2().distance_to(dr.pos2()) <= PORTEE_APPEL - 0.5:
+					utiliser_super()
+			"Ficelle":
+				if porte_dragon() and arene.menace_proche(self, RAYON_BRAISE - 0.4):
+					utiliser_super()
 
 
 ## Choix de réponse d'un bot : bonne réponse avec probabilité 0,5
@@ -305,27 +412,27 @@ func bot_choisir() -> void:
 func utiliser_onde() -> void:
 	if cd_onde > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_onde = CD_ONDE * facteur_cd
+	cd_onde = CD_ONDE * facteur_recharge()
 	# Visée assistée : pivote vers la meilleure cible à portée (porteur en priorité).
 	var cible := arene.meilleure_cible_onde(self)
 	if cible != null:
 		derniere_dir = (cible.pos2() - pos2()).normalized()
 		visuel.regarder(derniere_dir)
-	arene.fx.cone(pos2(), derniere_dir, PORTEE_ONDE)
+	arene.fx.cone(pos2(), derniere_dir, portee_onde())
 	visuel.squash(0.2)
 	Audio.jouer("onde")
 	for c in arene.chasseurs:
 		if c == self or c.ko_restant > 0.0:
 			continue
 		var v: Vector2 = c.pos2() - pos2()
-		if v.length() <= PORTEE_ONDE + 0.35 and absf(derniere_dir.angle_to(v.normalized())) <= DEMI_CONE:
+		if v.length() <= portee_onde() + 0.35 and absf(derniere_dir.angle_to(v.normalized())) <= DEMI_CONE:
 			c.subir_poussee(self)
 
 
 func utiliser_dash() -> void:
 	if cd_dash > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_dash = CD_DASH * facteur_cd
+	cd_dash = CD_DASH * facteur_recharge()
 	var dir := _direction_voulue()
 	dir_dash = dir.normalized() if dir.length() > 0.05 else derniere_dir
 	dash_restant = DIST_DASH
@@ -336,10 +443,87 @@ func utiliser_dash() -> void:
 func utiliser_bouclier() -> void:
 	if cd_bouclier > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_bouclier = CD_BOUCLIER * facteur_cd
+	cd_bouclier = CD_BOUCLIER * facteur_recharge()
 	bouclier_restant = DUREE_BOUCLIER
 	arene.fx.anneau(pos2(), 1.4, Color(0.7, 0.45, 1.0))
 	Audio.jouer("bouclier")
+
+
+# ---------------------------------------------------------------- supers
+
+## Le SUPER signature du héros : dépense les éclats accumulés.
+func utiliser_super() -> void:
+	if not super_pret() or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
+		return
+	# L'Appel de Nova exige le dragon à portée — sinon on garde la charge.
+	if nom == "Nova":
+		var dr := arene.dragon
+		if dr == null or dr.porteur == self or pos2().distance_to(dr.pos2()) > PORTEE_APPEL:
+			if est_joueur and hud != null:
+				hud.refus("super")
+				hud.toast("Le dragon est trop loin pour l'Appel de l'étoile !")
+			return
+	charge_super = 0
+	Audio.jouer("super")
+	arene.fx.texte_flottant(pos2(), str(NOMS_SUPERS.get(nom, "SUPER")) + " !", Identite.OR)
+	if est_joueur:
+		arene.fx.secousse(0.5)
+	match nom:
+		"Max":
+			_super_nova_solaire()
+		"Zep":
+			_super_overdrive()
+		"Nova":
+			_super_appel()
+		"Ficelle":
+			_super_braise()
+
+
+## Max — NOVA SOLAIRE : déflagration circulaire géante qui repousse tout le
+## monde et vole le dragon au porteur touché.
+func _super_nova_solaire() -> void:
+	arene.fx.anneau(pos2(), RAYON_NOVA_SOLAIRE, Identite.OR)
+	arene.fx.anneau(pos2(), RAYON_NOVA_SOLAIRE * 0.6, Color.WHITE)
+	arene.fx.eclat_etoiles(pos2(), Identite.OR, 32)
+	visuel.squash(0.35)
+	for c in arene.chasseurs:
+		if c != self and c.ko_restant <= 0.0 \
+				and pos2().distance_to(c.pos2()) <= RAYON_NOVA_SOLAIRE:
+			c.subir_poussee(self)
+
+
+## Zep — OVERDRIVE : 4 s de vitesse fulgurante, insaisissable (immunité).
+func _super_overdrive() -> void:
+	surcharge_restant = DUREE_OVERDRIVE
+	immunite = maxf(immunite, DUREE_OVERDRIVE)
+	arene.fx.anneau(pos2(), 1.8, Identite.CYAN)
+	arene.fx.eclat_etoiles(pos2(), Identite.CYAN, 20)
+
+
+## Nova — APPEL DE L'ÉTOILE : le dragon est arraché (même des bras d'un
+## porteur) et vole jusqu'à elle en pluie d'étoiles.
+func _super_appel() -> void:
+	var dr := arene.dragon
+	var depart := dr.pos2()
+	# Pluie d'étoiles sur la trajectoire du rappel.
+	for k in 7:
+		arene.fx.eclat_etoiles(depart.lerp(pos2(), float(k) / 6.0), Identite.CREME, 5)
+	arene.prendre_dragon(self, "vol")
+	arene.fx.anneau(pos2(), 2.2, Identite.CREME)
+
+
+## Ficelle — CERCLE DE BRAISE : anneau de feu qui repousse, brûle et gèle
+## les adversaires trop proches — parfait pour protéger sa dépose.
+func _super_braise() -> void:
+	arene.fx.anneau(pos2(), RAYON_BRAISE, Identite.ORANGE)
+	arene.fx.anneau(pos2(), RAYON_BRAISE * 0.7, Identite.ROUGE)
+	arene.fx.eclat_etoiles(pos2(), Identite.ORANGE, 28)
+	for c in arene.chasseurs:
+		if c != self and c.ko_restant <= 0.0 \
+				and pos2().distance_to(c.pos2()) <= RAYON_BRAISE:
+			c.recul = (c.pos2() - pos2()).normalized() * RECUL_ONDE * 1.4
+			c.subir_degats(20.0, self)
+			c.geler(1.0)
 
 
 # ---------------------------------------------------------------- subir
@@ -368,7 +552,7 @@ func subir_degats(deg: float, source: Chasseur) -> void:
 		if hud != null and source != null:
 			hud.toast("%s t'attaque !" % source.nom)
 	if energie <= 0.0:
-		_ko()
+		_ko(source)
 
 
 func perdre_energie_reponse() -> void:
@@ -383,12 +567,15 @@ func geler(duree: float) -> void:
 	dash_restant = 0.0
 
 
-func _ko() -> void:
+func _ko(source: Chasseur = null) -> void:
 	if ko_restant > 0.0:
 		return
 	ko_restant = DUREE_KO
 	dash_restant = 0.0
 	score -= PENALITE_KO
+	# Le K.O. infligé charge le Super de l'attaquant : l'action paie.
+	if source != null and source != self:
+		source.charger_super(1)
 	if porte_dragon():
 		arene.lacher_dragon(pos2())
 	arene.fx.eclat_etoiles(pos2(), teinte, 16)

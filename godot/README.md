@@ -142,17 +142,50 @@ toucher.
 - Énergie (100 max) : perdue uniquement sur attaque subie (-10) ou mauvaise
   réponse (-10) ; bonne réponse +15, **cristal 💎 +20** (le soin principal).
 
+## L'ÉVEIL — devenir plus fort PENDANT le match
+
+Chaque **bonne dépose fait évoluer le Lumin** d'un niveau d'Éveil (max 3),
+et ça se VOIT : il grandit, gagne un anneau de lumière au sol par niveau,
+sa crête s'amplifie… et au niveau 3, des **AILES DE LUMIÈRE** se déploient.
+Chaque niveau : **+9 % vitesse, −8 % de recharge, +0,35 u de portée
+d'onde**. L'Éveil se garde d'une manche à l'autre (remis à zéro au match
+suivant) et paie +10 pièces par niveau au podium. Réussir en maths rend
+plus fort — c'est la boucle pédagogique d'Iluminia.
+
+## Le SUPER — un pouvoir signature par héros
+
+Ramasser **3 éclats** (les cristaux 💎, qui donnent aussi +20 énergie) ou
+mettre K.O. charge le Super — gros bouton rond étoilé aux couleurs du
+héros, touche `F` :
+
+| Héros | Super | Effet |
+|---|---|---|
+| Max | **Nova Solaire** | déflagration circulaire (5,5 u) : repousse tout le monde et vole le dragon au porteur touché |
+| Zep | **Overdrive** | 4 s à vitesse ×1,65, insaisissable (immunité au vol) |
+| Nova | **Appel de l'étoile** | le dragon est ARRACHÉ (même porté) et vole jusqu'à elle — portée 9 u |
+| Ficelle | **Cercle de braise** | anneau de feu (3,6 u) : repousse fort, 20 dégâts, gel 1 s |
+
+Les bots chargent et déclenchent aussi leur Super au bon moment.
+
 ## Les trois pouvoirs (recharge pure, boutons ≥ 76 px)
 
 | Pouvoir | Recharge | Effet | Touche |
 |---|---|---|---|
-| 💥 Onde de choc | 4 s | cône ~78°, portée 3,2 u, 10 dégâts, repousse et **vole le dragon** ; visée assistée | `E` |
+| 💥 Onde de choc | 4 s | cône ~78°, portée 3,2 u (+Éveil), 10 dégâts, repousse et **vole le dragon** ; visée assistée | `E` |
 | ⚡ Dash | 5 s | exactement 6 u à 26 u/s, décompté frame par frame | `R` |
 | 🛡️ Bouclier | 7 s | bulle 2 s : dégâts, poussées ET vols glissent dessus | `Espace` |
 
 Mobile : joystick flottant (pouce, moitié gauche) + boutons avec anneau de
 recharge (secousse « denied » à vide, l'Onde pulse en doré quand le vol est
-possible). Clavier : ZQSD/WASD/flèches, réponses au 1-4.
+possible). Clavier : ZQSD/WASD/flèches, réponses au 1-4, Super au `F`.
+
+## L'identité visuelle — « des êtres de lumière » (`nuanceurs.gd`)
+
+Quatre shaders signent le rendu, compatibles GL Compatibility/web :
+**halo fresnel** pulsant sur chaque Lumin et le dragon (leur lumière
+intérieure déborde), **veines de lumière** du sol (ondes concentriques qui
+respirent depuis le sanctuaire), **ciel-aurore** (nappes mouvantes aux
+couleurs du thème + étoiles scintillantes), **vignette** d'écran.
 
 ## Personnages
 

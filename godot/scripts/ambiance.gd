@@ -14,16 +14,19 @@ const THEMES := {
 		"ciel_haut": Identite.NUIT, "horizon": Color(0.29, 0.21, 0.52),
 		"pelouse": Identite.PELOUSE_NUIT, "anneaux": Identite.PELOUSE_ANNEAU,
 		"lisiere": Identite.CYAN,
+		"aurore": Identite.CYAN, "aurore2": Identite.VIOLET,
 	},
 	"Crépuscule doré": {
 		"ciel_haut": Color(0.10, 0.12, 0.30), "horizon": Color(0.85, 0.45, 0.25),
 		"pelouse": Color(0.24, 0.32, 0.28), "anneaux": Color(0.30, 0.40, 0.32),
 		"lisiere": Identite.OR,
+		"aurore": Identite.OR, "aurore2": Identite.ORANGE,
 	},
 	"Aurore magenta": {
 		"ciel_haut": Color(0.14, 0.08, 0.28), "horizon": Color(0.75, 0.25, 0.55),
 		"pelouse": Color(0.20, 0.26, 0.38), "anneaux": Color(0.26, 0.33, 0.46),
 		"lisiere": Identite.MAGENTA,
+		"aurore": Identite.MAGENTA, "aurore2": Identite.CYAN,
 	},
 }
 
@@ -31,14 +34,11 @@ const THEMES := {
 static func installer(parent: Node3D, theme := {}) -> void:
 	if theme.is_empty():
 		theme = THEMES["Nuit lumineuse"]
-	# Ciel : profond en haut → horizon coloré selon le thème.
-	var ciel := ProceduralSkyMaterial.new()
-	ciel.sky_top_color = theme.ciel_haut
-	ciel.sky_horizon_color = theme.horizon
-	ciel.ground_bottom_color = Color(0.04, 0.05, 0.12)
-	ciel.ground_horizon_color = theme.horizon.darkened(0.3)
+	# CIEL-AURORE (nuanceurs.gd) : dégradé de nuit + nappes d'aurore
+	# mouvantes aux couleurs du thème + étoiles qui scintillent.
 	var sky := Sky.new()
-	sky.sky_material = ciel
+	sky.sky_material = Nuanceurs.ciel(theme.ciel_haut, theme.horizon,
+		theme.get("aurore", Identite.CYAN), theme.get("aurore2", Identite.VIOLET))
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
