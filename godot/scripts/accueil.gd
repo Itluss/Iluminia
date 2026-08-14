@@ -111,8 +111,34 @@ func _executer(action: String) -> void:
 			Audio.jouer("clic")
 			competence_ouverte = morceaux[1]
 		"session":
-			Audio.jouer("clic")
-			surface.toast("La session d'apprentissage arrive au prochain jalon !")
+			# CONTINUER → la session d'apprentissage de la compétence
+			# sélectionnée, DIRECTEMENT (aucune page intermédiaire).
+			if Savoir.etat(competence_ouverte) == "verrouillee":
+				Audio.jouer("denied")
+				surface.toast("Débloque d'abord les prérequis de cette compétence !")
+			else:
+				Audio.jouer("depart")
+				_lancer_session()
+
+
+## Transition courte vers la session : le nœud sélectionné pulse déjà
+## (halo doré) ; on ajoute un simple fondu de quelques centaines de ms.
+func _lancer_session() -> void:
+	OS.set_environment("ILUMINIA_COMPETENCE", competence_ouverte)
+	var couche := CanvasLayer.new()
+	couche.layer = 10
+	add_child(couche)
+	var voile := ColorRect.new()
+	voile.color = Color(0.02, 0.05, 0.15, 0.0)
+	voile.set_anchors_preset(Control.PRESET_FULL_RECT)
+	couche.add_child(voile)
+	var fondu := create_tween()
+	fondu.tween_property(voile, "color:a", 1.0, 0.3)
+	fondu.tween_callback(_ouvrir_session)
+
+
+func _ouvrir_session() -> void:
+	get_tree().change_scene_to_file("res://scenes/session.tscn")
 
 
 ## Toute l'interface ; chaque _draw() reconstruit `_actions`.
