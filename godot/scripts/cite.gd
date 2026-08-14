@@ -1,9 +1,14 @@
 class_name Cite
 extends RefCounted
-## MA VILLE — la matérialisation du progrès. Modèle de données du pivot :
-## l'apprentissage produit de l'XP DE CONNAISSANCE qui franchit des
-## PALIERS ; chaque palier ouvre un CATALOGUE de constructions ; le
-## joueur CHOISIT quoi construire avec son or et ses ressources.
+## MA VILLE — la matérialisation du progrès. L'ÉCONOMIE tient en une
+## phrase : « LA CONNAISSANCE DÉBLOQUE. LES PIÈCES ACHÈTENT. »
+##
+##   CONNAISSANCE (XP)  → progression NON dépensable, impossible à
+##                        acheter : elle répond à « ai-je le droit
+##                        d'avoir cet objet ? » (paliers). Un palier
+##                        atteint ne disparaît jamais.
+##   PIÈCES (or)        → l'unique monnaie dépensable : elle répond à
+##                        « puis-je me le payer ? ».
 ##
 ## Découplage impératif : jamais de lien question → bâtiment. La chaîne
 ## est : apprentissage → XP/maîtrise → palier → catalogue → choix libre.
@@ -14,6 +19,18 @@ extends RefCounted
 ## aussi le palier de connaissance (pas de pay-to-win pédagogique).
 
 const TAILLE_GRILLE := 12       ## cases de côté du terrain v1
+
+## RÉCOMPENSES de l'apprentissage (valeurs PROVISOIRES et data-driven :
+## l'équilibrage se fera ici, jamais dans la logique). Chaque bonne
+## réponse produit une petite récompense RÉELLE ; la session complète
+## ajoute un bonus. Une erreur ne retire JAMAIS de pièces. Sources
+## futures prévues sans changer le modèle : CITY_PRODUCTION,
+## ACHIEVEMENT, EVENT, SOCIAL.
+const RECOMPENSES := {
+	"question_or": 5,        ## pièces par bonne réponse (QUESTION_REWARD)
+	"question_xp": 10,       ## XP de connaissance par bonne réponse
+	"bonus_session_or": 15,  ## bonus de session complète (SESSION_REWARD)
+}
 
 ## Les PALIERS DE CONNAISSANCE : fortement croissants — les premières
 ## récompenses arrivent vite, le prestige se mérite longtemps.
@@ -29,35 +46,37 @@ const PALIERS := [
 	{"xp": 4000, "nom": "Illuminia", "debloque": ["tour_celeste"]},
 ]
 
-## Catalogue des constructions (v1). `palier` = indice dans PALIERS
-## requis (la CONNAISSANCE d'abord) ; `or` = coût en pièces d'or ;
-## `production` = économie passive future {ressource, quantite/min}.
-## `source` des ressources : l'économie acceptera plus tard des entrées
-## SOURCE_ATTACK sans toucher à ce modèle.
+## Catalogue des constructions (v1). Chaque contenu déblocable définit :
+## `palier` (unlockKnowledgeLevel — la CONNAISSANCE d'abord) et `or`
+## (coinCost). Règle d'achat : palier atteint ET pièces suffisantes.
+## PRIX PROGRESSIFS (provisoires) : petit contenu rapide, prestige à
+## long terme. `production` = économie passive future — en PIÈCES
+## uniquement (monnaie unique), non implémentée dans cette itération.
+## `or_amelioration` = coût de base d'une amélioration (× niveau).
 const BATIMENTS := {
 	"maison": {"titre": "Maison des Aventuriers", "palier": 0, "or": 0, "taille": 3,
-		"categorie": "economie", "niveau_max": 5,
+		"categorie": "economie", "niveau_max": 5, "or_amelioration": 120,
 		"production": {}, "descr": "Ton premier toit — il peut devenir un manoir."},
 	"potager": {"titre": "Potager", "palier": 1, "or": 40, "taille": 2,
-		"categorie": "economie", "niveau_max": 3,
-		"production": {"nourriture": 2}, "descr": "Produit de la nourriture."},
-	"atelier": {"titre": "Atelier", "palier": 2, "or": 120, "taille": 2,
-		"categorie": "economie", "niveau_max": 3,
-		"production": {"bois": 2}, "descr": "Produit du bois."},
-	"forge": {"titre": "Forge", "palier": 3, "or": 260, "taille": 2,
-		"categorie": "economie", "niveau_max": 4,
-		"production": {"pierre": 2}, "descr": "Travaille pierre et métal."},
-	"ecurie": {"titre": "Écurie", "palier": 4, "or": 420, "taille": 3,
-		"categorie": "economie", "niveau_max": 3,
+		"categorie": "economie", "niveau_max": 3, "or_amelioration": 30,
+		"production": {"or": 1}, "descr": "Produit quelques pièces."},
+	"atelier": {"titre": "Atelier", "palier": 2, "or": 250, "taille": 2,
+		"categorie": "economie", "niveau_max": 3, "or_amelioration": 90,
+		"production": {"or": 2}, "descr": "Un artisanat qui rapporte."},
+	"forge": {"titre": "Forge", "palier": 3, "or": 700, "taille": 2,
+		"categorie": "economie", "niveau_max": 4, "or_amelioration": 220,
+		"production": {"or": 3}, "descr": "Travaille pierre et métal."},
+	"ecurie": {"titre": "Écurie", "palier": 4, "or": 1500, "taille": 3,
+		"categorie": "economie", "niveau_max": 3, "or_amelioration": 400,
 		"production": {}, "descr": "Accueille tes montures."},
-	"murailles": {"titre": "Murailles", "palier": 5, "or": 700, "taille": 1,
-		"categorie": "defense", "niveau_max": 3,
+	"murailles": {"titre": "Murailles", "palier": 5, "or": 3000, "taille": 1,
+		"categorie": "defense", "niveau_max": 3, "or_amelioration": 800,
 		"production": {}, "descr": "Protège ta ville."},
-	"chateau": {"titre": "Château", "palier": 6, "or": 1500, "taille": 4,
-		"categorie": "prestige", "niveau_max": 5,
+	"chateau": {"titre": "Château", "palier": 6, "or": 12000, "taille": 4,
+		"categorie": "prestige", "niveau_max": 5, "or_amelioration": 3000,
 		"production": {"or": 5}, "descr": "Le cœur de ta cité."},
-	"tour_celeste": {"titre": "Tour céleste", "palier": 7, "or": 3000, "taille": 3,
-		"categorie": "prestige", "niveau_max": 3,
+	"tour_celeste": {"titre": "Tour céleste", "palier": 7, "or": 30000, "taille": 3,
+		"categorie": "prestige", "niveau_max": 3, "or_amelioration": 8000,
 		"production": {}, "descr": "La magie d'Illuminia elle-même."},
 }
 

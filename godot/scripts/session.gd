@@ -41,9 +41,12 @@ var session := {
 	"reponses": [], "justes": 0, "misconceptions": [],
 	"maitrise_avant": 0.0, "maitrise_courante": 0.0,
 	"lecon_declenchee": false,
+	"pieces_gagnees": 0, "xp_gagnee": 0,   ## récompenses RÉELLES créditées
+	"palier_atteint": -1,                  ## palier franchi pendant la session
 	"mesures": {"lecon_vue": false, "lecon_terminee": false,
 		"lecon_passee": false, "exercice_apres_lecon_juste": false},
 }
+var _bilan_applique := false             ## idempotence du bonus de session
 
 var _chrono := 0.0               ## temps passé dans l'étape courante
 var _fige := false               ## crochet de capture : gèle l'avancement
@@ -94,6 +97,13 @@ func _ready() -> void:
 		"verif":
 			_demarrer_lecon()
 			_fin_lecon(true)
+			_fige = true
+		"bilan":
+			# Toute la session en réponses justes → écran SESSION TERMINÉE.
+			session.mesures.lecon_vue = true
+			while etape != Etape.SESSION_RESULT:
+				_repondre(str(question_courante().correcte))
+				_suivante()
 			_fige = true
 
 
@@ -199,10 +209,14 @@ func _executer(action: String) -> void:
 		"son":
 			Profil.basculer_son()
 			Audio.jouer("clic")
+		"fin":
+			# Depuis le bilan : la session est finie, sortie directe.
+			Audio.jouer("clic")
+			_terminer(morceaux[1])
 		"nav":
 			# Pendant une session active : confirmation en deux touches pour
 			# éviter toute perte accidentelle de progression.
-			if _garde_action == action and _garde_temps > 0.0:
+			if etape == Etape.SESSION_RESULT or (_garde_action == action and _garde_temps > 0.0):
 				_terminer(morceaux[1])
 			else:
 				Audio.jouer("clic")
@@ -225,6 +239,16 @@ func _repondre(reponse: String) -> void:
 		session.maitrise_courante = minf(float(session.maitrise_courante) + 6.0, 100.0)
 		if bool(q.get("verification", false)):
 			session.mesures.exercice_apres_lecon_juste = true
+		# RÉCOMPENSES RÉELLES, une seule fois par question (une réponse
+		# n'est acceptée qu'en QUESTION_ACTIVE — pas de double crédit) :
+		# créditées, journalisées, persistées, visibles immédiatement.
+		Profil.crediter_pieces(int(Cite.RECOMPENSES.question_or), "QUESTION_REWARD", str(q.id))
+		session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.question_or)
+		var nouveau_palier := Profil.crediter_connaissance(
+			int(Cite.RECOMPENSES.question_xp), "question", str(q.id))
+		session.xp_gagnee = int(session.xp_gagnee) + int(Cite.RECOMPENSES.question_xp)
+		if nouveau_palier >= 0:
+			session.palier_atteint = nouveau_palier
 		Audio.jouer("cristal")
 	else:
 		etape = Etape.ANSWER_INCORRECT
@@ -241,16 +265,34 @@ func _suivante() -> void:
 	choix = ""
 	_chrono = 0.0
 	if int(session.courante) + 1 >= session.questions.size():
-		_terminer("arbre")
+		_afficher_bilan()
 	else:
 		session.courante = int(session.courante) + 1
 		etape = Etape.QUESTION_ACTIVE
 
 
-## Fin (ou sortie) de session : la maîtrise travaillée est appliquée au
-## profil — c'est ELLE la vraie récompense, et l'état peut changer
-## (l'XP de connaissance n'arrive qu'aux changements d'état réels).
-func _terminer(destination: String) -> void:
+## SESSION TERMINÉE (ResultStage) : le bonus de session est crédité UNE
+## SEULE FOIS, la maîtrise travaillée est appliquée au profil, et un
+## palier franchi devient une célébration avec ses déblocages.
+func _afficher_bilan() -> void:
+	etape = Etape.SESSION_RESULT
+	if _bilan_applique:
+		return
+	_bilan_applique = true
+	var avant_palier := Cite.palier(Profil.connaissance_xp)
+	Profil.crediter_pieces(int(Cite.RECOMPENSES.bonus_session_or), "SESSION_REWARD",
+		str(session.competence_id))
+	session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.bonus_session_or)
+	_appliquer_maitrise()
+	# La maîtrise a pu verser de l'XP (état acquis/maîtrisé) : re-tester.
+	if Cite.palier(Profil.connaissance_xp) > avant_palier:
+		session.palier_atteint = Cite.palier(Profil.connaissance_xp)
+	Audio.jouer("victoire" if int(session.palier_atteint) >= 0 else "depart")
+
+
+## La maîtrise se démontre en RÉPONDANT (jamais en regardant une leçon) ;
+## appliquée une seule fois, l'état peut changer et verser son XP.
+func _appliquer_maitrise() -> void:
 	var id := str(session.competence_id)
 	var score := float(session.maitrise_courante)
 	var avant := Profil.etat_competence_brut(id)
@@ -260,6 +302,15 @@ func _terminer(destination: String) -> void:
 	elif avant == "decouverte" or avant == "a_consolider":
 		etat = "apprentissage"
 	Profil.fixer_etat_competence(id, etat, score)
+
+
+## Sortie de session (bilan ou départ anticipé).
+func _terminer(destination: String) -> void:
+	if not _bilan_applique:
+		# Départ anticipé : la maîtrise travaillée est conservée, sans
+		# bonus de session (l'effort complet récompense l'effort complet).
+		_bilan_applique = true
+		_appliquer_maitrise()
 	match destination:
 		"ville":
 			get_tree().change_scene_to_file.call_deferred("res://scenes/ville.tscn")
@@ -269,6 +320,21 @@ func _terminer(destination: String) -> void:
 		_:
 			OS.set_environment("ILUMINIA_ECRAN", "")
 			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
+
+
+## Premier bâtiment que le joueur peut désormais s'offrir (débloqué,
+## payable, pas encore possédé) — pour relier immédiatement
+## l'apprentissage à la construction.
+func achat_possible() -> Dictionary:
+	var possedes := {}
+	for b in Profil.ville:
+		possedes[str(b.type)] = true
+	for type in Cite.BATIMENTS:
+		if possedes.has(str(type)):
+			continue
+		if Cite.constructible(str(type), Profil.connaissance_xp, Profil.pieces):
+			return {"type": str(type), "titre": str(Cite.BATIMENTS[type].titre)}
+	return {}
 
 
 # ---------------------------------------------------------------------
@@ -420,8 +486,83 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 				_question_compare()
 			Session.Etape.LESSON:
 				_stage_cinematique()
+			Session.Etape.SESSION_RESULT:
+				_stage_bilan()
 			_:
 				pass
+
+	# ----------------------------------------------------- ResultStage
+
+	## SESSION TERMINÉE : réponses, gains réels, progression — et si un
+	## palier est franchi, la célébration + ses déblocages.
+	func _stage_bilan() -> void:
+		var zone := _zone_centre()
+		var cx := zone.get_center().x
+		var s: Dictionary = session_noeud.session
+		var palier_atteint := int(s.palier_atteint)
+		var panneau := Rect2(cx - 205.0, zone.position.y + 6.0, 410.0, zone.size.y - 12.0)
+		UI.panneau(self, panneau)
+		UI.banniere(self, Vector2(cx, panneau.position.y + 26.0), 300.0, "SESSION TERMINÉE", 17)
+		UI.texte(self, Vector2(cx, panneau.position.y + 56.0),
+			str(session_noeud.competence.titre).to_upper(), 14, Identite.CREME, true, 3)
+		UI.texte(self, Vector2(cx, panneau.position.y + 78.0),
+			"%d / %d bonnes réponses" % [int(s.justes), (s.questions as Array).size()],
+			12, Identite.TEXTE, true, 2)
+		# Les gains RÉELS (déjà crédités et persistés).
+		var y_gains := panneau.position.y + 100.0
+		var g1 := Rect2(cx - 150.0, y_gains, 140.0, 40.0)
+		UI.rect_degrade(self, g1, 10.0, Color("14264d"), Color("0c1a3a"))
+		if not UI.image(self, "res-coin", Rect2(g1.position + Vector2(14.0, 11.0), Vector2(18.0, 18.0))):
+			draw_circle(g1.position + Vector2(23.0, 20.0), 8.0, Identite.OR)
+		UI.texte(self, g1.position + Vector2(40.0, 26.0), "+%d pièces" % int(s.pieces_gagnees),
+			13, Identite.OR)
+		var g2 := Rect2(cx + 10.0, y_gains, 140.0, 40.0)
+		UI.rect_degrade(self, g2, 10.0, Color("14264d"), Color("0c1a3a"))
+		UI.etoile(self, g2.position + Vector2(22.0, 20.0), 10.0, Identite.VIOLET)
+		UI.texte(self, g2.position + Vector2(40.0, 26.0), "+%d XP" % int(s.xp_gagnee),
+			13, Identite.VIOLET.lightened(0.35))
+		# Progression de maîtrise avant → après.
+		UI.texte(self, Vector2(cx, y_gains + 62.0), "Progression : %d %%  →  %d %%" %
+			[int(s.maitrise_avant), int(s.maitrise_courante)], 12, Identite.CYAN, true, 2)
+		UI.barre(self, Rect2(cx - 120.0, y_gains + 72.0, 240.0, 13.0),
+			float(s.maitrise_courante) / 100.0, Identite.VIOLET)
+		# PALIER FRANCHI : récompense majeure — sinon, le pont vers la
+		# ville dès qu'un achat devient possible.
+		var y_bas := y_gains + 100.0
+		if palier_atteint >= 0:
+			var bandeau := Rect2(cx - 185.0, y_bas, 370.0, 24.0)
+			UI.rect_degrade(self, bandeau, 12.0, Color(0.28, 0.21, 0.05, 0.95), Color(0.2, 0.15, 0.04, 0.95))
+			UI.contour_arrondi(self, bandeau, 12.0, Identite.OR, 1.5)
+			UI.texte(self, Vector2(cx, y_bas + 16.0),
+				"NIVEAU DE CONNAISSANCE %d ATTEINT" % (palier_atteint + 1), 12, Identite.OR, true, 3)
+			var noms: Array = []
+			for d in Cite.PALIERS[palier_atteint].debloque:
+				var m := str(d).split(":")
+				noms.append(str(Cite.BATIMENTS.get(m[0], {}).get("titre", m[m.size() - 1])))
+			UI.texte(self, Vector2(cx, y_bas + 40.0),
+				"Nouveaux éléments débloqués : %s" % ", ".join(noms), 10, Identite.TEXTE, true, 1)
+			var cta := Rect2(panneau.end.x - 224.0, panneau.end.y - 52.0, 210.0, 42.0)
+			UI.bouton(self, cta, Identite.VERT, "bilan_ville", false, Identite.RAYON_MD)
+			UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "VOIR DANS MA VILLE", 12,
+				Identite.TEXTE, true, 2)
+			_actions.append({"rect": cta, "action": "fin:ville"})
+		else:
+			var achat := session_noeud.achat_possible()
+			if not achat.is_empty():
+				UI.texte(self, Vector2(cx, y_bas + 14.0),
+					"Tu as assez de pièces pour construire ton %s !" % str(achat.titre),
+					11, Identite.VERT, true, 1)
+				var cta := Rect2(panneau.end.x - 224.0, panneau.end.y - 52.0, 210.0, 42.0)
+				UI.bouton(self, cta, Identite.VERT, "bilan_ville2", false, Identite.RAYON_MD)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "ALLER À MA VILLE", 12,
+					Identite.TEXTE, true, 2)
+				_actions.append({"rect": cta, "action": "fin:ville"})
+		# Retour à l'arbre, toujours disponible.
+		var retour := Rect2(cx - 205.0 + 14.0, panneau.end.y - 52.0, 150.0, 42.0)
+		UI.bouton(self, retour, Identite.BLEU, "bilan_arbre", false, Identite.RAYON_MD)
+		UI.texte(self, retour.get_center() + Vector2(0.0, 5.0), "RETOUR À L'ARBRE", 10,
+			Identite.TEXTE, true, 2)
+		_actions.append({"rect": retour, "action": "fin:arbre"})
 
 	# --------------------------------------------------- CinematicStage
 
@@ -533,9 +674,17 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 			Session.Etape.ANSWER_CORRECT:
 				UI.contour_arrondi(self, panneau, 10.0, Identite.VERT, 1.5)
 				_picto(panneau.position + Vector2(24.0, 17.0), 8.0, "coche", Identite.VERT)
-				UI.texte(self, panneau.get_center() + Vector2(8.0, -1.0), "EXACT !", 13, Identite.VERT, true, 4)
-				UI.texte(self, panneau.get_center() + Vector2(8.0, 12.0), _phrase_exacte(q), 9,
+				UI.texte(self, panneau.get_center() + Vector2(-20.0, -1.0), "EXACT !", 13, Identite.VERT, true, 4)
+				UI.texte(self, panneau.get_center() + Vector2(-20.0, 12.0), _phrase_exacte(q), 9,
 					Identite.TEXTE_ATTENUE, true, 2)
+				# Gain discret et RÉEL (déjà crédité et visible en haut).
+				if not UI.image(self, "res-coin",
+						Rect2(panneau.position + Vector2(panneau.size.x - 118.0, 6.0), Vector2(12.0, 12.0))):
+					draw_circle(panneau.position + Vector2(panneau.size.x - 112.0, 12.0), 5.0, Identite.OR)
+				UI.texte(self, panneau.position + Vector2(panneau.size.x - 102.0, 16.0),
+					"+%d" % int(Cite.RECOMPENSES.question_or), 10, Identite.OR)
+				UI.texte(self, panneau.position + Vector2(panneau.size.x - 76.0, 16.0),
+					"+%d XP" % int(Cite.RECOMPENSES.question_xp), 10, Identite.VIOLET.lightened(0.35))
 			Session.Etape.ANSWER_INCORRECT:
 				UI.contour_arrondi(self, panneau, 10.0, Identite.ORANGE, 1.5)
 				_croix(panneau.position + Vector2(24.0, 17.0), 7.0, Identite.ORANGE)

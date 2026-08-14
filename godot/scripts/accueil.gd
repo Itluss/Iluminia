@@ -340,12 +340,14 @@ class SurfaceAccueil extends Control:
 		UI.barre(self, Rect2(profil.position + Vector2(90.0, 48.0), Vector2(138.0, 13.0)),
 			Profil.progres_niveau(), Identite.BLEU)
 		_actions.append({"rect": profil, "action": "parent"})
-		# MON NIVEAU DE CONNAISSANCE + PROCHAIN DÉBLOCAGE (le désir).
-		var centre := Rect2(254.0, 8.0, 356.0, 66.0)
+		# CONNAISSANCE (progression non dépensable) + PROCHAIN DÉBLOCAGE :
+		# l'espace des anciennes gemmes sert à respirer et à rendre le
+		# prochain déblocage plus visible.
+		var centre := Rect2(254.0, 8.0, 384.0, 66.0)
 		UI.panneau(self, centre)
-		UI.texte(self, Vector2(centre.get_center().x - 24.0, centre.position.y + 18.0),
-			"MON NIVEAU DE CONNAISSANCE", 11, Identite.TEXTE_ATTENUE, true, 4)
 		var palier := Cite.palier(Profil.connaissance_xp)
+		UI.texte(self, Vector2(centre.get_center().x - 20.0, centre.position.y + 18.0),
+			"CONNAISSANCE — PALIER %d" % (palier + 1), 11, Identite.TEXTE_ATTENUE, true, 4)
 		var prochain := Cite.prochain_palier(Profil.connaissance_xp)
 		UI.etoile(self, centre.position + Vector2(24.0, 42.0), 13.0, Identite.VIOLET)
 		if prochain.is_empty():
@@ -354,32 +356,30 @@ class SurfaceAccueil extends Control:
 			var xp_palier := int(Cite.PALIERS[int(prochain.indice)].xp)
 			var xp_avant := int(Cite.PALIERS[palier].xp)
 			var frac := float(Profil.connaissance_xp - xp_avant) / maxf(float(xp_palier - xp_avant), 1.0)
-			UI.barre(self, Rect2(centre.position + Vector2(42.0, 30.0), Vector2(120.0, 22.0)),
+			UI.barre(self, Rect2(centre.position + Vector2(42.0, 30.0), Vector2(136.0, 22.0)),
 				frac, Identite.VIOLET)
-			UI.texte(self, centre.position + Vector2(102.0, 46.0), "%d %%" % int(frac * 100.0),
+			UI.texte(self, centre.position + Vector2(110.0, 46.0), "%d %%" % int(frac * 100.0),
 				13, Identite.TEXTE, true, 4)
 			# NextUnlockPreview : miniature + nom + XP restant.
-			UI.texte(self, centre.position + Vector2(172.0, 36.0),
-				"Encore %d XP" % int(prochain.xp_manquant), 12, Identite.TEXTE)
-			UI.texte(self, centre.position + Vector2(172.0, 52.0), "pour débloquer", 10, Identite.TEXTE_ATTENUE)
+			UI.texte(self, centre.position + Vector2(192.0, 36.0),
+				"Encore %d XP" % int(prochain.xp_manquant), 13, Identite.TEXTE)
+			UI.texte(self, centre.position + Vector2(192.0, 52.0), "pour débloquer", 10, Identite.TEXTE_ATTENUE)
 			var nom_rec := ""
 			for d in prochain.debloque:
 				var m := str(d).split(":")
 				nom_rec = str(Cite.BATIMENTS.get(m[0], {}).get("titre", m[m.size() - 1]))
 				break
-			_mini_batiment(centre.position + Vector2(300.0, 34.0), 22.0)
-			UI.texte(self, Vector2(centre.position.x + 300.0, centre.position.y + 62.0),
+			_mini_batiment(centre.position + Vector2(326.0, 34.0), 23.0)
+			UI.texte(self, Vector2(centre.position.x + 326.0, centre.position.y + 62.0),
 				nom_rec.to_upper(), 10, Identite.OR, true, 4)
-		# RESSOURCES : or, cristaux violets, cristaux bleus.
-		var res := Rect2(618.0, 8.0, 120.0, 66.0)
+		# PIÈCES : l'unique monnaie (les gemmes n'existent plus).
+		var res := Rect2(646.0, 8.0, 92.0, 66.0)
 		UI.panneau(self, res)
-		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(8.0, 5.0), Vector2(18.0, 18.0))):
-			draw_circle(res.position + Vector2(17.0, 14.0), 8.0, Identite.OR)
-		UI.texte(self, res.position + Vector2(32.0, 19.0), str(Profil.pieces), 13, Identite.TEXTE)
-		_picto(res.position + Vector2(17.0, 34.0), 10.0, "gemme_v", Identite.VIOLET)
-		UI.texte(self, res.position + Vector2(32.0, 39.0), str(int(Profil.ressources.pierre)), 13, Identite.TEXTE)
-		_picto(res.position + Vector2(17.0, 54.0), 10.0, "gemme_b", Identite.CYAN)
-		UI.texte(self, res.position + Vector2(32.0, 59.0), str(int(Profil.ressources.bois)), 13, Identite.TEXTE)
+		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(10.0, 12.0), Vector2(24.0, 24.0))):
+			draw_circle(res.position + Vector2(22.0, 24.0), 11.0, Identite.OR)
+		UI.texte(self, res.position + Vector2(42.0, 30.0), str(Profil.pieces), 15, Identite.TEXTE)
+		UI.texte(self, Vector2(res.get_center().x, res.position.y + 54.0), "PIÈCES", 9,
+			Identite.TEXTE_ATTENUE, true, 3)
 		# Boutons : espace parent, son.
 		var b1 := Rect2(746.0, 8.0, 52.0, 50.0)
 		UI.bouton(self, b1, Identite.PANNEAU_CLAIR, "btn_parent", false, Identite.RAYON_SM)
@@ -593,7 +593,7 @@ class SurfaceAccueil extends Control:
 		var y_rec := rect.position.y + 244.0
 		var carte1 := Rect2(x, y_rec - 20.0, 60.0, 46.0)
 		UI.rect_degrade(self, carte1, 8.0, Color("14264d"), Color("0c1a3a"))
-		_picto(carte1.get_center() + Vector2(0.0, -6.0), 11.0, "gemme_b", Identite.CYAN)
+		UI.etoile(self, carte1.get_center() + Vector2(0.0, -6.0), 10.0, Identite.VIOLET)
 		UI.texte(self, carte1.get_center() + Vector2(0.0, 18.0), "+%d XP" % int(comp.xp), 9, Identite.TEXTE, true, 3)
 		var carte2 := carte1
 		carte2.position.x += 68.0

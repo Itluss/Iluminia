@@ -100,11 +100,65 @@ var maitrise := {}                    ## notion → 0..100
 var classe := ""                      ## niveau scolaire déclaré ("" = à choisir)
 var connaissance_xp := 0              ## l'XP DE CONNAISSANCE (paliers de la ville)
 var competences := {}                 ## id → {"etat": String, "score": 0..100}
-var ressources := {"bois": 0, "pierre": 0, "nourriture": 0}
 var ville: Array = []                 ## [{type, x, y, rot}] sur la grille invisible
+## L'ÉCONOMIE SIMPLIFIÉE : « la connaissance débloque, les pièces
+## achètent. » Une seule progression non dépensable (connaissance_xp),
+## une seule monnaie (pieces). Le JOURNAL trace chaque mouvement
+## (équilibrage, debug, anti-double-récompense).
+var journal: Array = []               ## [{type, montant, source, t}] (100 max)
+var deblocages_en_attente: Array = [] ## contenus du dernier palier franchi
 var stats_semaine := {"acquises": 0, "maitrisees": 0, "difficultes": 0, "corrigees": 0,
 	"minutes_apprentissage": 0}       ## le résumé de l'Espace Parent
 var semaine_stats := 0                ## n° de semaine des stats (remise à zéro auto)
+
+
+## ------------------------------------------------ économie centralisée
+## Toute pièce gagnée passe par ICI (jamais de `pieces += n` dispersés) :
+## créditée, journalisée, persistée — donc immédiatement visible dans la
+## barre du haut et utilisable dans Ma Ville.
+func crediter_pieces(montant: int, type: String, source := "") -> void:
+	if montant <= 0:
+		return
+	pieces += montant
+	_journaliser(type, montant, source)
+	sauver()
+
+
+## Débit ATOMIQUE : refuse (false) si le solde est insuffisant — jamais
+## d'état « bâtiment acheté mais pièces non déduites ».
+func debiter_pieces(montant: int, type: String, source := "") -> bool:
+	if montant > pieces:
+		return false
+	pieces -= montant
+	_journaliser(type, -montant, source)
+	sauver()
+	return true
+
+
+## Tout gain d'XP DE CONNAISSANCE passe par ici : crédit, journal,
+## DÉTECTION DE PALIER (les nouveaux déblocages sont mémorisés pour que
+## l'interface déclenche la célébration). Renvoie le nouveau palier
+## atteint, ou -1 si aucun n'a été franchi. La connaissance n'est PAS
+## une monnaie : elle ne se dépense jamais, ne se retire jamais.
+func crediter_connaissance(montant: int, source := "", competence := "") -> int:
+	if montant <= 0:
+		return -1
+	var avant := Cite.palier(connaissance_xp)
+	connaissance_xp += montant
+	_journaliser("xp:%s" % source, montant, competence)
+	var apres := Cite.palier(connaissance_xp)
+	if apres > avant:
+		for i in range(avant + 1, apres + 1):
+			deblocages_en_attente.append_array(Cite.PALIERS[i].debloque)
+	sauver()
+	return apres if apres > avant else -1
+
+
+func _journaliser(type: String, montant: int, source: String) -> void:
+	journal.append({"type": type, "montant": montant, "source": source,
+		"t": int(Time.get_unix_time_from_system())})
+	if journal.size() > 100:
+		journal = journal.slice(journal.size() - 100)
 
 
 ## État BRUT d'une compétence (sans la logique de prérequis — voir
@@ -140,7 +194,8 @@ func fixer_etat_competence(id: String, etat: String, score := -1.0) -> int:
 			stats_semaine.maitrisees += 1
 		elif etat == "a_consolider":
 			stats_semaine.difficultes += 1
-	connaissance_xp += gain
+	if gain > 0:
+		crediter_connaissance(gain, "maitrise", id)
 	sauver()
 	return gain
 
@@ -185,7 +240,6 @@ func _semer_demo_pivot() -> void:
 	if ville.is_empty():
 		ville = [{"type": "maison", "x": 4, "y": 4, "rot": 0, "niveau": 1}]
 	pieces = maxi(pieces, 120)
-	ressources = {"bois": 32, "pierre": 185, "nourriture": 12}
 	sauver()
 
 
@@ -577,7 +631,8 @@ func sauver() -> void:
 	cfg.set_value("profil", "classe", classe)
 	cfg.set_value("profil", "connaissance_xp", connaissance_xp)
 	cfg.set_value("profil", "competences", competences)
-	cfg.set_value("profil", "ressources", ressources)
+	cfg.set_value("profil", "journal", journal)
+	cfg.set_value("profil", "deblocages_en_attente", deblocages_en_attente)
 	cfg.set_value("profil", "ville", ville)
 	cfg.set_value("profil", "stats_semaine", stats_semaine)
 	cfg.set_value("profil", "semaine_stats", semaine_stats)
@@ -629,9 +684,14 @@ func charger() -> void:
 	var co = cfg.get_value("profil", "competences", competences)
 	if co is Dictionary:
 		competences = co
-	var re = cfg.get_value("profil", "ressources", ressources)
-	if re is Dictionary:
-		ressources = re
+	# (Migration : l'ancien champ « ressources » — gemmes violettes/bleues —
+	# est simplement ignoré : une seule monnaie désormais, les pièces.)
+	var jo = cfg.get_value("profil", "journal", journal)
+	if jo is Array:
+		journal = jo
+	var da = cfg.get_value("profil", "deblocages_en_attente", deblocages_en_attente)
+	if da is Array:
+		deblocages_en_attente = da
 	var vi = cfg.get_value("profil", "ville", ville)
 	if vi is Array:
 		ville = vi

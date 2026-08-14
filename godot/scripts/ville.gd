@@ -51,12 +51,21 @@ func _ready() -> void:
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	couche.add_child(surface)
 
-	# Crochet de développement : capturer directement un état d'écran.
+	# Crochets de développement : forcer un état économique (scénarios de
+	# test « l'or ne suffit jamais ») ou un état d'écran à capturer.
+	if OS.get_environment("ILUMINIA_OR") != "":
+		Profil.pieces = int(OS.get_environment("ILUMINIA_OR"))
+	if OS.get_environment("ILUMINIA_XP") != "":
+		Profil.connaissance_xp = int(OS.get_environment("ILUMINIA_XP"))
 	match OS.get_environment("ILUMINIA_VILLE"):
 		"construction":
 			entrer_construction.call_deferred("potager")
 		"selection":
 			selection = 0
+		"achat":
+			# Test d'intégration : achat réel du potager (débit atomique).
+			entrer_construction.call_deferred("potager")
+			valider_construction.call_deferred()
 
 
 ## Le terrain sobre et beau : herbe douce à nuances, bordure de terre et
@@ -357,7 +366,12 @@ func valider_construction() -> void:
 	if not Cite.constructible(type_en_construction, Profil.connaissance_xp, Profil.pieces):
 		Audio.jouer("denied")
 		return
-	Profil.pieces -= int(Cite.BATIMENTS[type_en_construction]["or"])
+	# TRANSACTION ATOMIQUE : le débit précède la pose et la refuse si le
+	# solde ne suffit pas — jamais de bâtiment acheté sans pièces déduites.
+	if not Profil.debiter_pieces(int(Cite.BATIMENTS[type_en_construction]["or"]),
+			"ACHAT_BATIMENT", type_en_construction):
+		Audio.jouer("denied")
+		return
 	Profil.ville.append({"type": type_en_construction, "x": int(fantome.x), "y": int(fantome.y),
 		"rot": int(fantome.rot), "niveau": 1})
 	Profil.sauver()
@@ -453,7 +467,9 @@ func _executer(action: String) -> void:
 				selection = -1
 				_reconstruire_batiments()
 				entrer_construction(type)
-				Profil.pieces += int(Cite.BATIMENTS[type]["or"]) # replacé sans re-payer
+				# Déjà possédé : replacé sans re-payer (remboursé, re-débité
+				# à la validation — solde net inchangé, tracé au journal).
+				Profil.crediter_pieces(int(Cite.BATIMENTS[type]["or"]), "DEPLACEMENT", type)
 		"infos":
 			if selection >= 0:
 				Audio.jouer("clic")
@@ -479,12 +495,12 @@ func _ameliorer() -> void:
 		Audio.jouer("denied")
 		surface.toast("Niveau maximum atteint !")
 		return
-	var cout := 60 * niveau
-	if Profil.pieces < cout:
+	# Coût d'amélioration DATA-DRIVEN (or_amelioration × niveau actuel).
+	var cout := int(fiche.get("or_amelioration", 60)) * niveau
+	if not Profil.debiter_pieces(cout, "AMELIORATION", str(b.type)):
 		Audio.jouer("denied")
-		surface.toast("Il te faut %d or pour améliorer." % cout)
+		surface.toast("Il te faut %d pièces pour améliorer." % cout)
 		return
-	Profil.pieces -= cout
 	b.niveau = niveau + 1
 	Profil.sauver()
 	Audio.jouer("victoire")
@@ -546,9 +562,9 @@ class SurfaceVille extends Control:
 		# ville, « si j'apprends encore, je pourrai obtenir ça ».
 		var centre := Rect2(254.0, 8.0, 330.0, 66.0)
 		UI.panneau(self, centre)
-		UI.texte(self, Vector2(centre.get_center().x - 20.0, centre.position.y + 18.0),
-			"NIVEAU DE CONNAISSANCE", 11, Identite.TEXTE_ATTENUE, true, 4)
 		var palier := Cite.palier(Profil.connaissance_xp)
+		UI.texte(self, Vector2(centre.get_center().x - 20.0, centre.position.y + 18.0),
+			"CONNAISSANCE — PALIER %d" % (palier + 1), 11, Identite.TEXTE_ATTENUE, true, 4)
 		var prochain := Cite.prochain_palier(Profil.connaissance_xp)
 		UI.etoile(self, centre.position + Vector2(22.0, 42.0), 12.0, Identite.VIOLET)
 		if not prochain.is_empty():
@@ -567,16 +583,14 @@ class SurfaceVille extends Control:
 			_mini_batiment_type(centre.position + Vector2(288.0, 32.0), 20.0, "atelier")
 			UI.texte(self, Vector2(centre.position.x + 288.0, centre.position.y + 60.0),
 				nom_rec.to_upper().left(14), 9, Identite.OR, true, 3)
-		# Ressources + boutique + son.
+		# PIÈCES — l'unique monnaie (les gemmes ont disparu de l'économie).
 		var res := Rect2(592.0, 8.0, 146.0, 66.0)
 		UI.panneau(self, res)
-		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(10.0, 6.0), Vector2(18.0, 18.0))):
-			draw_circle(res.position + Vector2(19.0, 15.0), 8.0, Identite.OR)
-		UI.texte(self, res.position + Vector2(34.0, 20.0), str(Profil.pieces), 13, Identite.TEXTE)
-		_gemme(res.position + Vector2(19.0, 36.0), 9.0, Identite.VIOLET)
-		UI.texte(self, res.position + Vector2(34.0, 41.0), str(int(Profil.ressources.pierre)), 12, Identite.TEXTE)
-		_gemme(res.position + Vector2(19.0, 56.0), 9.0, Identite.CYAN)
-		UI.texte(self, res.position + Vector2(34.0, 61.0), str(int(Profil.ressources.bois)), 12, Identite.TEXTE)
+		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(14.0, 14.0), Vector2(26.0, 26.0))):
+			draw_circle(res.position + Vector2(27.0, 27.0), 12.0, Identite.OR)
+		UI.texte(self, res.position + Vector2(50.0, 33.0), str(Profil.pieces), 16, Identite.TEXTE)
+		UI.texte(self, Vector2(res.get_center().x, res.position.y + 56.0), "PIÈCES", 9,
+			Identite.TEXTE_ATTENUE, true, 3)
 		var b1 := Rect2(746.0, 8.0, 52.0, 50.0)
 		UI.bouton(self, b1, Identite.PANNEAU_CLAIR, "v_boutique", false, Identite.RAYON_SM)
 		UI.coffre(self, b1.get_center() + Vector2(0.0, 2.0), 22.0)
@@ -585,12 +599,6 @@ class SurfaceVille extends Control:
 		UI.bouton(self, b2, Identite.PANNEAU_CLAIR, "v_retour", false, Identite.RAYON_SM)
 		UI.texte(self, b2.get_center() + Vector2(0.0, 7.0), "←", 20, Identite.TEXTE, true)
 		_actions.append({"rect": b2, "action": "retour"})
-
-	func _gemme(p: Vector2, r: float, teinte: Color) -> void:
-		draw_colored_polygon(PackedVector2Array([
-			p + Vector2(0.0, -r * 0.62), p + Vector2(r * 0.46, 0.0), p + Vector2(0.0, r * 0.62),
-			p + Vector2(-r * 0.46, 0.0)]), teinte)
-		draw_circle(p + Vector2(-r * 0.1, -r * 0.2), r * 0.13, Color(1, 1, 1, 0.5))
 
 	## Miniatures de bâtiments (catalogue et aperçus).
 	func _mini_batiment_type(p: Vector2, r: float, type: String) -> void:
@@ -702,16 +710,24 @@ class SurfaceVille extends Control:
 					"Niv. connaissance %d requis" % int(fiche.palier), 9, Identite.TEXTE_ATTENUE)
 				UI.image(self, "icon-lock", Rect2(ligne.position + Vector2(ligne.size.x - 30.0, h / 2.0 - 9.0), Vector2(18.0, 18.0)))
 			else:
+				# DÉBLOQUÉ (palier atteint) : achetable, ou « x / y » si les
+				# pièces manquent — jamais un bouton actif trompeur.
 				if not UI.image(self, "res-coin", Rect2(ligne.position + Vector2(46.0, h / 2.0 + 2.0), Vector2(13.0, 13.0))):
 					draw_circle(ligne.position + Vector2(52.0, h / 2.0 + 8.0), 6.0, Identite.OR)
 				UI.texte(self, ligne.position + Vector2(63.0, h / 2.0 + 13.0), str(int(fiche["or"])), 10, Identite.OR)
 				var peut: bool = Cite.constructible(type, Profil.connaissance_xp, Profil.pieces)
 				var bouton := Rect2(ligne.end.x - 96.0, ligne.position.y + (h - 28.0) / 2.0, 88.0, 28.0)
-				UI.bouton(self, bouton, Identite.VERT if peut else Color(0.3, 0.32, 0.42),
-					"vc_%s" % type, false, Identite.RAYON_SM)
-				UI.texte(self, bouton.get_center() + Vector2(0.0, 4.0), "CONSTRUIRE", 10, Identite.TEXTE, true, 4)
 				if peut:
+					UI.bouton(self, bouton, Identite.VERT, "vc_%s" % type, false, Identite.RAYON_SM)
+					UI.texte(self, bouton.get_center() + Vector2(0.0, 4.0), "CONSTRUIRE", 10, Identite.TEXTE, true, 4)
 					_actions.append({"rect": bouton, "action": "construire:%s" % type})
+				else:
+					UI.bouton(self, bouton, Color(0.3, 0.32, 0.42), "vc_%s" % type, false, Identite.RAYON_SM)
+					UI.texte(self, bouton.get_center() + Vector2(0.0, -2.0),
+						"%d / %d" % [Profil.pieces, int(fiche["or"])], 10, Identite.OR, true, 2)
+					UI.texte(self, bouton.get_center() + Vector2(0.0, 11.0), "GAGNER DES PIÈCES", 7,
+						Identite.TEXTE_ATTENUE, true, 2)
+					_actions.append({"rect": bouton, "action": "retour"})
 			y += pas
 		UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 12.0),
 			"VOIR LES BÂTIMENTS VERROUILLÉS", 9, Identite.TEXTE_ATTENUE, true, 3)
