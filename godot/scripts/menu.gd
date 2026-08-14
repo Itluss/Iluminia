@@ -356,6 +356,17 @@ class SurfaceMenu extends Control:
 		UI.texte(self, rect.get_center() + Vector2(0.0, taille * 0.36), txt, taille, Identite.TEXTE, true)
 		_actions.append({"rect": rect, "action": action})
 
+	## Avatar d'un héros : le PORTRAIT PEINT des maquettes s'il existe
+	## (avatar-max…), pastille colorée à initiale sinon.
+	func _avatar(centre: Vector2, rayon: float, nom: String) -> void:
+		draw_circle(centre, rayon + 4.0, Identite.CONTOUR)
+		draw_circle(centre, rayon + 1.5, Identite.VIOLET)
+		if not UI.image(self, "avatar-%s" % nom.to_lower(),
+				Rect2(centre - Vector2(rayon, rayon), Vector2(rayon * 2.0, rayon * 2.0))):
+			draw_circle(centre, rayon, Profil.couleur_de(nom))
+			draw_circle(centre + Vector2(0.0, -rayon * 0.35), rayon * 0.45, Color(1.0, 1.0, 1.0, 0.25))
+			UI.texte(self, centre + Vector2(0.0, rayon * 0.35), nom.left(1), int(rayon * 0.9), Identite.TEXTE, true, 4)
+
 	func _draw() -> void:
 		_actions = []
 		match menu.ecran:
@@ -392,11 +403,7 @@ class SurfaceMenu extends Control:
 		# Carte profil (avatar aux couleurs du héros équipé → Personnages).
 		var profil := Rect2(10.0, 10.0, 248.0, 64.0)
 		UI.panneau(self, profil)
-		var teinte_heros: Color = Profil.couleur_de(Profil.personnage)
-		draw_circle(profil.position + Vector2(32.0, 32.0), 24.0, Identite.CONTOUR)
-		draw_circle(profil.position + Vector2(32.0, 32.0), 20.0, teinte_heros)
-		draw_circle(profil.position + Vector2(32.0, 24.0), 10.0, Color(1.0, 1.0, 1.0, 0.25))
-		UI.texte(self, profil.position + Vector2(32.0, 40.0), Profil.personnage.left(1), 20, Identite.TEXTE, true, 4)
+		_avatar(profil.position + Vector2(32.0, 32.0), 24.0, Profil.personnage)
 		UI.texte(self, profil.position + Vector2(64.0, 26.0), Profil.personnage, 16, Identite.TEXTE)
 		UI.capsule_niveau(self, Rect2(profil.position + Vector2(64.0, 32.0), Vector2(170.0, 26.0)),
 			Profil.niveau, Profil.progres_niveau())
@@ -444,11 +451,16 @@ class SurfaceMenu extends Control:
 			["boutique", "BOUTIQUE", Identite.BLEU],
 			["route", "RÉCOMPENSES", Identite.VIOLET],
 		]
+		var icones_nav := {"personnages": "avatar-max", "sanctuaire": "icon-dragon",
+			"boutique": "icon-pouch", "route": "xp-star"}
 		for i in nav.size():
 			var b: Array = nav[i]
 			var rect := Rect2(16.0, 96.0 + i * 70.0, 226.0, 60.0)
 			UI.bouton(self, rect, b[2], "nav_%s" % str(b[0]), false, Identite.RAYON_MD)
-			UI.icone_menu(self, rect.position + Vector2(30.0, 27.0), 17.0, str(b[0]))
+			# Icônes PEINTES des maquettes, glyphe vectoriel en repli.
+			if not UI.image(self, str(icones_nav.get(str(b[0]), "")),
+					Rect2(rect.position + Vector2(12.0, 9.0), Vector2(36.0, 36.0))):
+				UI.icone_menu(self, rect.position + Vector2(30.0, 27.0), 17.0, str(b[0]))
 			UI.texte(self, rect.position + Vector2(56.0, 34.0), str(b[1]), 16, Identite.TEXTE)
 			_actions.append({"rect": rect, "action": str(b[0])})
 			if str(b[0]) == "sanctuaire" and Profil.oeufs > 0:
@@ -512,9 +524,10 @@ class SurfaceMenu extends Control:
 		var rect := Rect2(16.0, size.y - 116.0, 296.0, 96.0)
 		UI.panneau(self, rect)
 		var fini: bool = int(quete.progres) >= int(quete.cible)
-		# Pastille gemme + titre.
-		UI.hexagone(self, rect.position + Vector2(26.0, 24.0), 13.0, Identite.CYAN, "", 12)
-		UI.texte(self, rect.position + Vector2(46.0, 28.0), "DÉFI DU JOUR", 14, Identite.CYAN)
+		# Icône peinte (livre des maquettes) + titre.
+		if not UI.image(self, "icon-book", Rect2(rect.position + Vector2(12.0, 10.0), Vector2(30.0, 30.0))):
+			UI.hexagone(self, rect.position + Vector2(26.0, 24.0), 13.0, Identite.CYAN, "", 12)
+		UI.texte(self, rect.position + Vector2(50.0, 28.0), "DÉFI DU JOUR", 14, Identite.CYAN)
 		UI.texte(self, rect.position + Vector2(rect.size.x - 14.0 - 60.0, 28.0),
 			"%d / %d" % [int(quete.progres), int(quete.cible)], 14, Identite.TEXTE_ATTENUE)
 		UI.texte(self, rect.position + Vector2(16.0, 52.0), str(quete.texte), 13, Identite.TEXTE)
@@ -598,8 +611,12 @@ class SurfaceMenu extends Control:
 			var accessible := Profil.variante_accessible(nom, v)
 			var teinte: Color = palette[v]
 			draw_circle(centre, 20.0, Identite.CONTOUR)
-			draw_circle(centre, 16.0, teinte if accessible else Color(0.3, 0.32, 0.42))
-			if accessible:
+			# VIGNETTE DE TENUE PEINTE des maquettes si elle existe.
+			var peinte: bool = accessible and UI.image(self, "tenue-%s-%d" % [nom.to_lower(), v + 1],
+				Rect2(centre - Vector2(18.0, 18.0), Vector2(36.0, 36.0)))
+			if not peinte:
+				draw_circle(centre, 16.0, teinte if accessible else Color(0.3, 0.32, 0.42))
+			if accessible and not peinte:
 				draw_circle(centre + Vector2(0.0, -5.0), 8.0, Color(1.0, 1.0, 1.0, 0.22))
 			if int(Profil.variantes.get(nom, 0)) == v:
 				draw_arc(centre, 23.0, 0.0, TAU, 32, Identite.OR, 4.0)
@@ -645,19 +662,24 @@ class SurfaceMenu extends Control:
 			Identite.PANNEAU if debloque else Color(0.1, 0.12, 0.22),
 			Identite.OR if focus else teinte_rarete, Identite.RAYON_MD,
 			Identite.BORD_FORT if focus else Identite.BORD, 3), rect)
-		# Avatar rond aux couleurs du héros (gris si verrouillé).
+		# PORTRAIT PEINT des maquettes s'il existe (carte-max…), pastille
+		# sinon ; cadenas du pack d'icônes si verrouillé.
 		var centre := rect.position + Vector2(30.0, 44.0)
-		var teinte: Color = Profil.couleur_de(nom) if debloque else Color(0.35, 0.37, 0.47)
-		draw_circle(centre, 22.0, Identite.CONTOUR)
-		draw_circle(centre, 18.0, teinte)
-		if debloque:
+		if debloque and UI.image(self, "carte-%s" % nom.to_lower(), Rect2(rect.position + Vector2(6.0, 8.0), Vector2(52.0, 68.0))):
+			pass
+		elif debloque:
+			var teinte: Color = Profil.couleur_de(nom)
+			draw_circle(centre, 22.0, Identite.CONTOUR)
+			draw_circle(centre, 18.0, teinte)
 			draw_circle(centre + Vector2(0.0, -7.0), 9.0, Color(1.0, 1.0, 1.0, 0.25))
 			UI.texte(self, centre + Vector2(0.0, 7.0), nom.left(1), 16, Identite.TEXTE, true, 4)
 		else:
-			# Cadenas dessiné (l'emoji ne rend pas dans la police embarquée).
-			draw_arc(centre + Vector2(0.0, -4.0), 6.0, PI, TAU, 12, Identite.CREME, 3.0)
-			draw_rect(Rect2(centre + Vector2(-8.0, -4.0), Vector2(16.0, 12.0)), Identite.CREME)
-			draw_circle(centre + Vector2(0.0, 2.0), 2.4, Identite.CONTOUR)
+			draw_circle(centre, 22.0, Identite.CONTOUR)
+			draw_circle(centre, 18.0, Color(0.35, 0.37, 0.47))
+			if not UI.image(self, "icon-lock", Rect2(centre - Vector2(13.0, 13.0), Vector2(26.0, 26.0))):
+				draw_arc(centre + Vector2(0.0, -4.0), 6.0, PI, TAU, 12, Identite.CREME, 3.0)
+				draw_rect(Rect2(centre + Vector2(-8.0, -4.0), Vector2(16.0, 12.0)), Identite.CREME)
+				draw_circle(centre + Vector2(0.0, 2.0), 2.4, Identite.CONTOUR)
 		UI.texte(self, rect.position + Vector2(60.0, 30.0), nom, 16,
 			Identite.OR if nom == Profil.personnage else Identite.TEXTE)
 		if nom == Profil.personnage:

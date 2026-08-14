@@ -6,6 +6,28 @@ extends RefCounted
 ## le style d'un composant, on ne le change qu'ici (voir identite.gd).
 
 static var _styles := {}
+static var _textures := {}
+
+
+# -------------------------------------------------- assets peints (maquettes)
+
+## Texture du dossier assets/ui (les VRAIS assets peints des maquettes :
+## portraits, tenues, icônes). Null si absente — l'appelant garde alors
+## son rendu vectoriel de repli.
+static func texture(nom: String) -> Texture2D:
+	if not _textures.has(nom):
+		var chemin := "res://assets/ui/%s.png" % nom
+		_textures[nom] = load(chemin) if ResourceLoader.exists(chemin) else null
+	return _textures[nom]
+
+
+## Dessine un asset peint dans un rect ; vrai si la texture existait.
+static func image(c: Control, nom: String, rect: Rect2) -> bool:
+	var t: Texture2D = texture(nom)
+	if t == null:
+		return false
+	c.draw_texture_rect(t, rect, false)
+	return true
 
 
 # -------------------------------------------------- rendu dégradé (planche)
@@ -255,18 +277,23 @@ static func capsule(c: Control, rect: Rect2, teinte: Color, valeur: String,
 		icone := "piece", avec_plus := true) -> void:
 	c.draw_style_box(style("capsule", Identite.NUIT, Identite.CONTOUR, 20, Identite.BORD, 3), rect)
 	var centre_icone := rect.position + Vector2(rect.size.y / 2.0, rect.size.y / 2.0)
+	# Icônes PEINTES des maquettes quand elles existent, vecteur sinon.
+	var rect_icone := Rect2(centre_icone - Vector2(15.0, 15.0), Vector2(30.0, 30.0))
 	match icone:
 		"piece":
-			c.draw_circle(centre_icone, 13.0, Identite.CONTOUR)
-			c.draw_circle(centre_icone, 10.0, teinte)
-			c.draw_circle(centre_icone, 6.0, teinte.darkened(0.25))
+			if not image(c, "res-coin", rect_icone):
+				c.draw_circle(centre_icone, 13.0, Identite.CONTOUR)
+				c.draw_circle(centre_icone, 10.0, teinte)
+				c.draw_circle(centre_icone, 6.0, teinte.darkened(0.25))
 		"gemme":
-			var pts := PackedVector2Array()
-			for i in 6:
-				pts.append(centre_icone + Vector2.from_angle(-PI / 2.0 + TAU * i / 6.0) * 12.0)
-			c.draw_colored_polygon(pts, teinte)
+			if not image(c, "icon-gem", rect_icone):
+				var pts := PackedVector2Array()
+				for i in 6:
+					pts.append(centre_icone + Vector2.from_angle(-PI / 2.0 + TAU * i / 6.0) * 12.0)
+				c.draw_colored_polygon(pts, teinte)
 		_:
-			etoile(c, centre_icone, 11.0, teinte)
+			if not image(c, "xp-star", rect_icone):
+				etoile(c, centre_icone, 11.0, teinte)
 	texte(c, Vector2(rect.position.x + rect.size.y - 4.0, rect.get_center().y + 6.0), valeur, 17, Identite.TEXTE)
 	if avec_plus:
 		var centre_plus := Vector2(rect.end.x - rect.size.y / 2.0, rect.get_center().y)
