@@ -107,6 +107,11 @@ func xp_requise() -> float:
 	return 100.0 * pow(1.3, niveau - 1)
 
 
+## Progression 0..1 vers le prochain niveau (capsule de niveau du lobby).
+func progres_niveau() -> float:
+	return clampf(xp / xp_requise(), 0.0, 1.0)
+
+
 func gagner_xp(quantite: float) -> int:
 	xp += quantite
 	var niveaux_gagnes := 0

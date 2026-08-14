@@ -359,7 +359,7 @@ func _dessiner_reponses(c: Control, zone: Rect2, hauteur_rangee: float, taille_t
 ## Jauge d'énergie bleue à éclair (planche : « énergie / mana »).
 func _dessiner_energie(c: Control) -> void:
 	var rect := Rect2(40.0, 94.0, 208.0, 28.0)
-	var ratio := joueur.energie / Chasseur.ENERGIE_MAX
+	var ratio := joueur.energie / joueur.energie_max
 	var teinte := Identite.BLEU
 	if ratio < 0.25:
 		teinte = Identite.ROUGE.lerp(Identite.ORANGE, absf(sin(Time.get_ticks_msec() / 180.0)))

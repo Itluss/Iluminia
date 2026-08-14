@@ -458,7 +458,7 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 		# +100, +15 d'énergie… et LA MANCHE CONTINUE : nouvelle question,
 		# le dragon renaît ailleurs dans 2 s — à qui le prochain point ?
 		c.score += 100
-		c.energie = minf(c.energie + 15.0, Chasseur.ENERGIE_MAX)
+		c.energie = minf(c.energie + 15.0, c.energie_max)
 		fx.eclat_etoiles(pos_zone, zones[i].teinte, 30)
 		fx.anneau(pos_zone, RAYON_ZONE * 2.0, zones[i].teinte)
 		fx.texte_flottant(pos_zone, "+100 %s !" % c.nom, Color(1.0, 0.95, 0.6))
@@ -563,7 +563,7 @@ func rejouer() -> void:
 	recompense_podium = {}
 	for c in chasseurs:
 		c.score = 0
-		c.energie = Chasseur.ENERGIE_MAX
+		c.energie = c.energie_max
 		c.ko_restant = 0.0
 		c.visible = true
 		c.eveil = 0
@@ -627,7 +627,7 @@ func ramasser_cristaux(c: Chasseur) -> void:
 	for cr in cristaux:
 		if is_instance_valid(cr) and c.pos2().distance_to(cr.pos2()) < 0.8:
 			cristaux.erase(cr)
-			c.energie = minf(c.energie + CRISTAL_ENERGIE, Chasseur.ENERGIE_MAX)
+			c.energie = minf(c.energie + CRISTAL_ENERGIE, c.energie_max)
 			c.charger_super(1)
 			fx.eclat_etoiles(cr.pos2(), Color(0.5, 0.95, 1.0), 10)
 			fx.texte_flottant(cr.pos2(), "+1 ÉCLAT", Color(0.5, 0.95, 1.0))

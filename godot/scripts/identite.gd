@@ -16,8 +16,8 @@ extends RefCounted
 
 # ---- Surfaces (nuit) ----
 const NUIT := Color("0e1638")           ## fond profond
-const PANNEAU := Color("182c63")        ## panneaux
-const PANNEAU_CLAIR := Color("274384")  ## surbrillance de panneau
+const PANNEAU := Color("17234a")        ## panneaux (MARINE PROFOND de la planche)
+const PANNEAU_CLAIR := Color("24407c")  ## surbrillance de panneau
 const CONTOUR := Color("0a1230")        ## contour marine épais (BD)
 
 # ---- Accents ----
@@ -48,6 +48,11 @@ const BORD_FORT := 4
 
 # ---- Réponses et zones (liées : même couleur au panneau et au sol) ----
 const COULEURS_REPONSES := [VERT, BLEU, OR, MAGENTA]
+
+# ---- Raretés (badges de la planche : COMMUN vert, RARE bleu, ÉPIQUE violet) ----
+const RARETES := {
+	"Commun": VERT, "Rare": BLEU, "Épique": VIOLET, "Légendaire": OR, "Mythique": MAGENTA,
+}
 
 # ---- Équipes / personnages (fiches complètes dans personnage3d.gd) ----
 const TEINTE_MAX := BLEU

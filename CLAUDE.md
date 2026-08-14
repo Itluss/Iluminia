@@ -76,6 +76,19 @@ de couleurs débloquées par le **coffre quotidien**, méta persistée par
 l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
 récompenses de compte au podium. Navigation testée en vrai navigateur
 (Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
+**UI planche « Écran Personnages / Home Illuminia »** (2026-08-14, planches
+fournies par Camille) : kit ui.gd au style de la planche — boutons à
+BISEAU 3D (tranche sombre + highlight), capsules de ressources avec « + »,
+badges de notification et de RARETÉ, barres de stats segmentées, capsule
+de niveau + XP, icônes de navigation. Accueil : carte profil
+(avatar/niveau/XP), nav gauche à icônes et badges, cartes événement à
+droite, DÉFI DU JOUR, gros JOUER ▶. Écran Personnages : colonne de cartes
+de héros (rareté, verrous-cadenas, ✓ équipé), héros 3D au centre, fiche
+détail (rôle, description, stats RÉELLES, compétences, tenues,
+AMÉLIORER/ÉQUIPER). Les héros ont des stats réelles distinctes (fiche
+`stats` de personnage3d.gd : vitesse ×, énergie max, portée d'onde) et
+une rareté (Max Épique, Zep/Nova Rares, Ficelle Légendaire).
+PANNEAU = #17234a (marine profond de la planche).
 **Éveil + Supers + identité shaders** (2026-08-14, « un vrai gameplay qui
 donne envie de devenir plus fort / une vraie identité graphique ») :
 chaque bonne dépose fait ÉVOLUER le Lumin en plein match (Éveil 1-3 :

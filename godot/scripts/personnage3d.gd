@@ -18,19 +18,35 @@ extends Node3D
 ## Fiches des personnages jouables (teintes : identite.gd).
 ## `variantes` : garde-robe de couleurs — la première est débloquée d'office,
 ## les autres s'obtiennent via le cadeau quotidien (voir profil.gd).
+## `rarete`/`role`/`descr` : la carte d'identité affichée (planche Écran
+## Personnages). `stats` : les VRAIS modificateurs de jeu du héros —
+## `vitesse` multiplie la vitesse de course, `energie` est son maximum,
+## `portee` s'ajoute à l'Onde de choc. Quatre styles de jeu distincts.
 const FICHES := {
 	"Max": {"couleur": Identite.TEINTE_MAX, "crete": "etoile", "crete_couleur": Identite.OR,
 		"echarpe": Identite.OR, "accessoire": "",
-		"variantes": [Identite.TEINTE_MAX, Identite.CYAN, Identite.OR, Identite.VERT]},
+		"variantes": [Identite.TEINTE_MAX, Identite.CYAN, Identite.OR, Identite.VERT],
+		"rarete": "Épique", "role": "Aventurier",
+		"descr": "Curieux et courageux, prêt à relever tous les défis !",
+		"stats": {"vitesse": 1.0, "energie": 100.0, "portee": 0.0}},
 	"Zep": {"couleur": Identite.TEINTE_ZEP, "crete": "eclair", "crete_couleur": Identite.CYAN,
 		"echarpe": Identite.CREME, "accessoire": "hoverboard",
-		"variantes": [Identite.TEINTE_ZEP, Identite.MAGENTA, Identite.BLEU, Identite.ORANGE]},
+		"variantes": [Identite.TEINTE_ZEP, Identite.MAGENTA, Identite.BLEU, Identite.ORANGE],
+		"rarete": "Rare", "role": "Fusée",
+		"descr": "Jamais sans son hoverboard. Le plus rapide, mais fragile !",
+		"stats": {"vitesse": 1.08, "energie": 85.0, "portee": 0.0}},
 	"Nova": {"couleur": Identite.TEINTE_NOVA, "crete": "goutte", "crete_couleur": Identite.CREME,
 		"echarpe": Identite.VIOLET, "accessoire": "",
-		"variantes": [Identite.TEINTE_NOVA, Identite.VERT, Identite.VIOLET, Identite.ROUGE]},
+		"variantes": [Identite.TEINTE_NOVA, Identite.VERT, Identite.VIOLET, Identite.ROUGE],
+		"rarete": "Rare", "role": "Étoile guide",
+		"descr": "Calme et précise : son onde porte plus loin que les autres.",
+		"stats": {"vitesse": 0.97, "energie": 100.0, "portee": 0.5}},
 	"Ficelle": {"couleur": Identite.TEINTE_FICELLE, "crete": "flamme", "crete_couleur": Identite.ORANGE,
 		"echarpe": Identite.CYAN, "accessoire": "",
-		"variantes": [Identite.TEINTE_FICELLE, Identite.ORANGE, Identite.CYAN, Identite.CREME]},
+		"variantes": [Identite.TEINTE_FICELLE, Identite.ORANGE, Identite.CYAN, Identite.CREME],
+		"rarete": "Légendaire", "role": "Gardienne",
+		"descr": "Une petite flamme immense : lente, mais très endurante.",
+		"stats": {"vitesse": 0.94, "energie": 120.0, "portee": 0.0}},
 }
 
 ## LES ESPÈCES DE DRAGONS à collectionner (Sanctuaire) : du commun au

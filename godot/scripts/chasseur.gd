@@ -88,12 +88,21 @@ var _pause_ia := 0.0      ## temps de réaction des bots (laisse jouer l'humain)
 var facteur_cd := 1.0  ## la Puissance du héros raccourcit ses recharges
 
 
+var energie_max := ENERGIE_MAX  ## le maximum RÉEL du héros (fiche)
+var bonus_portee := 0.0         ## portée d'onde bonus du héros (fiche)
+
+
 ## À appeler AVANT l'ajout à l'arbre.
 func configurer(p_nom: String, p_teinte: Color, p_est_joueur: bool, pos: Vector2) -> void:
 	nom = p_nom
 	teinte = p_teinte
 	est_joueur = p_est_joueur
-	vitesse = VITESSE_JOUEUR if est_joueur else VITESSE_BOT
+	# Stats RÉELLES du héros (fiche personnage3d.gd) : quatre styles de jeu.
+	var stats: Dictionary = Personnage3D.FICHES.get(nom, {}).get("stats", {})
+	vitesse = (VITESSE_JOUEUR if est_joueur else VITESSE_BOT) * float(stats.get("vitesse", 1.0))
+	energie_max = float(stats.get("energie", ENERGIE_MAX))
+	bonus_portee = float(stats.get("portee", 0.0))
+	energie = energie_max
 	if est_joueur:
 		# Puissance du héros (Route/pièces) : +3 % vitesse, −3 % recharge par niveau.
 		vitesse *= Profil.bonus_puissance(nom)
@@ -157,7 +166,7 @@ func facteur_recharge() -> float:
 
 
 func portee_onde() -> float:
-	return PORTEE_ONDE + EVEIL_PORTEE * eveil
+	return PORTEE_ONDE + bonus_portee + EVEIL_PORTEE * eveil
 
 
 func super_pret() -> bool:
@@ -590,7 +599,7 @@ func _reapparaitre() -> void:
 	visible = true
 	ko_restant = 0.0
 	fixer_pos2(arene.point_reapparition())
-	energie = ENERGIE_MAX
+	energie = energie_max
 	bouclier_spawn = BOUCLIER_REAPPARITION
 	recul = Vector2.ZERO
 	arene.fx.eclat_etoiles(pos2(), Color(0.6, 1.0, 0.7), 10)
