@@ -169,10 +169,17 @@ static func icone_pouvoir(c: Control, p: Vector2, r: float, action: String) -> v
 			]), Identite.CONTOUR)
 
 
-## Pastille-indicateur du haut de la planche (étoiles, trophées…).
-static func indicateur(c: Control, rect: Rect2, teinte: Color, valeur: String) -> void:
+## Pastille-indicateur du haut de la planche (trophées, pièces, œufs…).
+## `icone` : "etoile" (trophées) ou "piece" (pièce d'or).
+static func indicateur(c: Control, rect: Rect2, teinte: Color, valeur: String, icone := "etoile") -> void:
 	c.draw_style_box(style("indicateur", Identite.NUIT, Identite.CONTOUR, 18, Identite.BORD, 3), rect)
-	etoile(c, rect.position + Vector2(20.0, rect.size.y / 2.0), 11.0, teinte)
+	var centre_icone := rect.position + Vector2(20.0, rect.size.y / 2.0)
+	if icone == "piece":
+		c.draw_circle(centre_icone, 13.0, Identite.CONTOUR)
+		c.draw_circle(centre_icone, 10.0, teinte)
+		c.draw_circle(centre_icone, 6.0, teinte.darkened(0.25))
+	else:
+		etoile(c, centre_icone, 11.0, teinte)
 	texte(c, Vector2(rect.position.x + 40.0, rect.size.y / 2.0 + rect.position.y + 6.0), valeur, 16, Identite.TEXTE)
 
 

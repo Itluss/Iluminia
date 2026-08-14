@@ -36,6 +36,30 @@ Identité propre au jeu, ancrée sur le design system existant
   coffre de récompense, indicateurs, badges NEW, podium à pastilles de
   rang, JOUER doré pulsé.
 
+## LE SYSTÈME DE JEU — pourquoi on rejoue
+
+La boucle du joueur (`profil.gd`, tout est persisté) :
+
+- **Trophées & Ligues** : chaque match rapporte ou coûte des trophées
+  selon le rang (+30/+15/+5/−10) → Bronze, Argent (100), Or (250),
+  Cristal (450), Légende (700). L'insigne de ligue s'affiche au lobby.
+- **Pièces d'or** : gagnées à chaque match (10 + score/5, +20 au 1er) et
+  au cadeau du jour ; dépensées en boutique (œufs 150 P, couleurs 80 P).
+- **Œufs & Sanctuaire** : finir 1er = un œuf garanti (2e : 30 %). L'œuf
+  éclot au Sanctuaire en l'une des 6 ESPÈCES de dragons (Lueur commun,
+  Braise/Givre rares, Orage épique, Solaire légendaire, Éclipse
+  mythique). Doublon = +50 pièces. La collection est LE but long terme.
+- **Compagnon** : un dragon de ta collection vole à tes côtés EN PARTIE,
+  visible par tous — c'est lui qu'on t'envie.
+- **Niveaux de héros** : l'XP du match va au héros joué et ouvre ses
+  couleurs par paliers (Niv 2/4/6).
+
+En manche : **dépôt canalisé** (tenir 1,5 s dans la zone, interrompu si
+on te vole le dragon) → de vraies batailles de zone ; **flèche-boussole**
+permanente vers le dragon (or = libre, rouge = porté par un adversaire) ;
+le dragon apparaît loin des zones et porte une balise dorée ; les bots
+« lisent » 1,2-2,5 s avant de partir.
+
 ## Le lobby et ses sous-écrans (`menu.gd`)
 
 - **Accueil** : logo étoilé, badge **niveau/XP de compte**, indicateur
@@ -46,8 +70,9 @@ Identité propre au jeu, ancrée sur le design system existant
   jouant avec lui), garde-robe de 4 couleurs avec **paliers affichés**
   (« Niv 2 », « Niv 4 », « Niv 6 » — ou coffre quotidien), JOUER AVEC LUI.
 - **Pouvoirs** : le kit équipé en slots (Onde/Dash/Bouclier) + slots « + ».
-- **Cadeaux** : **coffre quotidien** (fenêtre récompense de la planche) —
-  débloque une couleur de Lumin ou des étoiles, une fois par jour.
+- **Sanctuaire** : la collection des 6 dragons (cartes « ??? » tant
+  qu'ils ne sont pas obtenus), éclosion des œufs, choix du compagnon.
+- **Boutique** : cadeau du jour (pièces ou œuf), achat d'œufs.
 - **Aide** : la boucle du jeu et les contrôles.
 
 La méta est persistée par l'autoload **`profil.gd`** (`user://profil.cfg`,

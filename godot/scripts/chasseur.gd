@@ -70,6 +70,9 @@ func configurer(p_nom: String, p_teinte: Color, p_est_joueur: bool, pos: Vector2
 	position = Vector3(pos.x, 0.0, pos.y)
 
 
+var _compagnon: Personnage3D  ## le dragon de collection qui vole à tes côtés
+
+
 func _ready() -> void:
 	visuel = Personnage3D.new()
 	visuel.genre = "chasseur"
@@ -77,6 +80,14 @@ func _ready() -> void:
 	visuel.utiliser_fiche_couleur = false # la variante de la garde-robe prime
 	visuel.etiquette = nom
 	add_child(visuel)
+	# Le compagnon du joueur : son dragon du Sanctuaire, visible par tous.
+	if est_joueur and Personnage3D.ESPECES.has(Profil.compagnon):
+		_compagnon = Personnage3D.new()
+		_compagnon.genre = "dragon"
+		_compagnon.couleur = Personnage3D.ESPECES[Profil.compagnon].couleur
+		_compagnon.scale = Vector3.ONE * 0.55
+		_compagnon.position = Vector3(-0.9, 1.5, -0.7)
+		add_child(_compagnon)
 
 
 func pos2() -> Vector2:
@@ -107,6 +118,12 @@ func _process(delta: float) -> void:
 	bouclier_restant = maxf(bouclier_restant - delta, 0.0)
 	bouclier_spawn = maxf(bouclier_spawn - delta, 0.0)
 	gel_restant = maxf(gel_restant - delta, 0.0)
+
+	# Le compagnon volette à côté, toujours en battement d'ailes.
+	if _compagnon != null:
+		_compagnon.position.y = 1.5 + sin(Time.get_ticks_msec() / 400.0) * 0.15
+		_compagnon.en_marche = visuel.en_marche
+		_compagnon.regarder(derniere_dir)
 
 	# État du visuel : anneau doré du porteur, bulles de protection.
 	visuel.montrer_anneau(porte_dragon())

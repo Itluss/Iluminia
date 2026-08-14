@@ -26,6 +26,7 @@ const DISTANCE_ZONES := 10.5
 const CRISTAL_PERIODE := 8.0
 const CRISTAL_MAX := 3
 const CRISTAL_ENERGIE := 20.0
+const DUREE_CANAL := 1.5        ## dépôt canalisé : 1,5 s dans la zone
 const LETTRES := ["A", "B", "C", "D"]
 ## Couleurs des zones = couleurs des boutons de réponse (identite.gd) :
 ## le joueur associe la couleur du panneau à la colonne au sol.
@@ -45,6 +46,7 @@ var temps_match := DUREE_MATCH
 var cristal_temps := CRISTAL_PERIODE
 var message_interlude := ""
 var recompense_podium := {}     ## gains de compte affichés au podium
+var canal := {}                 ## dépôt en cours {chasseur, zone, progres}
 var _chevrons: Array = []       ## flèches-boussole vers la zone choisie
 var _label_distance: Label3D
 var _rochers: Array = []        ## rochers flottants en orbite {noeud, rayon, vitesse, phase, hauteur}
@@ -356,6 +358,11 @@ func _nouvelle_manche() -> void:
 func _lancer_jeu() -> void:
 	etat = Etat.JEU
 	temps_etat = DUREE_MANCHE
+	canal = {}
+	# Les bots « finissent de lire » : l'humain part toujours en premier.
+	for c in chasseurs:
+		if not c.est_joueur:
+			c._pause_ia = randf_range(1.2, 2.5)
 	_faire_apparaitre_dragon()
 	Audio.jouer("depart")
 
@@ -367,8 +374,16 @@ func _faire_apparaitre_dragon() -> void:
 	# suivre l'indicateur de bord d'écran avec la distance).
 	var meilleure := Vector2.ZERO
 	var meilleure_d := -1.0
-	for essai in 24:
+	for essai in 32:
 		var p := Vector2.from_angle(randf_range(0.0, TAU)) * randf_range(3.5, RAYON_ARENE - 3.0)
+		# Jamais à côté d'une zone : sinon la manche se plie en cinq secondes.
+		var trop_pres := false
+		for z in zones:
+			if p.distance_to(z.pos) < 4.5:
+				trop_pres = true
+				break
+		if trop_pres:
+			continue
 		var d_min := INF
 		for c in chasseurs:
 			d_min = minf(d_min, p.distance_to(c.pos2()))
@@ -384,15 +399,29 @@ func _faire_apparaitre_dragon() -> void:
 		hud.toast("LE DRAGON EST APPARU — suis la lumière dorée !")
 
 
+## Dépôt CANALISÉ : le porteur doit tenir 1,5 s dans la zone (anneau de
+## progression à l'écran). Se faire voler le dragon ou sortir de la zone
+## interrompt tout — c'est là que naissent les batailles de zone.
 func _verifier_zones() -> void:
 	if dragon == null or dragon.porteur == null:
+		canal = {}
 		return
 	var c := dragon.porteur
+	var zone_courante := -1
 	for i in zones.size():
-		var pos_zone: Vector2 = zones[i].pos
-		if c.pos2().distance_to(pos_zone) < RAYON_ZONE:
-			_tenter_zone(c, i)
-			return
+		if not c.testees.has(i) and c.pos2().distance_to(zones[i].pos) < RAYON_ZONE:
+			zone_courante = i
+			break
+	if zone_courante == -1:
+		canal = {}
+		return
+	if canal.is_empty() or canal.chasseur != c or int(canal.zone) != zone_courante:
+		canal = {"chasseur": c, "zone": zone_courante, "progres": 0.0}
+	canal.progres = float(canal.progres) + get_process_delta_time() / DUREE_CANAL
+	if float(canal.progres) >= 1.0:
+		var z: int = int(canal.zone)
+		canal = {}
+		_tenter_zone(c, z)
 
 
 func _tenter_zone(c: Chasseur, i: int) -> void:
@@ -449,18 +478,23 @@ func _fin_manche_chrono() -> void:
 func _podium() -> void:
 	etat = Etat.PODIUM
 	Audio.jouer("podium")
-	# Récompenses de compte (lobby) : XP selon le score, étoiles selon le rang.
+	# Récompenses : trophées (ligue), pièces (boutique), œuf de dragon
+	# (Sanctuaire) — la vraie raison de relancer un match.
 	if joueur != null and recompense_podium.is_empty():
 		var classement: Array = chasseurs.duplicate()
 		classement.sort_custom(func(a, b): return a.score > b.score)
 		var rang: int = classement.find(joueur)
 		var gain_xp: int = 20 + maxi(joueur.score, 0) / 2
-		var gain_etoiles: int = 5 if rang == 0 else 2
-		var niveaux := Profil.gagner_xp(float(gain_xp))
+		var delta_trophees := Profil.gagner_trophees(rang)
+		var gain_pieces: int = 10 + maxi(joueur.score, 0) / 5 + (20 if rang == 0 else 0)
+		Profil.gagner_pieces(gain_pieces)
+		var oeuf: bool = rang == 0 or (rang == 1 and randf() < 0.3)
+		if oeuf:
+			Profil.ajouter_oeuf()
 		var niveaux_heros := Profil.gagner_xp_heros(joueur.nom, float(gain_xp))
-		Profil.gagner_etoiles(gain_etoiles)
-		recompense_podium = {"xp": gain_xp, "etoiles": gain_etoiles, "niveaux": niveaux,
-			"niveaux_heros": niveaux_heros, "heros": joueur.nom}
+		Profil.gagner_xp(float(gain_xp))
+		recompense_podium = {"xp": gain_xp, "trophees": delta_trophees, "pieces": gain_pieces,
+			"oeuf": oeuf, "niveaux_heros": niveaux_heros, "heros": joueur.nom}
 	if hud != null:
 		hud.sur_podium()
 

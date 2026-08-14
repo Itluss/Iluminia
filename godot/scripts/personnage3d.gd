@@ -33,6 +33,19 @@ const FICHES := {
 		"variantes": [Identite.TEINTE_FICELLE, Identite.ORANGE, Identite.CYAN, Identite.CREME]},
 }
 
+## LES ESPÈCES DE DRAGONS à collectionner (Sanctuaire) : du commun au
+## mythique. `poids` = probabilité relative à l'éclosion d'un œuf.
+## `rarete` : 0 commun, 1 rare, 2 épique, 3 légendaire, 4 mythique.
+const ESPECES := {
+	"Lueur": {"couleur": Color(0.45, 0.82, 0.55), "rarete": 0, "poids": 40},
+	"Braise": {"couleur": Identite.ORANGE, "rarete": 1, "poids": 22},
+	"Givre": {"couleur": Identite.CYAN, "rarete": 1, "poids": 22},
+	"Orage": {"couleur": Identite.VIOLET, "rarete": 2, "poids": 10},
+	"Solaire": {"couleur": Identite.OR, "rarete": 3, "poids": 5},
+	"Éclipse": {"couleur": Identite.MAGENTA, "rarete": 4, "poids": 1},
+}
+const NOMS_RARETES := ["Commun", "Rare", "Épique", "Légendaire", "Mythique"]
+
 ## Si vrai, la couleur vient de la fiche ; mettre à faux pour imposer une
 ## variante (sélection du joueur, aperçus de la garde-robe).
 var utiliser_fiche_couleur := true

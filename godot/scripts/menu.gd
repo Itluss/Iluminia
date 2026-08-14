@@ -1,22 +1,22 @@
 class_name Menu
 extends Node3D
-## Le LOBBY d'Iluminia et ses sous-écrans, fidèles à la planche
-## style-guide-fantasypop : accueil (logo, niveau/XP, indicateur d'étoiles,
-## gros JOUER doré, boutons bleus PERSONNAGES / POUVOIRS / CADEAUX, boutons
-## carrés son et aide), écran Personnages (choix du Lumin + garde-robe de
-## couleurs), écran Pouvoirs (kit équipé), fenêtre Cadeaux (coffre
-## quotidien), fenêtre Aide. Diorama 3D animé derrière tout.
+## Le LOBBY d'Iluminia et ses sous-écrans — le tour du propriétaire :
+## trophées et LIGUE à défendre, PIÈCES à dépenser, ŒUFS à faire éclore au
+## SANCTUAIRE (collection des 6 dragons, compagnon de partie), BOUTIQUE
+## (cadeau du jour, œufs), PERSONNAGES (héros, niveaux, garde-robe), AIDE.
+## Diorama 3D animé derrière tout ; le dragon qui vole = ton compagnon.
 
-enum Ecran { ACCUEIL, PERSONNAGES, POUVOIRS, CADEAUX, AIDE }
+enum Ecran { ACCUEIL, PERSONNAGES, SANCTUAIRE, BOUTIQUE, AIDE }
 
 const NOMS := ["Max", "Zep", "Nova", "Ficelle"]
 
 var ecran := Ecran.ACCUEIL
 var perso_focus := 0             ## héros affiché sur l'écran Personnages
-var recompense := {}             ## dernier cadeau ouvert (affichage)
+var recompense := {}             ## dernier cadeau du jour ouvert
+var recompense_oeuf := {}        ## dernière éclosion (fenêtre de révélation)
 var _dragon_pivot: Node3D
 var _dragon: Personnage3D
-var _persos := {}                ## nom → Personnage3D du diorama
+var _persos := {}
 var _t := 0.0
 var _lancement := false
 var surface: SurfaceMenu
@@ -74,15 +74,9 @@ func _ready() -> void:
 	lucioles.emitting = true
 
 	_reconstruire_persos()
-
 	_dragon_pivot = Node3D.new()
 	add_child(_dragon_pivot)
-	_dragon = Personnage3D.new()
-	_dragon.genre = "dragon"
-	_dragon.couleur = Color(0.45, 0.82, 0.55)
-	_dragon.position = Vector3(3.0, 2.6, 0.0)
-	_dragon.regarder(Vector2(0.0, 1.0))
-	_dragon_pivot.add_child(_dragon)
+	_reconstruire_dragon()
 
 	var camera := Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -100,20 +94,18 @@ func _ready() -> void:
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	couche.add_child(surface)
 
-	# Crochet de dev : ILUMINIA_ECRAN=personnages|pouvoirs|cadeaux|aide
-	# ouvre directement un sous-écran (captures automatisées).
+	# Crochet de dev : ILUMINIA_ECRAN=personnages|sanctuaire|boutique|aide.
 	match OS.get_environment("ILUMINIA_ECRAN"):
 		"personnages":
 			ecran = Ecran.PERSONNAGES
-		"pouvoirs":
-			ecran = Ecran.POUVOIRS
-		"cadeaux":
-			ecran = Ecran.CADEAUX
+		"sanctuaire":
+			ecran = Ecran.SANCTUAIRE
+		"boutique":
+			ecran = Ecran.BOUTIQUE
 		"aide":
 			ecran = Ecran.AIDE
 
 
-## (Re)crée les quatre Lumins du diorama avec leurs variantes actuelles.
 func _reconstruire_persos() -> void:
 	for nom in _persos:
 		_persos[nom].queue_free()
@@ -133,6 +125,19 @@ func _reconstruire_persos() -> void:
 		_persos[nom] = perso
 
 
+## Le dragon du diorama = ton compagnon (sa couleur d'espèce).
+func _reconstruire_dragon() -> void:
+	if _dragon != null:
+		_dragon.queue_free()
+	_dragon = Personnage3D.new()
+	_dragon.genre = "dragon"
+	var espece: Dictionary = Personnage3D.ESPECES.get(Profil.compagnon, {"couleur": Color(0.45, 0.82, 0.55)})
+	_dragon.couleur = espece.couleur
+	_dragon.position = Vector3(3.0, 2.6, 0.0)
+	_dragon.regarder(Vector2(0.0, 1.0))
+	_dragon_pivot.add_child(_dragon)
+
+
 func _process(delta: float) -> void:
 	_t += delta
 	_dragon_pivot.rotation.y += delta * 0.5
@@ -144,15 +149,12 @@ func _process(delta: float) -> void:
 		var perso: Personnage3D = _persos[nom]
 		var i := NOMS.find(nom)
 		perso.en_marche = fmod(_t + float(i) * 1.7, 5.0) < 1.2
-		# L'anneau doré sert d'indicateur de sélection dans le lobby.
 		perso.montrer_anneau(nom == Profil.personnage)
-		# Sur l'écran Personnages, le héros regardé vient en GRAND au centre,
-		# les autres se rangent derrière — transition lissée.
 		var cible: Vector3
 		var echelle := 1.0
 		if ecran == Ecran.PERSONNAGES:
 			if i == perso_focus:
-				cible = vers_camera * 2.4 + Vector3(0.0, 0.0, 0.0)
+				cible = vers_camera * 2.4
 				echelle = 1.6
 			else:
 				var rang := i if i < perso_focus else i - 1
@@ -187,10 +189,23 @@ func _executer(action: String) -> void:
 			Audio.jouer("clic")
 			ecran = Ecran.ACCUEIL
 			recompense = {}
+			recompense_oeuf = {}
 		"personnages":
 			Audio.jouer("clic")
 			perso_focus = maxi(NOMS.find(Profil.personnage), 0)
 			ecran = Ecran.PERSONNAGES
+		"sanctuaire":
+			Audio.jouer("clic")
+			ecran = Ecran.SANCTUAIRE
+		"boutique":
+			Audio.jouer("clic")
+			ecran = Ecran.BOUTIQUE
+		"aide":
+			Audio.jouer("clic")
+			ecran = Ecran.AIDE
+		"son":
+			Profil.basculer_son()
+			Audio.jouer("clic")
 		"focus_gauche":
 			Audio.jouer("clic")
 			perso_focus = posmod(perso_focus - 1, NOMS.size())
@@ -200,35 +215,45 @@ func _executer(action: String) -> void:
 		"equiper":
 			Profil.choisir_personnage(NOMS[perso_focus])
 			Audio.jouer("victoire")
-		"pouvoirs":
-			Audio.jouer("clic")
-			ecran = Ecran.POUVOIRS
-		"cadeaux":
-			Audio.jouer("clic")
-			ecran = Ecran.CADEAUX
-		"aide":
-			Audio.jouer("clic")
-			ecran = Ecran.AIDE
-		"son":
-			Profil.basculer_son()
-			Audio.jouer("clic")
 		"ouvrir_cadeau":
 			if Profil.cadeau_disponible():
 				recompense = Profil.ouvrir_cadeau()
-				_reconstruire_persos()
 				Audio.jouer("victoire")
+		"acheter_oeuf":
+			if Profil.depenser(Profil.PRIX_OEUF):
+				Profil.ajouter_oeuf()
+				Audio.jouer("ramasser")
+			else:
+				Audio.jouer("denied")
+		"eclore":
+			if Profil.oeufs > 0:
+				recompense_oeuf = Profil.eclore()
+				_reconstruire_dragon()
+				Audio.jouer("victoire")
+		"fermer_oeuf":
+			Audio.jouer("clic")
+			recompense_oeuf = {}
 		_:
-			# Sélections : "perso:Nom" ou "variante:Nom:i".
 			var morceaux := action.split(":")
-			if morceaux[0] == "perso":
-				Profil.choisir_personnage(morceaux[1])
-				Audio.jouer("clic")
-			elif morceaux[0] == "variante":
-				if Profil.choisir_variante(morceaux[1], int(morceaux[2])):
+			if morceaux[0] == "variante":
+				_choisir_ou_acheter_variante(morceaux[1], int(morceaux[2]))
+			elif morceaux[0] == "compagnon":
+				if Profil.choisir_compagnon(morceaux[1]):
 					Audio.jouer("ramasser")
-					_reconstruire_persos()
-				else:
-					Audio.jouer("denied")
+					_reconstruire_dragon()
+
+
+## Variante accessible → équipée ; verrouillée → achat direct en pièces.
+func _choisir_ou_acheter_variante(nom: String, indice: int) -> void:
+	if Profil.choisir_variante(nom, indice):
+		Audio.jouer("clic")
+		_reconstruire_persos()
+	elif Profil.acheter_variante(nom, indice):
+		Profil.choisir_variante(nom, indice)
+		Audio.jouer("victoire")
+		_reconstruire_persos()
+	else:
+		Audio.jouer("denied")
 
 
 func _jouer() -> void:
@@ -238,12 +263,10 @@ func _jouer() -> void:
 	get_tree().change_scene_to_file.call_deferred("res://scenes/jeu.tscn")
 
 
-## Toute l'interface du lobby. Chaque _draw() reconstruit la liste des
-## boutons touchables (`_actions`) : dessin et zones de toucher ne peuvent
-## pas diverger.
+## Toute l'interface du lobby ; chaque _draw() reconstruit `_actions`.
 class SurfaceMenu extends Control:
 	var menu: Menu = null
-	var _actions: Array = []   ## {rect, action}
+	var _actions: Array = []
 
 	func action_sous(pos: Vector2) -> String:
 		for a in _actions:
@@ -265,69 +288,77 @@ class SurfaceMenu extends Control:
 			Menu.Ecran.PERSONNAGES:
 				_entete_sous_ecran("PERSONNAGES")
 				_dessiner_personnages()
-			Menu.Ecran.POUVOIRS:
-				_entete_sous_ecran("POUVOIRS")
-				_dessiner_pouvoirs()
-			Menu.Ecran.CADEAUX:
-				_entete_sous_ecran("CADEAUX")
-				_dessiner_cadeaux()
+			Menu.Ecran.SANCTUAIRE:
+				_entete_sous_ecran("SANCTUAIRE DES DRAGONS")
+				_dessiner_sanctuaire()
+			Menu.Ecran.BOUTIQUE:
+				_entete_sous_ecran("BOUTIQUE")
+				_dessiner_boutique()
 			Menu.Ecran.AIDE:
 				_entete_sous_ecran("COMMENT JOUER")
 				_dessiner_aide()
 
-	# ---------------------------------------------------------- accueil
+	# ---------------------------------------------------------- entêtes
 
-	## Bandeau du haut : niveau/XP à gauche (planche « progression »),
-	## étoiles à droite, son et aide en boutons carrés.
+	## Bandeau du haut : ligue + trophées, pièces, niveau/XP, son, aide.
 	func _entete_commun() -> void:
-		# Badge de niveau + barre d'XP violette.
-		UI.panneau(self, Rect2(10.0, 10.0, 248.0, 64.0))
-		UI.pastille(self, Vector2(44.0, 42.0), 23.0, Identite.VIOLET, str(Profil.niveau), 20)
-		UI.texte(self, Vector2(78.0, 34.0), "Niveau %d" % Profil.niveau, 15, Identite.TEXTE_ATTENUE)
-		UI.barre(self, Rect2(78.0, 42.0, 158.0, 18.0), Profil.xp / Profil.xp_requise(), Identite.VIOLET)
-		# Indicateur d'étoiles (pastilles-indicateurs de la planche).
-		UI.indicateur(self, Rect2(size.x - 312.0, 14.0, 142.0, 46.0), Identite.OR, str(Profil.etoiles))
-		# Boutons carrés secondaires : son, aide.
+		var ligue: Dictionary = Profil.ligue()
+		# Ligue + trophées (l'insigne à défendre).
+		UI.indicateur(self, Rect2(10.0, 12.0, 150.0, 46.0), ligue.couleur, str(Profil.trophees))
+		UI.texte(self, Vector2(85.0, 74.0), str(ligue.nom), 13, ligue.couleur, true, 4)
+		# Pièces d'or.
+		UI.indicateur(self, Rect2(172.0, 12.0, 130.0, 46.0), Identite.OR, str(Profil.pieces), "piece")
+		# Niveau de compte.
+		UI.pastille(self, Vector2(336.0, 35.0), 21.0, Identite.VIOLET, str(Profil.niveau), 18)
+		# Boutons carrés : son, aide.
 		_bouton_action(Rect2(size.x - 158.0, 10.0, 66.0, 54.0), "son", Identite.BLEU,
 			"♪" if Profil.son_actif else "✕", 22, Identite.RAYON_SM)
 		_bouton_action(Rect2(size.x - 80.0, 10.0, 66.0, 54.0), "aide", Identite.BLEU, "?", 22, Identite.RAYON_SM)
+
+	func _entete_sous_ecran(titre: String) -> void:
+		_entete_commun()
+		_bouton_action(Rect2(10.0, 84.0, 70.0, 52.0), "retour", Identite.BLEU, "←", 24, Identite.RAYON_SM)
+		UI.banniere(self, Vector2(size.x / 2.0, 96.0), 340.0, titre, 21)
+
+	# ---------------------------------------------------------- accueil
 
 	func _dessiner_accueil() -> void:
 		_entete_commun()
 		var t := Time.get_ticks_msec() / 1000.0
 		var centre_x := size.x / 2.0
 		var ballant := sin(t * 1.6) * 4.0
-		# Logo : étoile + ailes + titre or + sous-titre magenta.
-		var haut := size.y * 0.18 + ballant
+		var haut := size.y * 0.2 + ballant
 		for cote: float in [-1.0, 1.0]:
 			_aile(Vector2(centre_x + cote * 34.0, haut - 58.0), cote)
 		UI.etoile(self, Vector2(centre_x, haut - 62.0), 22.0, Identite.OR)
-		UI.texte(self, Vector2(centre_x, haut), "ILUMINIA", 84, Identite.OR, true, 14)
-		UI.texte(self, Vector2(centre_x, haut + 38.0), "La chasse au dragon", 26, Identite.MAGENTA, true)
+		UI.texte(self, Vector2(centre_x, haut), "ILUMINIA", 76, Identite.OR, true, 13)
+		UI.texte(self, Vector2(centre_x, haut + 36.0), "La chasse au dragon", 24, Identite.MAGENTA, true)
 		# Gros JOUER doré pulsé.
 		var pulse := 1.0 + 0.045 * sin(t * 4.5)
-		var bl := 344.0 * pulse
-		var bh := 98.0 * pulse
-		var jouer := Rect2(Vector2(centre_x - bl / 2.0, size.y * 0.63 - bh / 2.0), Vector2(bl, bh))
+		var bl := 330.0 * pulse
+		var bh := 92.0 * pulse
+		var jouer := Rect2(Vector2(centre_x - bl / 2.0, size.y * 0.6 - bh / 2.0), Vector2(bl, bh))
 		UI.bouton(self, jouer, Identite.OR, "jouer", false, Identite.RAYON_LG + 4)
-		UI.texte(self, Vector2(centre_x, jouer.get_center().y + 14.0), "JOUER !", 42, Identite.TEXTE, true, 11)
+		UI.texte(self, Vector2(centre_x, jouer.get_center().y + 13.0), "JOUER !", 40, Identite.TEXTE, true, 11)
 		_actions.append({"rect": jouer, "action": "jouer"})
-		# Boutons principaux bleus (planche) : Personnages / Pouvoirs / Cadeaux.
-		var largeur := 258.0
-		var y := size.y * 0.79
-		_bouton_action(Rect2(centre_x - largeur * 1.5 - 24.0, y, largeur, 72.0), "personnages", Identite.BLEU, "PERSONNAGES", 21)
-		_bouton_action(Rect2(centre_x - largeur / 2.0, y, largeur, 72.0), "pouvoirs", Identite.BLEU, "POUVOIRS", 21)
-		var rect_cadeaux := Rect2(centre_x + largeur / 2.0 + 24.0, y, largeur, 72.0)
-		_bouton_action(rect_cadeaux, "cadeaux", Identite.BLEU, "CADEAUX", 21)
-		# Badge « NEW » quand le coffre quotidien est prêt (badges de la planche).
+		# Boutons principaux : Personnages / Sanctuaire / Boutique.
+		var largeur := 252.0
+		var y := size.y * 0.78
+		_bouton_action(Rect2(centre_x - largeur * 1.5 - 20.0, y, largeur, 70.0), "personnages", Identite.BLEU, "PERSONNAGES", 20)
+		var rect_sanctuaire := Rect2(centre_x - largeur / 2.0, y, largeur, 70.0)
+		_bouton_action(rect_sanctuaire, "sanctuaire", Identite.VIOLET, "SANCTUAIRE", 20)
+		var rect_boutique := Rect2(centre_x + largeur / 2.0 + 20.0, y, largeur, 70.0)
+		_bouton_action(rect_boutique, "boutique", Identite.BLEU, "BOUTIQUE", 20)
+		# Badges : œufs à éclore, cadeau du jour prêt.
+		if Profil.oeufs > 0:
+			var badge := Rect2(rect_sanctuaire.end.x - 34.0, rect_sanctuaire.position.y - 16.0, 52.0, 30.0)
+			self.draw_style_box(UI.style("badge_oeuf", Identite.OR, Identite.CONTOUR, 8, 2, 2), badge)
+			UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "%d🥚" % Profil.oeufs, 14, Identite.CONTOUR, true, 0)
 		if Profil.cadeau_disponible():
-			var badge := Rect2(rect_cadeaux.end.x - 38.0, rect_cadeaux.position.y - 16.0, 60.0, 30.0)
+			var badge := Rect2(rect_boutique.end.x - 38.0, rect_boutique.position.y - 16.0, 60.0, 30.0)
 			self.draw_style_box(UI.style("badge", Identite.ROUGE, Identite.CONTOUR, 8, 2, 2), badge)
 			UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "NEW", 15, Identite.TEXTE, true, 4)
-		UI.texte(self, Vector2(centre_x, size.y - 10.0),
-			"Réponds • Attrape le dragon • Vole-le à tes amis !", 15, Color(1.0, 1.0, 1.0, 0.7), true, 5)
 
-	## Petite aile bleue du logo (triangle étagé).
 	func _aile(pos: Vector2, cote: float) -> void:
 		for i in 3:
 			var l := 18.0 - i * 5.0
@@ -337,133 +368,160 @@ class SurfaceMenu extends Control:
 				pos + Vector2(cote * (10.0 + i * 12.0), 8.0 + i * 5.0),
 			]), Identite.BLEU if i % 2 == 0 else Identite.CYAN)
 
-	# ---------------------------------------------------------- sous-écrans
+	# ---------------------------------------------------------- personnages
 
-	## Bandeau des sous-écrans : bouton retour + bannière de titre.
-	func _entete_sous_ecran(titre: String) -> void:
-		_entete_commun()
-		_bouton_action(Rect2(10.0, 80.0, 62.0, 48.0), "retour", Identite.BLEU, "←", 22, Identite.RAYON_SM)
-		UI.banniere(self, Vector2(size.x / 2.0, 96.0), 300.0, titre, 22)
-
-	## Mode FOCUS : un héros en grand au centre du diorama, sa progression
-	## (niveau, XP, paliers de couleurs) bien visible, flèches pour changer.
 	func _dessiner_personnages() -> void:
 		var nom: String = Menu.NOMS[menu.perso_focus]
 		var fiche: Dictionary = Personnage3D.FICHES[nom]
 		var choisi: bool = nom == Profil.personnage
-		# Grandes flèches de navigation.
-		_bouton_action(Rect2(30.0, size.y / 2.0 - 45.0, 80.0, 90.0), "focus_gauche", Identite.BLEU, "‹", 40, Identite.RAYON_MD)
-		_bouton_action(Rect2(size.x - 110.0, size.y / 2.0 - 45.0, 80.0, 90.0), "focus_droite", Identite.BLEU, "›", 40, Identite.RAYON_MD)
-		# Panneau de progression du héros, en bas.
-		var largeur := minf(size.x - 240.0, 640.0)
-		var rect := Rect2((size.x - largeur) / 2.0, size.y - 190.0, largeur, 176.0)
+		_bouton_action(Rect2(24.0, size.y / 2.0 - 45.0, 76.0, 90.0), "focus_gauche", Identite.BLEU, "‹", 40, Identite.RAYON_MD)
+		_bouton_action(Rect2(size.x - 100.0, size.y / 2.0 - 45.0, 76.0, 90.0), "focus_droite", Identite.BLEU, "›", 40, Identite.RAYON_MD)
+		var largeur := minf(size.x - 220.0, 620.0)
+		var rect := Rect2((size.x - largeur) / 2.0, size.y - 186.0, largeur, 172.0)
 		UI.panneau(self, rect)
 		var niveau_h := Profil.niveau_heros(nom)
 		UI.texte(self, rect.position + Vector2(24.0, 38.0), nom, 30, Identite.OR if choisi else Identite.TEXTE)
-		UI.texte(self, rect.position + Vector2(24.0, 64.0), "Crête-lumière : %s" % str(fiche.crete),
-			15, Identite.TEXTE_ATTENUE)
-		# Niveau du héros + barre d'XP : joue avec lui pour le faire évoluer.
+		UI.texte(self, rect.position + Vector2(24.0, 62.0), "Crête-lumière : %s" % str(fiche.crete), 14, Identite.TEXTE_ATTENUE)
 		UI.pastille(self, rect.position + Vector2(largeur - 200.0, 40.0), 22.0, Identite.VIOLET, str(niveau_h), 20)
 		UI.texte(self, rect.position + Vector2(largeur - 168.0, 30.0), "Niveau du héros", 14, Identite.TEXTE_ATTENUE)
 		UI.barre(self, Rect2(rect.position + Vector2(largeur - 168.0, 38.0), Vector2(144.0, 18.0)),
 			Profil.progres_heros(nom), Identite.VIOLET)
-		# Garde-robe : grosses pastilles, palier affiché sur les verrouillées.
+		# Garde-robe : paliers de niveau OU achat direct en pièces.
 		var palette: Array = fiche.variantes
 		for v in palette.size():
-			var centre := rect.position + Vector2(52.0 + v * 76.0, 112.0)
+			var centre := rect.position + Vector2(52.0 + v * 74.0, 108.0)
 			var accessible := Profil.variante_accessible(nom, v)
 			var teinte: Color = palette[v]
-			draw_circle(centre, 27.0, Identite.CONTOUR)
-			draw_circle(centre, 23.0, teinte if accessible else Color(0.3, 0.32, 0.42))
+			draw_circle(centre, 26.0, Identite.CONTOUR)
+			draw_circle(centre, 22.0, teinte if accessible else Color(0.3, 0.32, 0.42))
 			if accessible:
-				draw_circle(centre + Vector2(0.0, -8.0), 12.0, Color(1.0, 1.0, 1.0, 0.22))
+				draw_circle(centre + Vector2(0.0, -8.0), 11.0, Color(1.0, 1.0, 1.0, 0.22))
 			if int(Profil.variantes.get(nom, 0)) == v:
-				draw_arc(centre, 30.0, 0.0, TAU, 32, Color.WHITE, 4.0)
+				draw_arc(centre, 29.0, 0.0, TAU, 32, Color.WHITE, 4.0)
 			if not accessible:
-				UI.texte(self, centre + Vector2(0.0, 6.0),
-					"Niv %d" % Profil.PALIERS_VARIANTES[v], 13, Identite.TEXTE, true, 4)
+				UI.texte(self, centre + Vector2(0.0, 5.0), "Niv %d" % Profil.PALIERS_VARIANTES[v], 12, Identite.TEXTE, true, 4)
+				UI.texte(self, centre + Vector2(0.0, 42.0), "%d P" % Profil.PRIX_VARIANTE, 12, Identite.OR, true, 4)
 			_actions.append({"rect": Rect2(centre - Vector2(30.0, 30.0), Vector2(60.0, 60.0)),
 				"action": "variante:%s:%d" % [nom, v]})
-		UI.texte(self, rect.position + Vector2(52.0, 162.0),
-			"Joue avec %s pour monter son niveau et ouvrir ses couleurs !" % nom, 14, Identite.TEXTE_ATTENUE)
-		# Équiper le héros.
+		UI.texte(self, rect.position + Vector2(24.0, 160.0),
+			"Joue avec %s pour monter son niveau — ou achète ses couleurs en pièces !" % nom, 13, Identite.TEXTE_ATTENUE)
 		if choisi:
-			var badge := Rect2(rect.end.x - 190.0, rect.end.y - 74.0, 166.0, 52.0)
+			var badge := Rect2(rect.end.x - 186.0, rect.end.y - 70.0, 162.0, 50.0)
 			self.draw_style_box(UI.style("equipe", Identite.VERT_SOMBRE, Identite.CONTOUR, Identite.RAYON_MD, Identite.BORD, 3), badge)
-			UI.texte(self, badge.get_center() + Vector2(0.0, 7.0), "✓ ÉQUIPÉ", 20, Identite.TEXTE, true)
+			UI.texte(self, badge.get_center() + Vector2(0.0, 7.0), "✓ ÉQUIPÉ", 19, Identite.TEXTE, true)
 		else:
-			_bouton_action(Rect2(rect.end.x - 210.0, rect.end.y - 78.0, 186.0, 56.0),
-				"equiper", Identite.OR, "JOUER AVEC LUI", 17, Identite.RAYON_MD)
+			_bouton_action(Rect2(rect.end.x - 206.0, rect.end.y - 74.0, 182.0, 54.0),
+				"equiper", Identite.OR, "JOUER AVEC LUI", 16, Identite.RAYON_MD)
 
-	## Le kit de pouvoirs équipé (slots de la planche, avec deux slots « + »).
-	func _dessiner_pouvoirs() -> void:
-		var infos: Array = [
-			["onde", "Onde de choc", Identite.ORANGE, "Repousse (10 dégâts) et VOLE le dragon au porteur. Recharge 4 s."],
-			["dash", "Dash", Identite.BLEU, "Fonce sur 6 m en un éclair. Recharge 5 s."],
-			["bouclier", "Bouclier", Identite.VIOLET, "Bulle 2 s : dégâts, poussées et vols glissent. Recharge 7 s."],
-		]
-		var largeur := minf(size.x - 120.0, 680.0)
-		var x0 := (size.x - largeur) / 2.0
-		for i in infos.size():
-			var ligne: Array = infos[i]
-			var rect := Rect2(x0, 152.0 + i * 96.0, largeur, 84.0)
-			UI.panneau(self, rect)
-			var slot := Rect2(rect.position + Vector2(12.0, 10.0), Vector2(64.0, 64.0))
-			UI.bouton(self, slot, ligne[2], "slot_%s" % str(ligne[0]), false, Identite.RAYON_MD)
-			UI.icone_pouvoir(self, slot.get_center(), 30.0, str(ligne[0]))
-			UI.texte(self, rect.position + Vector2(92.0, 34.0), str(ligne[1]), 20, Identite.OR)
-			UI.texte(self, rect.position + Vector2(92.0, 62.0), str(ligne[3]), 14, Identite.TEXTE_ATTENUE)
-		# Slots « + » désactivés : d'autres pouvoirs arriveront (planche).
-		for i in 2:
-			var slot := Rect2(x0 + i * 76.0, 152.0 + 3.0 * 96.0, 64.0, 64.0)
-			self.draw_style_box(UI.style("slot_vide", Color(0.16, 0.18, 0.3), Identite.CONTOUR,
-				Identite.RAYON_MD, Identite.BORD, 0), slot)
-			UI.texte(self, slot.get_center() + Vector2(0.0, 8.0), "+", 26, Identite.TEXTE_ATTENUE, true, 4)
-		UI.texte(self, Vector2(x0 + 176.0, 152.0 + 3.0 * 96.0 + 40.0), "De nouveaux pouvoirs arrivent bientôt…",
-			14, Identite.TEXTE_ATTENUE)
+	# ---------------------------------------------------------- sanctuaire
 
-	## Fenêtre récompense de la planche : coffre quotidien.
-	func _dessiner_cadeaux() -> void:
-		var largeur := minf(size.x - 200.0, 460.0)
-		var rect := Rect2((size.x - largeur) / 2.0, 160.0, largeur, 300.0)
-		var croix := UI.fenetre(self, rect, "Cadeau quotidien")
-		_actions.append({"rect": croix, "action": "retour"})
+	## La collection des 6 dragons : le BUT long terme. Chaque carte montre
+	## l'espèce (ou « ??? »), sa rareté, et permet d'en faire son compagnon.
+	func _dessiner_sanctuaire() -> void:
+		# Bouton d'éclosion quand des œufs attendent.
+		if Profil.oeufs > 0 and menu.recompense_oeuf.is_empty():
+			var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 200.0)
+			var bl := 300.0 * pulse
+			_bouton_action(Rect2(size.x / 2.0 - bl / 2.0, 122.0, bl, 54.0), "eclore",
+				Identite.OR, "ÉCLORE UN ŒUF ! (%d)" % Profil.oeufs, 19, Identite.RAYON_LG)
+		elif menu.recompense_oeuf.is_empty():
+			UI.texte(self, Vector2(size.x / 2.0, 150.0),
+				"Gagne des matchs pour remporter des œufs de dragon !", 15, Identite.TEXTE_ATTENUE, true)
+		# Grille de la collection, par rareté croissante.
+		var especes: Array = Personnage3D.ESPECES.keys()
+		especes.sort_custom(func(a, b):
+			return int(Personnage3D.ESPECES[a].rarete) < int(Personnage3D.ESPECES[b].rarete))
+		var largeur := 226.0
+		var x0 := (size.x - largeur * 3.0 - 32.0) / 2.0
+		for i in especes.size():
+			var espece: String = especes[i]
+			var infos: Dictionary = Personnage3D.ESPECES[espece]
+			var possede: bool = Profil.dragons.has(espece)
+			var rect := Rect2(x0 + (i % 3) * (largeur + 16.0), 188.0 + (i / 3) * 140.0, largeur, 128.0)
+			self.draw_style_box(UI.style("dragon_%s" % str(possede),
+				Identite.PANNEAU_CLAIR if possede else Color(0.1, 0.12, 0.22),
+				Identite.CONTOUR, Identite.RAYON_MD, Identite.BORD, 3), rect)
+			var teinte: Color = infos.couleur
+			draw_circle(rect.position + Vector2(36.0, 40.0), 24.0, Identite.CONTOUR)
+			draw_circle(rect.position + Vector2(36.0, 40.0), 20.0, teinte if possede else Color(0.25, 0.27, 0.38))
+			UI.texte(self, rect.position + Vector2(70.0, 34.0), espece if possede else "???", 19,
+				teinte.lightened(0.2) if possede else Identite.TEXTE_ATTENUE)
+			UI.texte(self, rect.position + Vector2(70.0, 56.0),
+				Personnage3D.NOMS_RARETES[int(infos.rarete)], 13, Identite.TEXTE_ATTENUE)
+			if possede:
+				UI.texte(self, rect.position + Vector2(70.0, 76.0), "×%d" % int(Profil.dragons[espece]), 13, Identite.TEXTE)
+				if Profil.compagnon == espece:
+					UI.texte(self, rect.position + Vector2(largeur / 2.0, 112.0), "✓ COMPAGNON", 14, Identite.OR, true, 4)
+				else:
+					_bouton_action(Rect2(rect.position + Vector2(30.0, 88.0), Vector2(largeur - 60.0, 34.0)),
+						"compagnon:%s" % espece, Identite.VIOLET, "COMPAGNON", 13, Identite.RAYON_SM)
+		# Fenêtre d'éclosion.
+		var r: Dictionary = menu.recompense_oeuf
+		if not r.is_empty():
+			var infos: Dictionary = Personnage3D.ESPECES[r.espece]
+			var fen := Rect2(size.x / 2.0 - 220.0, 130.0, 440.0, 270.0)
+			var croix := UI.fenetre(self, fen, "Un œuf éclot…")
+			_actions.append({"rect": croix, "action": "fermer_oeuf"})
+			var teinte: Color = infos.couleur
+			draw_circle(fen.get_center() + Vector2(0.0, -34.0), 40.0, Identite.CONTOUR)
+			draw_circle(fen.get_center() + Vector2(0.0, -34.0), 34.0, teinte)
+			UI.texte(self, fen.get_center() + Vector2(0.0, 32.0), str(r.espece), 26, teinte.lightened(0.2), true)
+			UI.texte(self, fen.get_center() + Vector2(0.0, 56.0),
+				Personnage3D.NOMS_RARETES[int(infos.rarete)], 15, Identite.TEXTE_ATTENUE, true)
+			if bool(r.nouveau):
+				UI.texte(self, fen.get_center() + Vector2(0.0, 82.0), "NOUVEAU DRAGON !", 18, Identite.OR, true)
+			else:
+				UI.texte(self, fen.get_center() + Vector2(0.0, 82.0), "Doublon : +%d pièces" % int(r.pieces_bonus), 16, Identite.OR, true)
+
+	# ---------------------------------------------------------- boutique
+
+	func _dessiner_boutique() -> void:
+		var largeur := 320.0
+		var y := 150.0
+		# Carte 1 : cadeau du jour (gratuit).
+		var carte1 := Rect2(size.x / 2.0 - largeur - 16.0, y, largeur, 260.0)
+		UI.panneau(self, carte1)
+		UI.texte(self, Vector2(carte1.get_center().x, y + 34.0), "Cadeau du jour", 19, Identite.TEXTE, true)
+		UI.coffre(self, carte1.get_center() + Vector2(0.0, -8.0), 74.0, not menu.recompense.is_empty())
 		var r: Dictionary = menu.recompense
 		if not r.is_empty():
-			# Récompense révélée.
-			UI.coffre(self, rect.get_center() + Vector2(0.0, -30.0), 90.0, true)
-			var texte_gain := "+%d ⭐" % int(r.etoiles)
-			if str(r.type) == "variante":
-				texte_gain = "Nouvelle couleur pour %s ! (+%d ⭐)" % [str(r.nom), int(r.etoiles)]
-			UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 74.0), texte_gain, 18, Identite.OR, true)
-			_bouton_action(Rect2(rect.get_center().x - 110.0, rect.end.y - 56.0, 220.0, 44.0),
-				"personnages", Identite.VERT, "VOIR MA GARDE-ROBE", 15, Identite.RAYON_SM)
+			var texte_gain := "+80 pièces !" if str(r.type) == "pieces" else "UN ŒUF DE DRAGON !"
+			UI.texte(self, Vector2(carte1.get_center().x, carte1.end.y - 44.0), texte_gain, 16, Identite.OR, true)
 		elif Profil.cadeau_disponible():
-			UI.coffre(self, rect.get_center() + Vector2(0.0, -30.0), 90.0, false)
-			_bouton_action(Rect2(rect.get_center().x - 110.0, rect.end.y - 64.0, 220.0, 50.0),
-				"ouvrir_cadeau", Identite.OR, "RÉCUPÉRER !", 20, Identite.RAYON_SM)
+			_bouton_action(Rect2(carte1.get_center().x - 100.0, carte1.end.y - 66.0, 200.0, 48.0),
+				"ouvrir_cadeau", Identite.OR, "RÉCUPÉRER !", 18, Identite.RAYON_SM)
 		else:
-			UI.coffre(self, rect.get_center() + Vector2(0.0, -30.0), 90.0, false)
-			UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 64.0),
-				"Coffre déjà ouvert — reviens demain !", 16, Identite.TEXTE_ATTENUE, true)
-		UI.texte(self, Vector2(rect.get_center().x, rect.end.y + 26.0),
-			"Chaque jour : une nouvelle couleur de Lumin ou des étoiles.", 14, Identite.TEXTE_ATTENUE, true, 4)
+			UI.texte(self, Vector2(carte1.get_center().x, carte1.end.y - 44.0), "Reviens demain !", 15, Identite.TEXTE_ATTENUE, true)
+		# Carte 2 : œuf de dragon contre des pièces.
+		var carte2 := Rect2(size.x / 2.0 + 16.0, y, largeur, 260.0)
+		UI.panneau(self, carte2)
+		UI.texte(self, Vector2(carte2.get_center().x, y + 34.0), "Œuf de dragon", 19, Identite.TEXTE, true)
+		draw_circle(carte2.get_center() + Vector2(0.0, -8.0), 42.0, Identite.CONTOUR)
+		draw_circle(carte2.get_center() + Vector2(0.0, -8.0), 36.0, Identite.CREME)
+		draw_circle(carte2.get_center() + Vector2(-10.0, -20.0), 8.0, Color(1.0, 1.0, 1.0, 0.5))
+		_bouton_action(Rect2(carte2.get_center().x - 110.0, carte2.end.y - 66.0, 220.0, 48.0),
+			"acheter_oeuf", Identite.VERT if Profil.pieces >= Profil.PRIX_OEUF else Color(0.3, 0.32, 0.42),
+			"ACHETER — %d P" % Profil.PRIX_OEUF, 16, Identite.RAYON_SM)
+		UI.texte(self, Vector2(size.x / 2.0, 448.0),
+			"Les couleurs des Lumins s'achètent sur l'écran PERSONNAGES (%d pièces)." % Profil.PRIX_VARIANTE,
+			14, Identite.TEXTE_ATTENUE, true, 4)
 
-	## Fenêtre d'aide : la boucle du jeu en clair.
+	# ---------------------------------------------------------- aide
+
 	func _dessiner_aide() -> void:
-		var largeur := minf(size.x - 140.0, 620.0)
-		var rect := Rect2((size.x - largeur) / 2.0, 150.0, largeur, 330.0)
+		var largeur := minf(size.x - 120.0, 640.0)
+		var rect := Rect2((size.x - largeur) / 2.0, 132.0, largeur, 330.0)
 		var croix := UI.fenetre(self, rect, "Comment jouer")
 		_actions.append({"rect": croix, "action": "retour"})
 		var lignes: Array = [
-			"1. Lis la question de maths et choisis ta réponse (6 s).",
-			"2. Attrape le bébé dragon — il s'enfuit quand on approche !",
-			"3. Porte-le dans la zone de TA réponse : bonne zone = +100.",
-			"4. Vole le dragon aux autres avec l'Onde de choc !",
-			"5. Mauvaise zone : dragon lâché, gelé 2 s, réponse barrée.",
+			"1. Choisis ta réponse de maths, puis ATTRAPE le bébé dragon.",
+			"2. Porte-le dans la zone de TA réponse et TIENS 1,5 s : +100 !",
+			"3. Vole le dragon aux autres avec l'Onde de choc (bouton orange).",
+			"4. Suis la flèche-boussole : or = dragon libre, rouge = volé.",
 			"",
-			"Mobile : joystick au pouce (gauche) + boutons de pouvoirs.",
-			"Clavier : ZQSD/flèches, E/R/Espace, réponses 1-4.",
+			"1er du match : un ŒUF DE DRAGON à faire éclore au Sanctuaire.",
+			"Trophées → monte de ligue. Pièces → boutique et couleurs.",
+			"Ton dragon compagnon vole à tes côtés en partie !",
 		]
 		for i in lignes.size():
-			UI.texte(self, rect.position + Vector2(30.0, 56.0 + i * 30.0), str(lignes[i]), 15, Identite.TEXTE)
+			UI.texte(self, rect.position + Vector2(30.0, 52.0 + i * 30.0), str(lignes[i]), 15, Identite.TEXTE)

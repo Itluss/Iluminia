@@ -19,6 +19,8 @@ var fx: FX
 var hud: HUD
 var camera: Camera3D
 var _cible_camera := Vector3.ZERO
+var _boussole: Node3D            ## flèche 3D qui pointe le dragon en continu
+var _mat_boussole: StandardMaterial3D
 
 
 func _ready() -> void:
@@ -70,6 +72,16 @@ func _ready() -> void:
 	hud.camera = camera
 	fx.camera = camera
 
+	# Boussole du dragon : une flèche qui tourne autour du héros et pointe
+	# le dragon en permanence — dorée s'il est libre, rouge s'il est porté
+	# par un adversaire, éteinte quand C'EST TOI qui le portes.
+	_boussole = Node3D.new()
+	add_child(_boussole)
+	var pointe := Materiaux.mesh(_boussole, Materiaux.cone(0.3, 0.85),
+		Materiaux.emissif(Identite.OR, 2.2), Vector3.ZERO, Vector3.ONE, false)
+	pointe.rotation_degrees = Vector3(0.0, 0.0, -90.0) # le cône pointe vers +X
+	_mat_boussole = pointe.material_override
+
 	arene.demarrer()
 	hud.toast("Attrape le dragon et dépose-le dans la zone de TA réponse !")
 
@@ -78,6 +90,19 @@ func _process(delta: float) -> void:
 	# Suivi lissé du héros (le look_at initial fixe l'angle une fois pour toutes).
 	_cible_camera = _cible_camera.lerp(joueur.position, minf(delta * 6.0, 1.0))
 	camera.position = _cible_camera + DECALAGE_CAMERA
+	# Boussole du dragon.
+	var dr := arene.dragon
+	var actif: bool = arene.etat == Arene.Etat.JEU and dr != null \
+		and dr.porteur != joueur and joueur.pos2().distance_to(dr.pos2()) > 3.0
+	_boussole.visible = actif
+	if actif:
+		var d2 := (dr.pos2() - joueur.pos2()).normalized()
+		var t := Time.get_ticks_msec() / 1000.0
+		_boussole.position = joueur.position + Vector3(d2.x * 2.1, 1.1 + sin(t * 4.0) * 0.12, d2.y * 2.1)
+		_boussole.rotation.y = atan2(-d2.y, d2.x)
+		var teinte := Identite.OR if dr.libre() else Identite.ROUGE
+		_mat_boussole.albedo_color = teinte
+		_mat_boussole.emission = teinte
 
 
 ## Déclare les actions clavier en code (statique : le menu l'appelle aussi).

@@ -229,6 +229,15 @@ func _dessiner(c: Control) -> void:
 			_dessiner_energie(c)
 			_dessiner_boutons(c)
 			_dessiner_joystick(c)
+			# Anneau de dépôt canalisé au-dessus du porteur.
+			var canal: Dictionary = arene.canal
+			if not canal.is_empty() and is_instance_valid(canal.chasseur) and camera != null:
+				var ch: Chasseur = canal.chasseur
+				var ecran := camera.unproject_position(ch.position + Vector3(0.0, 1.9, 0.0))
+				var frac := clampf(float(canal.progres), 0.0, 1.0)
+				c.draw_arc(ecran, 34.0, 0.0, TAU, 40, Color(1.0, 1.0, 1.0, 0.25), 8.0)
+				c.draw_arc(ecran, 34.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Identite.OR, 8.0)
+				UI.texte(c, ecran + Vector2(0.0, 60.0), "DÉPÔT…", 14, Identite.OR, true, 4)
 			# Consigne du tutoriel (première partie seulement).
 			var consigne := _texte_guide()
 			if consigne != "":
@@ -445,13 +454,17 @@ func _dessiner_podium(c: Control) -> void:
 		UI.texte(c, Vector2(rect.position.x + 116.0, y + 7.0), ch.nom, 21,
 			Identite.OR if i == 0 else Identite.TEXTE)
 		UI.texte(c, Vector2(rect.end.x - 116.0, y + 7.0), "%d pts" % ch.score, 21, Identite.TEXTE_ATTENUE)
-	# Gains de compte et de héros (l'évolution se voit à chaque match).
+	# Gains : trophées, pièces, œuf, XP du héros — la moisson du match.
 	var gains: Dictionary = arene.recompense_podium
 	if not gains.is_empty():
-		var texte_gains := "+%d XP pour %s    +%d ⭐" % [int(gains.xp), str(gains.heros), int(gains.etoiles)]
+		var l1 := "%+d trophées (%s)    +%d pièces" % [int(gains.trophees), str(Profil.ligue().nom), int(gains.pieces)]
+		if bool(gains.oeuf):
+			l1 += "    ŒUF DE DRAGON !"
+		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 36.0), l1, 17, Identite.OR, true)
+		var l2 := "+%d XP pour %s" % [int(gains.xp), str(gains.heros)]
 		if int(gains.niveaux_heros) > 0:
-			texte_gains += "    %s passe NIVEAU %d !" % [str(gains.heros), Profil.niveau_heros(str(gains.heros))]
-		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 18.0), texte_gains, 18, Identite.OR, true)
+			l2 += " — NIVEAU %d !" % Profil.niveau_heros(str(gains.heros))
+		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 12.0), l2, 15, Identite.TEXTE_ATTENUE, true)
 	var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 220.0)
 	var bl := 260.0 * pulse
 	var bh := 62.0 * pulse
