@@ -30,14 +30,19 @@ var domaine_titre := ""
 var teinte_branche := Identite.VIOLET
 var etape: Etape = Etape.QUESTION_ACTIVE
 var choix := ""                  ## réponse choisie (pendant le feedback)
+var cine = null                  ## Cinematique.Player pendant LESSON
 var surface: SurfaceSession
 
-## État de session (modèle conceptuel LearningSession).
+## État de session (modèle conceptuel LearningSession) + MESURES
+## pédagogiques (l'adaptation dynamique s'appuiera dessus). Regarder une
+## leçon n'augmente JAMAIS la maîtrise : elle se démontre en exerçant.
 var session := {
 	"competence_id": "", "questions": [], "courante": 0,
 	"reponses": [], "justes": 0, "misconceptions": [],
 	"maitrise_avant": 0.0, "maitrise_courante": 0.0,
 	"lecon_declenchee": false,
+	"mesures": {"lecon_vue": false, "lecon_terminee": false,
+		"lecon_passee": false, "exercice_apres_lecon_juste": false},
 }
 
 var _chrono := 0.0               ## temps passé dans l'étape courante
@@ -69,16 +74,26 @@ func _ready() -> void:
 
 	if OS.get_environment("ILUMINIA_CLASSE") != "":
 		Profil.classe = OS.get_environment("ILUMINIA_CLASSE")
-	# Crochets de dev : capturer les états de feedback.
+	# Crochets de dev : capturer les états de feedback / la cinématique.
 	match OS.get_environment("ILUMINIA_SESSION"):
 		"juste":
 			_repondre(str(question_courante().correcte))
 			_fige = true
-		"erreur":
+		"erreur", "flux":
 			for r in question_courante().reponses:
 				if str(r) != str(question_courante().correcte):
 					_repondre(str(r))
 					break
+			_fige = OS.get_environment("ILUMINIA_SESSION") == "erreur"
+		"lecon":
+			_demarrer_lecon()
+			var saut := OS.get_environment("ILUMINIA_CINE_T")
+			if saut != "" and cine != null:
+				cine.aller_a(float(saut))
+				_fige = true
+		"verif":
+			_demarrer_lecon()
+			_fin_lecon(true)
 			_fige = true
 
 
@@ -105,12 +120,47 @@ func _process(delta: float) -> void:
 	if _fige:
 		return
 	_chrono += delta
+	if etape == Etape.LESSON and cine != null:
+		cine.maj(delta)
+		return
 	# Feedback court, puis on avance : une bonne réponse est satisfaisante
-	# mais RAPIDE ; une erreur laisse le temps de lire le message.
+	# mais RAPIDE ; une erreur laisse le temps de lire — puis, si une
+	# leçon existe pour cette compétence, la CINÉMATIQUE PÉDAGOGIQUE
+	# explique (une vraie explication, pas une récompense).
 	if etape == Etape.ANSWER_CORRECT and _chrono > 1.5:
 		_suivante()
-	elif etape == Etape.ANSWER_INCORRECT and _chrono > 2.4:
-		_suivante()
+	elif etape == Etape.ANSWER_INCORRECT and _chrono > 2.2:
+		if not bool(session.mesures.lecon_vue) \
+				and not Lecons.pour(str(session.competence_id)).is_empty():
+			_demarrer_lecon()
+		else:
+			_suivante()
+
+
+## DIAGNOSTIC (v1 : la misconception est déjà enregistrée) → CINÉMATIQUE.
+func _demarrer_lecon() -> void:
+	cine = Cinematique.Player.new(Lecons.pour(str(session.competence_id)))
+	etape = Etape.LESSON
+	session.mesures.lecon_vue = true
+	session.lecon_declenchee = true
+	choix = ""
+	_chrono = 0.0
+
+
+## Fin de cinématique (terminée ou passée) → EXERCICE DE VÉRIFICATION :
+## une nouvelle question COMPARE est insérée — passer la leçon ne valide
+## jamais la compétence, seule la pratique le fait.
+func _fin_lecon(terminee: bool) -> void:
+	session.mesures.lecon_terminee = terminee
+	session.mesures.lecon_passee = not terminee
+	cine = null
+	var verif := generer_questions(competence, domaine_cle, 1)
+	var q: Dictionary = verif[0]
+	q.id = "%s_verification" % str(competence.get("id", "comp"))
+	q.verification = true
+	var questions: Array = session.questions
+	questions.insert(int(session.courante) + 1, q)
+	_suivante()
 
 
 func _input(event: InputEvent) -> void:
@@ -130,6 +180,22 @@ func _executer(action: String) -> void:
 			# Sortie explicite : la progression de la session est conservée.
 			Audio.jouer("clic")
 			_terminer("arbre")
+		"cine":
+			if cine == null:
+				return
+			match morceaux[1]:
+				"pause":
+					Audio.jouer("clic")
+					cine.pause = not cine.pause
+				"replay":
+					Audio.jouer("clic")
+					cine.rejouer()
+				"passer":
+					Audio.jouer("clic")
+					_fin_lecon(false)
+				"exercice":
+					Audio.jouer("depart")
+					_fin_lecon(true)
 		"son":
 			Profil.basculer_son()
 			Audio.jouer("clic")
@@ -157,6 +223,8 @@ func _repondre(reponse: String) -> void:
 		etape = Etape.ANSWER_CORRECT
 		session.justes += 1
 		session.maitrise_courante = minf(float(session.maitrise_courante) + 6.0, 100.0)
+		if bool(q.get("verification", false)):
+			session.mesures.exercice_apres_lecon_juste = true
 		Audio.jouer("cristal")
 	else:
 		etape = Etape.ANSWER_INCORRECT
@@ -350,8 +418,81 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 			Session.Etape.QUESTION_ACTIVE, Session.Etape.ANSWER_CORRECT, \
 			Session.Etape.ANSWER_INCORRECT:
 				_question_compare()
+			Session.Etape.LESSON:
+				_stage_cinematique()
 			_:
 				pass
+
+	# --------------------------------------------------- CinematicStage
+
+	## La zone centrale devient la scène cinématique : même écran, même
+	## univers — l'enfant n'a jamais l'impression qu'une vidéo s'ouvre.
+	func _stage_cinematique() -> void:
+		var zone := _zone_centre()
+		var cine = session_noeud.cine
+		if cine == null:
+			return
+		var teinte: Color = session_noeud.teinte_branche
+		var cx := zone.get_center().x
+		# Interface minimale : badge + titre compacts, la scène est reine.
+		var badge := Rect2(cx - 70.0, zone.position.y - 2.0, 140.0, 24.0)
+		UI.rect_degrade(self, badge.grow(2.0), 14.0, Identite.CONTOUR, Identite.CONTOUR)
+		UI.rect_degrade(self, badge, 12.0, teinte.darkened(0.15), teinte.darkened(0.5))
+		UI.texte(self, badge.get_center() + Vector2(0.0, 4.0),
+			session_noeud.domaine_titre.to_upper(), 10, Identite.TEXTE, true, 4)
+		UI.texte(self, Vector2(cx, zone.position.y + 40.0),
+			str(session_noeud.competence.titre).to_upper(), 15, Identite.CREME, true, 3)
+		# LA GRANDE SCÈNE (SceneRenderer du moteur).
+		var scene := Rect2(zone.position.x + 4.0, zone.position.y + 50.0,
+			zone.size.x - 8.0, zone.size.y - 88.0)
+		cine.dessiner(self, scene, _t())
+		# SOUS-TITRES systématiques : panneau bleu nuit + icône son.
+		var texte_narration := str(cine.narration())
+		if texte_narration != "":
+			var lignes := _couper(texte_narration, 62)
+			var haut_st := 18.0 + lignes.size() * 15.0
+			var st := Rect2(scene.position.x + scene.size.x * 0.08,
+				scene.end.y - haut_st - 8.0, scene.size.x * 0.84, haut_st)
+			UI.rect_degrade(self, st, 10.0, Color(0.05, 0.08, 0.22, 0.88), Color(0.03, 0.05, 0.16, 0.88))
+			UI.contour_arrondi(self, st, 10.0, Color(0.35, 0.3, 0.65, 0.7), 1.5)
+			_picto(st.position + Vector2(18.0, st.size.y / 2.0), 8.0, "son", Identite.CREME)
+			for li in lignes.size():
+				UI.texte(self, Vector2(st.get_center().x + 10.0,
+					st.position.y + 20.0 + li * 15.0), lignes[li], 11, Identite.TEXTE, true, 1)
+		# CONTRÔLES très discrets (pause / son / recommencer / passer).
+		var y_c := scene.position.y + 8.0
+		var boutons: Array = [["pause", "lecture" if cine.pause else "pause"],
+			["son", "son" if Profil.son_actif else "muet"], ["replay", "revision"]]
+		for i in boutons.size():
+			var b: Array = boutons[i]
+			var cercle := Vector2(scene.end.x - 20.0 - i * 34.0, y_c + 12.0)
+			draw_circle(cercle, 14.0, Color(0.08, 0.1, 0.28, 0.85))
+			draw_arc(cercle, 14.0, 0.0, TAU, 24, Color(0.4, 0.35, 0.7, 0.6), 1.5)
+			if str(b[1]) == "pause":
+				for barre_p in [-3.5, 3.5]:
+					draw_rect(Rect2(cercle + Vector2(barre_p - 2.0, -6.0), Vector2(4.0, 12.0)),
+						Identite.CREME)
+			elif str(b[1]) == "lecture":
+				UI.triangle_jouer(self, cercle, 8.0, Identite.CREME)
+			else:
+				_picto(cercle, 8.0, str(b[1]), Identite.CREME)
+			var action_c := "son" if str(b[0]) == "son" else "cine:%s" % str(b[0])
+			_actions.append({"rect": Rect2(cercle - Vector2(17.0, 17.0), Vector2(34.0, 34.0)),
+				"action": action_c})
+		if not bool(cine.scene().get("bouton_fin", false)):
+			var passer := Rect2(scene.end.x - 78.0, y_c + 32.0, 62.0, 22.0)
+			UI.rect_degrade(self, passer, 10.0, Color(0.1, 0.12, 0.3, 0.8), Color(0.07, 0.09, 0.24, 0.8))
+			UI.texte(self, passer.get_center() + Vector2(0.0, 4.0), "PASSER", 9,
+				Identite.TEXTE_ATTENUE, true, 2)
+			_actions.append({"rect": passer, "action": "cine:passer"})
+		else:
+			# Dernière scène : PASSER À L'EXERCICE (ferme le CinematicStage).
+			var cta := Rect2(scene.end.x - 208.0, scene.end.y - 88.0, 196.0, 38.0)
+			UI.bouton(self, cta, Identite.VIOLET, "cine_exercice", false, Identite.RAYON_MD)
+			UI.texte(self, cta.get_center() + Vector2(-8.0, 5.0), "PASSER À L'EXERCICE", 11,
+				Identite.TEXTE, true, 2)
+			UI.texte(self, cta.get_center() + Vector2(82.0, 5.0), "»", 14, Identite.CREME, true)
+			_actions.append({"rect": cta, "action": "cine:exercice"})
 
 	func _question_compare() -> void:
 		var zone := _zone_centre()
@@ -372,8 +513,16 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 		# PROGRESSION DE SESSION (SessionProgress — jamais hardcodée).
 		var courante := int(session_noeud.session.courante)
 		var total: int = session_noeud.session.questions.size()
-		UI.texte(self, Vector2(cx, zone.position.y + zone.size.y * 0.235),
-			"Question %d / %d" % [courante + 1, total], 11, Identite.TEXTE_ATTENUE, true, 3)
+		if bool(q.get("verification", false)):
+			# Après la cinématique : l'exercice de vérification s'annonce.
+			var verif := Rect2(cx - 92.0, zone.position.y + zone.size.y * 0.215, 184.0, 20.0)
+			UI.rect_degrade(self, verif, 10.0, Color(0.08, 0.3, 0.38, 0.9), Color(0.05, 0.2, 0.28, 0.9))
+			UI.contour_arrondi(self, verif, 10.0, Identite.CYAN, 1.5)
+			UI.texte(self, verif.get_center() + Vector2(0.0, 4.0), "EXERCICE DE VÉRIFICATION", 9,
+				Identite.CYAN, true, 2)
+		else:
+			UI.texte(self, Vector2(cx, zone.position.y + zone.size.y * 0.235),
+				"Question %d / %d" % [courante + 1, total], 11, Identite.TEXTE_ATTENUE, true, 3)
 		_progression_session(Vector2(cx, zone.position.y + zone.size.y * 0.30),
 			minf(300.0, zone.size.x * 0.62), courante, total)
 		# CONSIGNE / FEEDBACK (même panneau : le décor ne bouge pas).
