@@ -29,6 +29,46 @@ const PRIX_VARIANTE := 80                ## …ou achat direct en pièces
 const PRIX_OEUF := 150
 const XP_PAR_NIVEAU_HEROS := 100.0
 
+## LA ROUTE DES TROPHÉES — la colonne vertébrale de la progression (modèle
+## Trophy Road de Brawl Stars) : on démarre avec Max seul, chaque palier
+## atteint offre une récompense à RÉCLAMER, dont les trois autres héros.
+const ROUTE := [
+	{"seuil": 20, "type": "pieces", "montant": 60},
+	{"seuil": 40, "type": "heros", "nom": "Zep"},
+	{"seuil": 60, "type": "oeuf"},
+	{"seuil": 90, "type": "pieces", "montant": 120},
+	{"seuil": 120, "type": "heros", "nom": "Nova"},
+	{"seuil": 150, "type": "oeuf"},
+	{"seuil": 190, "type": "pieces", "montant": 160},
+	{"seuil": 230, "type": "espece", "nom": "Givre"},
+	{"seuil": 280, "type": "heros", "nom": "Ficelle"},
+	{"seuil": 340, "type": "oeuf"},
+	{"seuil": 400, "type": "pieces", "montant": 300},
+	{"seuil": 460, "type": "espece", "nom": "Orage"},
+	{"seuil": 550, "type": "oeuf"},
+	{"seuil": 640, "type": "pieces", "montant": 500},
+	{"seuil": 720, "type": "espece", "nom": "Solaire"},
+	{"seuil": 850, "type": "oeuf"},
+	{"seuil": 1000, "type": "espece", "nom": "Éclipse"},
+]
+
+## Puissance des héros (modèle power level) : +3 % de vitesse et −3 % de
+## recharge par niveau au-delà de 1. S'achète en pièces, plafonné à 5.
+const PUISSANCE_MAX := 5
+const COUTS_PUISSANCE := [100, 200, 400, 800]
+
+## Gabarits de quêtes quotidiennes (3 tirées chaque jour, modèle daily
+## quests) : {type suivi par evenement(), cible, récompense en pièces}.
+const GABARITS_QUETES := [
+	{"type": "gagner_matchs", "cible": 2, "pieces": 100, "texte": "Gagne %d matchs"},
+	{"type": "deposer", "cible": 3, "pieces": 80, "texte": "Dépose le dragon %d fois"},
+	{"type": "voler", "cible": 4, "pieces": 90, "texte": "Vole le dragon %d fois"},
+	{"type": "bonnes_reponses", "cible": 6, "pieces": 80, "texte": "Donne %d bonnes réponses"},
+	{"type": "capturer", "cible": 6, "pieces": 70, "texte": "Attrape le dragon %d fois"},
+	{"type": "cristaux", "cible": 5, "pieces": 60, "texte": "Ramasse %d cristaux"},
+	{"type": "jouer_matchs", "cible": 3, "pieces": 70, "texte": "Joue %d matchs"},
+]
+
 var personnage := "Max"
 var variantes := {}              ## nom → indice de variante choisie
 var debloquees := {}             ## nom → indices achetés/offerts
@@ -43,6 +83,11 @@ var compagnon := ""              ## espèce qui vole à tes côtés en partie
 var dernier_cadeau := 0
 var son_actif := true
 var tutoriel_fait := false
+var heros_debloques: Array = ["Max"]  ## les autres se gagnent sur la Route
+var puissance := {}                   ## nom → niveau de puissance (1..5)
+var route_reclamee: Array = []        ## seuils déjà réclamés
+var quetes: Array = []                ## les 3 quêtes du jour
+var jour_quetes := 0
 
 
 func _ready() -> void:
@@ -50,7 +95,9 @@ func _ready() -> void:
 		debloquees[nom] = [0]
 		variantes[nom] = 0
 		xp_heros[nom] = 0.0
+		puissance[nom] = 1
 	charger()
+	_regenerer_quetes_si_nouveau_jour()
 	Audio.definir_son(son_actif)
 
 
@@ -205,6 +252,140 @@ func choisir_compagnon(espece: String) -> bool:
 	return false
 
 
+# ---------------------------------------------------------------- route des trophées
+
+## Paliers atteints mais pas encore réclamés (badge du lobby).
+func recompenses_en_attente() -> int:
+	var n := 0
+	for palier in ROUTE:
+		if trophees >= int(palier.seuil) and not route_reclamee.has(int(palier.seuil)):
+			n += 1
+	return n
+
+
+## Réclame un palier de la Route. Retourne la récompense accordée (ou {}).
+func reclamer_route(seuil: int) -> Dictionary:
+	if route_reclamee.has(seuil) or trophees < seuil:
+		return {}
+	for palier in ROUTE:
+		if int(palier.seuil) != seuil:
+			continue
+		route_reclamee.append(seuil)
+		match str(palier.type):
+			"pieces":
+				pieces += int(palier.montant)
+			"oeuf":
+				oeufs += 1
+			"heros":
+				if not heros_debloques.has(str(palier.nom)):
+					heros_debloques.append(str(palier.nom))
+			"espece":
+				var espece := str(palier.nom)
+				var nouveau: bool = not dragons.has(espece)
+				dragons[espece] = int(dragons.get(espece, 0)) + 1
+				if not nouveau:
+					pieces += 50
+				elif compagnon == "":
+					compagnon = espece
+		sauver()
+		return palier
+	return {}
+
+
+func heros_est_debloque(nom: String) -> bool:
+	return heros_debloques.has(nom)
+
+
+## Seuil de la Route qui débloque ce héros (−1 si débloqué d'office).
+func seuil_du_heros(nom: String) -> int:
+	for palier in ROUTE:
+		if str(palier.type) == "heros" and str(palier.nom) == nom:
+			return int(palier.seuil)
+	return -1
+
+
+# ---------------------------------------------------------------- puissance
+
+func puissance_de(nom: String) -> int:
+	return int(puissance.get(nom, 1))
+
+
+func cout_puissance(nom: String) -> int:
+	var p := puissance_de(nom)
+	if p >= PUISSANCE_MAX:
+		return -1
+	return COUTS_PUISSANCE[p - 1]
+
+
+func ameliorer_puissance(nom: String) -> bool:
+	var cout := cout_puissance(nom)
+	if cout < 0 or not depenser(cout):
+		return false
+	puissance[nom] = puissance_de(nom) + 1
+	sauver()
+	return true
+
+
+## Bonus de vitesse / réduction de recharge du héros (1.0 = aucun).
+func bonus_puissance(nom: String) -> float:
+	return 1.0 + 0.03 * (puissance_de(nom) - 1)
+
+
+# ---------------------------------------------------------------- quêtes du jour
+
+func _regenerer_quetes_si_nouveau_jour() -> void:
+	if jour_quetes == _jour_courant() and not quetes.is_empty():
+		return
+	jour_quetes = _jour_courant()
+	quetes = []
+	# Trois gabarits distincts, tirés avec la graine du jour (stables).
+	var rng := RandomNumberGenerator.new()
+	rng.seed = jour_quetes
+	var indices: Array = range(GABARITS_QUETES.size())
+	for i in 3:
+		var k: int = indices.pop_at(rng.randi() % indices.size())
+		var gabarit: Dictionary = GABARITS_QUETES[k]
+		quetes.append({
+			"type": gabarit.type, "cible": int(gabarit.cible), "pieces": int(gabarit.pieces),
+			"texte": str(gabarit.texte) % int(gabarit.cible), "progres": 0, "reclamee": false,
+		})
+	sauver()
+
+
+## À appeler depuis l'arène quand un événement de jeu se produit.
+## Retourne le texte des quêtes tout juste terminées (pour un toast).
+func evenement(type: String, quantite := 1) -> Array:
+	var terminees: Array = []
+	for q in quetes:
+		if str(q.type) == type and not bool(q.reclamee) and int(q.progres) < int(q.cible):
+			q.progres = int(q.progres) + quantite
+			if int(q.progres) >= int(q.cible):
+				terminees.append(str(q.texte))
+	if not terminees.is_empty():
+		sauver()
+	return terminees
+
+
+func quetes_a_reclamer() -> int:
+	var n := 0
+	for q in quetes:
+		if int(q.progres) >= int(q.cible) and not bool(q.reclamee):
+			n += 1
+	return n
+
+
+func reclamer_quete(indice: int) -> int:
+	if indice < 0 or indice >= quetes.size():
+		return 0
+	var q: Dictionary = quetes[indice]
+	if int(q.progres) < int(q.cible) or bool(q.reclamee):
+		return 0
+	q.reclamee = true
+	pieces += int(q.pieces)
+	sauver()
+	return int(q.pieces)
+
+
 # ---------------------------------------------------------------- cadeau et son
 
 func _jour_courant() -> int:
@@ -255,6 +436,11 @@ func sauver() -> void:
 	cfg.set_value("profil", "dernier_cadeau", dernier_cadeau)
 	cfg.set_value("profil", "son_actif", son_actif)
 	cfg.set_value("profil", "tutoriel_fait", tutoriel_fait)
+	cfg.set_value("profil", "heros_debloques", heros_debloques)
+	cfg.set_value("profil", "puissance", puissance)
+	cfg.set_value("profil", "route_reclamee", route_reclamee)
+	cfg.set_value("profil", "quetes", quetes)
+	cfg.set_value("profil", "jour_quetes", jour_quetes)
 	cfg.save(CHEMIN)
 
 
@@ -284,5 +470,24 @@ func charger() -> void:
 	dernier_cadeau = int(cfg.get_value("profil", "dernier_cadeau", dernier_cadeau))
 	son_actif = bool(cfg.get_value("profil", "son_actif", son_actif))
 	tutoriel_fait = bool(cfg.get_value("profil", "tutoriel_fait", tutoriel_fait))
-	if not Personnage3D.FICHES.has(personnage):
+	var hd = cfg.get_value("profil", "heros_debloques", null)
+	if hd is Array:
+		heros_debloques = hd
+	elif trophees > 0 or not dragons.is_empty():
+		# Migration des anciens profils : tout était débloqué avant la Route.
+		heros_debloques = Personnage3D.FICHES.keys()
+	var pu: Dictionary = cfg.get_value("profil", "puissance", puissance)
+	for nom in Personnage3D.FICHES:
+		if pu.has(nom):
+			puissance[nom] = int(pu[nom])
+	var rr = cfg.get_value("profil", "route_reclamee", null)
+	if rr is Array:
+		route_reclamee = rr
+	var qs = cfg.get_value("profil", "quetes", null)
+	if qs is Array:
+		quetes = qs
+	jour_quetes = int(cfg.get_value("profil", "jour_quetes", jour_quetes))
+	if not heros_debloques.has("Max"):
+		heros_debloques.append("Max")
+	if not Personnage3D.FICHES.has(personnage) or not heros_debloques.has(personnage):
 		personnage = "Max"

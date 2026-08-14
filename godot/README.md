@@ -38,6 +38,25 @@ Identité propre au jeu, ancrée sur le design system existant
 
 ## LE SYSTÈME DE JEU — pourquoi on rejoue
 
+Structure inspirée de l'étude des références du genre (Brawl Stars,
+Clash Royale) : une colonne vertébrale de progression visible, des
+personnages qui sont eux-mêmes des récompenses, des quêtes quotidiennes
+qui ramènent chaque jour, et de la montée en puissance à acheter.
+
+- **Route des Trophées** (Trophy Road) : 17 paliers de 20 à 1000
+  trophées, chacun à RÉCLAMER — pièces, œufs, dragons garantis… et
+  surtout LES HÉROS : on démarre avec Max seul, **Zep se gagne à 40
+  trophées, Nova à 120, Ficelle à 280**.
+- **Quêtes du jour** : 3 quêtes tirées chaque matin (gagner des matchs,
+  déposer, voler, bonnes réponses, cristaux…), suivies en direct pendant
+  les parties (« QUÊTE TERMINÉE ! »), récompenses en pièces au lobby.
+- **Puissance des héros** (power levels) : 1 → 5 en pièces
+  (100/200/400/800), +3 %% de vitesse et −3 %% de recharge par niveau.
+- **3 ambiances d'arène** tirées au sort par match : Nuit lumineuse,
+  Crépuscule doré, Aurore magenta.
+- Lobby réorganisé façon Brawl Stars : héros au centre, JOUER en bas à
+  droite, colonne d'écrans à gauche, QUÊTES avec badge au-dessus.
+
 La boucle du joueur (`profil.gd`, tout est persisté) :
 
 - **Trophées & Ligues** : chaque match rapporte ou coûte des trophées

@@ -25,9 +25,13 @@ var _mat_boussole: StandardMaterial3D
 
 func _ready() -> void:
 	declarer_actions_clavier()
-	Ambiance.installer(self)
+	# Thème d'ambiance du match, tiré au sort (variété des arènes).
+	var noms_themes: Array = Ambiance.THEMES.keys()
+	var theme: Dictionary = Ambiance.THEMES[noms_themes[randi() % noms_themes.size()]]
+	Ambiance.installer(self, theme)
 
 	arene = Arene.new()
+	arene.theme = theme
 	add_child(arene)
 
 	fx = FX.new()

@@ -35,6 +35,7 @@ const COULEURS_ZONES := Identite.COULEURS_REPONSES
 var fx: FX
 var hud: HUD
 var joueur: Chasseur
+var theme := {}                 ## ambiance du match (Ambiance.THEMES)
 var chasseurs: Array = []
 var dragon: Dragon = null
 var zones: Array = []           ## {pos, teinte, lettre, colonne, mat, label, croix}
@@ -100,15 +101,18 @@ func _process(delta: float) -> void:
 ## lisière-lumière, falaise de roche violette hérissée de cristaux,
 ## arbres-lanternes, fleurs-lumen, lucioles, rochers en orbite.
 func _construire_sol() -> void:
-	# Pelouse sombre-turquoise + anneaux de tonte plus clairs.
+	# Couleurs du thème du match (variété des arènes, façon Brawl Stars).
+	var pelouse: Color = theme.get("pelouse", Identite.PELOUSE_NUIT)
+	var anneaux: Color = theme.get("anneaux", Identite.PELOUSE_ANNEAU)
+	var lisiere: Color = theme.get("lisiere", Identite.LUEUR_LISIERE)
 	Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE, 0.3),
-		Materiaux.toon(Identite.PELOUSE_NUIT), Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
+		Materiaux.toon(pelouse), Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
 	for i in range(1, 4):
 		Materiaux.mesh(self, Materiaux.cylindre(RAYON_ARENE * i / 4.0, 0.02),
-			Materiaux.toon(Identite.PELOUSE_ANNEAU), Vector3(0.0, -0.008 * i, 0.0), Vector3.ONE, false)
-	# Lisière-lumière : l'anneau cyan qui borde l'île (zones au sol de la planche).
+			Materiaux.toon(anneaux), Vector3(0.0, -0.008 * i, 0.0), Vector3.ONE, false)
+	# Lisière-lumière : l'anneau qui borde l'île (zones au sol de la planche).
 	Materiaux.mesh(self, Materiaux.tore(RAYON_ARENE + 0.15, 0.14),
-		Materiaux.emissif(Identite.LUEUR_LISIERE, 1.4), Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
+		Materiaux.emissif(lisiere, 1.4), Vector3(0.0, 0.05, 0.0), Vector3.ONE, false)
 	# Falaise sous l'île : cône de roche violette qui s'effile dans le vide.
 	var falaise := CylinderMesh.new()
 	falaise.top_radius = RAYON_ARENE + 0.4
@@ -439,6 +443,8 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 		Audio.jouer("victoire")
 		if c.est_joueur:
 			fx.secousse(0.4)
+			_quete("deposer")
+			_quete("bonnes_reponses")
 		dragon.queue_free()
 		dragon = null
 		message_interlude = "%s dépose le dragon : +100 points !" % c.nom
@@ -493,8 +499,19 @@ func _podium() -> void:
 			Profil.ajouter_oeuf()
 		var niveaux_heros := Profil.gagner_xp_heros(joueur.nom, float(gain_xp))
 		Profil.gagner_xp(float(gain_xp))
+		_quete("jouer_matchs")
+		if rang == 0:
+			_quete("gagner_matchs")
 		recompense_podium = {"xp": gain_xp, "trophees": delta_trophees, "pieces": gain_pieces,
 			"oeuf": oeuf, "niveaux_heros": niveaux_heros, "heros": joueur.nom}
+
+
+## Fait avancer les quêtes du jour et annonce celles qui se terminent.
+func _quete(type: String) -> void:
+	var terminees: Array = Profil.evenement(type)
+	if hud != null and not terminees.is_empty():
+		hud.toast("QUÊTE TERMINÉE : %s — récompense au lobby !" % str(terminees[0]))
+		Audio.jouer("niveau")
 	if hud != null:
 		hud.sur_podium()
 
@@ -527,11 +544,14 @@ func prendre_dragon(c: Chasseur, mode: String) -> void:
 	if mode == "vol":
 		Audio.jouer("vol")
 		fx.texte_flottant(c.pos2(), "Dragon volé !", Color(1.0, 0.8, 0.3))
+		if c.est_joueur:
+			_quete("voler")
 	else:
 		Audio.jouer("ramasser")
 		fx.texte_flottant(c.pos2(), "ATTRAPÉ !", Identite.OR)
 		if c.est_joueur:
 			fx.secousse(0.25)
+			_quete("capturer")
 	# Toast pédagogique quand un adversaire prend le dragon.
 	if not c.est_joueur and hud != null and (ancien == null or ancien.est_joueur):
 		hud.toast_pedagogique()
@@ -566,6 +586,8 @@ func ramasser_cristaux(c: Chasseur) -> void:
 			fx.eclat_etoiles(cr.pos2(), Color(0.5, 0.95, 1.0), 10)
 			fx.texte_flottant(cr.pos2(), "+20", Color(0.5, 0.95, 1.0))
 			Audio.jouer("cristal")
+			if c.est_joueur:
+				_quete("cristaux")
 			cr.queue_free()
 			return
 

@@ -6,7 +6,7 @@ extends Node3D
 ## (cadeau du jour, œufs), PERSONNAGES (héros, niveaux, garde-robe), AIDE.
 ## Diorama 3D animé derrière tout ; le dragon qui vole = ton compagnon.
 
-enum Ecran { ACCUEIL, PERSONNAGES, SANCTUAIRE, BOUTIQUE, AIDE }
+enum Ecran { ACCUEIL, PERSONNAGES, SANCTUAIRE, BOUTIQUE, ROUTE, QUETES, AIDE }
 
 const NOMS := ["Max", "Zep", "Nova", "Ficelle"]
 
@@ -94,7 +94,7 @@ func _ready() -> void:
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	couche.add_child(surface)
 
-	# Crochet de dev : ILUMINIA_ECRAN=personnages|sanctuaire|boutique|aide.
+	# Crochet de dev : ILUMINIA_ECRAN=personnages|sanctuaire|boutique|route|quetes|aide.
 	match OS.get_environment("ILUMINIA_ECRAN"):
 		"personnages":
 			ecran = Ecran.PERSONNAGES
@@ -102,6 +102,10 @@ func _ready() -> void:
 			ecran = Ecran.SANCTUAIRE
 		"boutique":
 			ecran = Ecran.BOUTIQUE
+		"route":
+			ecran = Ecran.ROUTE
+		"quetes":
+			ecran = Ecran.QUETES
 		"aide":
 			ecran = Ecran.AIDE
 
@@ -200,6 +204,12 @@ func _executer(action: String) -> void:
 		"boutique":
 			Audio.jouer("clic")
 			ecran = Ecran.BOUTIQUE
+		"route":
+			Audio.jouer("clic")
+			ecran = Ecran.ROUTE
+		"quetes":
+			Audio.jouer("clic")
+			ecran = Ecran.QUETES
 		"aide":
 			Audio.jouer("clic")
 			ecran = Ecran.AIDE
@@ -213,8 +223,16 @@ func _executer(action: String) -> void:
 			Audio.jouer("clic")
 			perso_focus = posmod(perso_focus + 1, NOMS.size())
 		"equiper":
-			Profil.choisir_personnage(NOMS[perso_focus])
-			Audio.jouer("victoire")
+			if Profil.heros_est_debloque(NOMS[perso_focus]):
+				Profil.choisir_personnage(NOMS[perso_focus])
+				Audio.jouer("victoire")
+			else:
+				Audio.jouer("denied")
+		"ameliorer":
+			if Profil.ameliorer_puissance(NOMS[perso_focus]):
+				Audio.jouer("victoire")
+			else:
+				Audio.jouer("denied")
 		"ouvrir_cadeau":
 			if Profil.cadeau_disponible():
 				recompense = Profil.ouvrir_cadeau()
@@ -241,6 +259,19 @@ func _executer(action: String) -> void:
 				if Profil.choisir_compagnon(morceaux[1]):
 					Audio.jouer("ramasser")
 					_reconstruire_dragon()
+			elif morceaux[0] == "reclamer_route":
+				var gain: Dictionary = Profil.reclamer_route(int(morceaux[1]))
+				if gain.is_empty():
+					Audio.jouer("denied")
+				else:
+					Audio.jouer("victoire")
+					_reconstruire_persos()
+					_reconstruire_dragon()
+			elif morceaux[0] == "reclamer_quete":
+				if Profil.reclamer_quete(int(morceaux[1])) > 0:
+					Audio.jouer("victoire")
+				else:
+					Audio.jouer("denied")
 
 
 ## Variante accessible → équipée ; verrouillée → achat direct en pièces.
@@ -294,22 +325,35 @@ class SurfaceMenu extends Control:
 			Menu.Ecran.BOUTIQUE:
 				_entete_sous_ecran("BOUTIQUE")
 				_dessiner_boutique()
+			Menu.Ecran.ROUTE:
+				_entete_sous_ecran("ROUTE DES TROPHÉES")
+				_dessiner_route()
+			Menu.Ecran.QUETES:
+				_entete_sous_ecran("QUÊTES DU JOUR")
+				_dessiner_quetes()
 			Menu.Ecran.AIDE:
 				_entete_sous_ecran("COMMENT JOUER")
 				_dessiner_aide()
 
 	# ---------------------------------------------------------- entêtes
 
-	## Bandeau du haut : ligue + trophées, pièces, niveau/XP, son, aide.
+	## Bandeau du haut : trophées (→ Route), pièces, niveau, son, aide.
 	func _entete_commun() -> void:
 		var ligue: Dictionary = Profil.ligue()
-		# Ligue + trophées (l'insigne à défendre).
-		UI.indicateur(self, Rect2(10.0, 12.0, 150.0, 46.0), ligue.couleur, str(Profil.trophees))
+		# Trophées + ligue : TOUCHER OUVRE LA ROUTE DES TROPHÉES.
+		var rect_trophees := Rect2(10.0, 12.0, 150.0, 46.0)
+		UI.indicateur(self, rect_trophees, ligue.couleur, str(Profil.trophees))
 		UI.texte(self, Vector2(85.0, 74.0), str(ligue.nom), 13, ligue.couleur, true, 4)
+		_actions.append({"rect": rect_trophees, "action": "route"})
+		var en_attente := Profil.recompenses_en_attente()
+		if en_attente > 0:
+			var badge := Rect2(rect_trophees.end.x - 18.0, rect_trophees.position.y - 10.0, 30.0, 26.0)
+			self.draw_style_box(UI.style("badge", Identite.ROUGE, Identite.CONTOUR, 8, 2, 2), badge)
+			UI.texte(self, badge.get_center() + Vector2(0.0, 5.0), str(en_attente), 14, Identite.TEXTE, true, 4)
 		# Pièces d'or.
 		UI.indicateur(self, Rect2(172.0, 12.0, 130.0, 46.0), Identite.OR, str(Profil.pieces), "piece")
-		# Niveau de compte.
-		UI.pastille(self, Vector2(336.0, 35.0), 21.0, Identite.VIOLET, str(Profil.niveau), 18)
+		# Niveau de compte (à droite, hors du logo).
+		UI.pastille(self, Vector2(size.x - 200.0, 37.0), 21.0, Identite.VIOLET, str(Profil.niveau), 18)
 		# Boutons carrés : son, aide.
 		_bouton_action(Rect2(size.x - 158.0, 10.0, 66.0, 54.0), "son", Identite.BLEU,
 			"♪" if Profil.son_actif else "✕", 22, Identite.RAYON_SM)
@@ -322,6 +366,8 @@ class SurfaceMenu extends Control:
 
 	# ---------------------------------------------------------- accueil
 
+	## Disposition Brawl Stars : héros au centre (diorama), JOUER en bas à
+	## droite, colonne d'écrans à gauche, QUÊTES au-dessus de JOUER.
 	func _dessiner_accueil() -> void:
 		_entete_commun()
 		var t := Time.get_ticks_msec() / 1000.0
@@ -333,31 +379,43 @@ class SurfaceMenu extends Control:
 		UI.etoile(self, Vector2(centre_x, haut - 62.0), 22.0, Identite.OR)
 		UI.texte(self, Vector2(centre_x, haut), "ILUMINIA", 76, Identite.OR, true, 13)
 		UI.texte(self, Vector2(centre_x, haut + 36.0), "La chasse au dragon", 24, Identite.MAGENTA, true)
-		# Gros JOUER doré pulsé.
-		var pulse := 1.0 + 0.045 * sin(t * 4.5)
-		var bl := 330.0 * pulse
-		var bh := 92.0 * pulse
-		var jouer := Rect2(Vector2(centre_x - bl / 2.0, size.y * 0.6 - bh / 2.0), Vector2(bl, bh))
-		UI.bouton(self, jouer, Identite.OR, "jouer", false, Identite.RAYON_LG + 4)
-		UI.texte(self, Vector2(centre_x, jouer.get_center().y + 13.0), "JOUER !", 40, Identite.TEXTE, true, 11)
-		_actions.append({"rect": jouer, "action": "jouer"})
-		# Boutons principaux : Personnages / Sanctuaire / Boutique.
-		var largeur := 252.0
-		var y := size.y * 0.78
-		_bouton_action(Rect2(centre_x - largeur * 1.5 - 20.0, y, largeur, 70.0), "personnages", Identite.BLEU, "PERSONNAGES", 20)
-		var rect_sanctuaire := Rect2(centre_x - largeur / 2.0, y, largeur, 70.0)
-		_bouton_action(rect_sanctuaire, "sanctuaire", Identite.VIOLET, "SANCTUAIRE", 20)
-		var rect_boutique := Rect2(centre_x + largeur / 2.0 + 20.0, y, largeur, 70.0)
-		_bouton_action(rect_boutique, "boutique", Identite.BLEU, "BOUTIQUE", 20)
-		# Badges : œufs à éclore, cadeau du jour prêt.
-		if Profil.oeufs > 0:
-			var badge := Rect2(rect_sanctuaire.end.x - 34.0, rect_sanctuaire.position.y - 16.0, 52.0, 30.0)
-			self.draw_style_box(UI.style("badge_oeuf", Identite.OR, Identite.CONTOUR, 8, 2, 2), badge)
-			UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "%d🥚" % Profil.oeufs, 14, Identite.CONTOUR, true, 0)
-		if Profil.cadeau_disponible():
-			var badge := Rect2(rect_boutique.end.x - 38.0, rect_boutique.position.y - 16.0, 60.0, 30.0)
+		# Colonne gauche : les écrans du méta-jeu.
+		var boutons_gauche: Array = [
+			["personnages", "PERSONNAGES", Identite.BLEU],
+			["sanctuaire", "SANCTUAIRE", Identite.VIOLET],
+			["boutique", "BOUTIQUE", Identite.BLEU],
+		]
+		for i in boutons_gauche.size():
+			var b: Array = boutons_gauche[i]
+			var rect := Rect2(16.0, size.y - 246.0 + i * 78.0, 230.0, 66.0)
+			_bouton_action(rect, str(b[0]), b[2], str(b[1]), 18)
+			if str(b[0]) == "sanctuaire" and Profil.oeufs > 0:
+				var badge := Rect2(rect.end.x - 30.0, rect.position.y - 12.0, 44.0, 28.0)
+				self.draw_style_box(UI.style("badge_oeuf", Identite.OR, Identite.CONTOUR, 8, 2, 2), badge)
+				UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "%d" % Profil.oeufs, 15, Identite.CONTOUR, true, 0)
+			if str(b[0]) == "boutique" and Profil.cadeau_disponible():
+				var badge := Rect2(rect.end.x - 36.0, rect.position.y - 12.0, 56.0, 28.0)
+				self.draw_style_box(UI.style("badge", Identite.ROUGE, Identite.CONTOUR, 8, 2, 2), badge)
+				UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "NEW", 14, Identite.TEXTE, true, 4)
+		# Droite : QUÊTES puis l'énorme JOUER (signature Brawl Stars).
+		var rect_quetes := Rect2(size.x - 296.0, size.y - 218.0, 280.0, 56.0)
+		_bouton_action(rect_quetes, "quetes", Identite.VIOLET, "QUÊTES DU JOUR", 17)
+		var a_reclamer := Profil.quetes_a_reclamer()
+		if a_reclamer > 0:
+			var badge := Rect2(rect_quetes.end.x - 30.0, rect_quetes.position.y - 12.0, 44.0, 28.0)
 			self.draw_style_box(UI.style("badge", Identite.ROUGE, Identite.CONTOUR, 8, 2, 2), badge)
-			UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), "NEW", 15, Identite.TEXTE, true, 4)
+			UI.texte(self, badge.get_center() + Vector2(0.0, 6.0), str(a_reclamer), 15, Identite.TEXTE, true, 4)
+		var pulse := 1.0 + 0.045 * sin(t * 4.5)
+		var bl := 300.0 * pulse
+		var bh := 96.0 * pulse
+		var jouer := Rect2(Vector2(size.x - 16.0 - bl, size.y - 130.0 - (bh - 96.0) / 2.0), Vector2(bl, bh))
+		UI.bouton(self, jouer, Identite.OR, "jouer", false, Identite.RAYON_LG + 4)
+		UI.texte(self, Vector2(jouer.get_center().x, jouer.get_center().y + 13.0), "JOUER !", 40, Identite.TEXTE, true, 11)
+		_actions.append({"rect": jouer, "action": "jouer"})
+		# Le héros équipé, nommé sous la scène centrale.
+		UI.texte(self, Vector2(centre_x, size.y - 24.0),
+			"%s — Puissance %d" % [Profil.personnage, Profil.puissance_de(Profil.personnage)],
+			16, Identite.TEXTE, true, 5)
 
 	func _aile(pos: Vector2, cote: float) -> void:
 		for i in 3:
@@ -374,6 +432,7 @@ class SurfaceMenu extends Control:
 		var nom: String = Menu.NOMS[menu.perso_focus]
 		var fiche: Dictionary = Personnage3D.FICHES[nom]
 		var choisi: bool = nom == Profil.personnage
+		var debloque: bool = Profil.heros_est_debloque(nom)
 		_bouton_action(Rect2(24.0, size.y / 2.0 - 45.0, 76.0, 90.0), "focus_gauche", Identite.BLEU, "‹", 40, Identite.RAYON_MD)
 		_bouton_action(Rect2(size.x - 100.0, size.y / 2.0 - 45.0, 76.0, 90.0), "focus_droite", Identite.BLEU, "›", 40, Identite.RAYON_MD)
 		var largeur := minf(size.x - 220.0, 620.0)
@@ -403,9 +462,23 @@ class SurfaceMenu extends Control:
 				UI.texte(self, centre + Vector2(0.0, 42.0), "%d P" % Profil.PRIX_VARIANTE, 12, Identite.OR, true, 4)
 			_actions.append({"rect": Rect2(centre - Vector2(30.0, 30.0), Vector2(60.0, 60.0)),
 				"action": "variante:%s:%d" % [nom, v]})
+		# Puissance du héros (modèle « power level ») : achat en pièces.
+		var p := Profil.puissance_de(nom)
 		UI.texte(self, rect.position + Vector2(24.0, 160.0),
-			"Joue avec %s pour monter son niveau — ou achète ses couleurs en pièces !" % nom, 13, Identite.TEXTE_ATTENUE)
-		if choisi:
+			"Puissance %d — +%d %% vitesse, recharges −%d %%" % [p, (p - 1) * 3, (p - 1) * 3],
+			13, Identite.CYAN)
+		var cout := Profil.cout_puissance(nom)
+		if debloque and cout > 0:
+			_bouton_action(Rect2(rect.position + Vector2(348.0, 138.0), Vector2(170.0, 34.0)),
+				"ameliorer", Identite.VERT if Profil.pieces >= cout else Color(0.3, 0.32, 0.42),
+				"AMÉLIORER %d P" % cout, 13, Identite.RAYON_SM)
+		# État : verrouillé (Route), équipé, ou équipable.
+		if not debloque:
+			var badge := Rect2(rect.end.x - 226.0, rect.end.y - 70.0, 202.0, 50.0)
+			self.draw_style_box(UI.style("verrou", Color(0.3, 0.32, 0.42), Identite.CONTOUR, Identite.RAYON_MD, Identite.BORD, 3), badge)
+			UI.texte(self, badge.get_center() + Vector2(0.0, -3.0), "SE DÉBLOQUE À", 12, Identite.TEXTE_ATTENUE, true, 4)
+			UI.texte(self, badge.get_center() + Vector2(0.0, 15.0), "%d TROPHÉES" % Profil.seuil_du_heros(nom), 15, Identite.OR, true, 4)
+		elif choisi:
 			var badge := Rect2(rect.end.x - 186.0, rect.end.y - 70.0, 162.0, 50.0)
 			self.draw_style_box(UI.style("equipe", Identite.VERT_SOMBRE, Identite.CONTOUR, Identite.RAYON_MD, Identite.BORD, 3), badge)
 			UI.texte(self, badge.get_center() + Vector2(0.0, 7.0), "✓ ÉQUIPÉ", 19, Identite.TEXTE, true)
@@ -505,6 +578,84 @@ class SurfaceMenu extends Control:
 		UI.texte(self, Vector2(size.x / 2.0, 448.0),
 			"Les couleurs des Lumins s'achètent sur l'écran PERSONNAGES (%d pièces)." % Profil.PRIX_VARIANTE,
 			14, Identite.TEXTE_ATTENUE, true, 4)
+
+	# ---------------------------------------------------------- route des trophées
+
+	## La colonne vertébrale : les prochains paliers et leurs récompenses.
+	func _dessiner_route() -> void:
+		UI.texte(self, Vector2(size.x / 2.0, 138.0), "%d trophées — gagne des matchs pour avancer !" % Profil.trophees,
+			15, Identite.TEXTE_ATTENUE, true)
+		# Les 6 paliers autour de la position du joueur (passés réclamés exclus).
+		var visibles: Array = []
+		for palier in Profil.ROUTE:
+			var seuil: int = int(palier.seuil)
+			if not Profil.route_reclamee.has(seuil) or visibles.size() < 2:
+				visibles.append(palier)
+			if visibles.size() >= 6:
+				break
+		var largeur := minf(size.x - 160.0, 660.0)
+		var x0 := (size.x - largeur) / 2.0
+		for i in visibles.size():
+			var palier: Dictionary = visibles[i]
+			var seuil: int = int(palier.seuil)
+			var atteint: bool = Profil.trophees >= seuil
+			var reclame: bool = Profil.route_reclamee.has(seuil)
+			var rect := Rect2(x0, 152.0 + i * 54.0, largeur, 46.0)
+			self.draw_style_box(UI.style("route_%s_%s" % [str(atteint), str(reclame)],
+				Identite.PANNEAU_CLAIR if atteint and not reclame else Identite.PANNEAU,
+				Identite.OR if atteint and not reclame else Identite.CONTOUR,
+				Identite.RAYON_SM, Identite.BORD, 2), rect)
+			UI.etoile(self, rect.position + Vector2(30.0, 23.0), 13.0,
+				Identite.OR if atteint else Color(0.4, 0.42, 0.52))
+			UI.texte(self, rect.position + Vector2(52.0, 30.0), str(seuil), 17,
+				Identite.TEXTE if atteint else Identite.TEXTE_ATTENUE)
+			var description := ""
+			match str(palier.type):
+				"pieces":
+					description = "%d pièces d'or" % int(palier.montant)
+				"oeuf":
+					description = "Œuf de dragon"
+				"heros":
+					description = "NOUVEAU HÉROS : %s !" % str(palier.nom)
+				"espece":
+					description = "Dragon %s garanti" % str(palier.nom)
+			UI.texte(self, rect.position + Vector2(120.0, 30.0), description, 16,
+				Identite.OR if str(palier.type) == "heros" else Identite.TEXTE)
+			if reclame:
+				UI.texte(self, Vector2(rect.end.x - 60.0, rect.position.y + 30.0), "✓", 20, Identite.VERT, true)
+			elif atteint:
+				_bouton_action(Rect2(rect.end.x - 150.0, rect.position.y + 4.0, 138.0, 38.0),
+					"reclamer_route:%d" % seuil, Identite.VERT, "RÉCLAMER", 15, Identite.RAYON_SM)
+			else:
+				UI.texte(self, Vector2(rect.end.x - 76.0, rect.position.y + 30.0),
+					"%d 🏆" % seuil, 14, Identite.TEXTE_ATTENUE, true, 4)
+
+	# ---------------------------------------------------------- quêtes du jour
+
+	func _dessiner_quetes() -> void:
+		for i in Profil.quetes.size():
+			var q: Dictionary = Profil.quetes[i]
+			var largeur := minf(size.x - 200.0, 600.0)
+			var rect := Rect2((size.x - largeur) / 2.0, 152.0 + i * 96.0, largeur, 84.0)
+			UI.panneau(self, rect)
+			var fini: bool = int(q.progres) >= int(q.cible)
+			var reclamee: bool = bool(q.reclamee)
+			UI.texte(self, rect.position + Vector2(20.0, 32.0), str(q.texte), 17,
+				Identite.TEXTE if not reclamee else Identite.TEXTE_ATTENUE)
+			UI.barre(self, Rect2(rect.position + Vector2(20.0, 46.0), Vector2(largeur - 220.0, 20.0)),
+				float(q.progres) / float(q.cible), Identite.VERT if fini else Identite.BLEU)
+			UI.texte(self, rect.position + Vector2(largeur - 260.0, 62.0),
+				"%d / %d" % [int(q.progres), int(q.cible)], 14, Identite.TEXTE_ATTENUE)
+			if reclamee:
+				UI.texte(self, Vector2(rect.end.x - 90.0, rect.get_center().y + 7.0), "✓ FAIT", 18, Identite.VERT, true)
+			elif fini:
+				_bouton_action(Rect2(rect.end.x - 170.0, rect.get_center().y - 22.0, 152.0, 44.0),
+					"reclamer_quete:%d" % i, Identite.VERT, "+%d P" % int(q.pieces), 17, Identite.RAYON_SM)
+			else:
+				UI.texte(self, Vector2(rect.end.x - 90.0, rect.get_center().y + 7.0),
+					"+%d P" % int(q.pieces), 16, Identite.OR, true)
+		UI.texte(self, Vector2(size.x / 2.0, 152.0 + 3.0 * 96.0 + 16.0),
+			"Trois nouvelles quêtes chaque jour !", 14, Identite.TEXTE_ATTENUE, true)
 
 	# ---------------------------------------------------------- aide
 

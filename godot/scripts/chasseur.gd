@@ -61,12 +61,19 @@ var _traine_delai := 0.0  ## cadence de la traînée dorée du porteur
 var _pause_ia := 0.0      ## temps de réaction des bots (laisse jouer l'humain)
 
 
+var facteur_cd := 1.0  ## la Puissance du héros raccourcit ses recharges
+
+
 ## À appeler AVANT l'ajout à l'arbre.
 func configurer(p_nom: String, p_teinte: Color, p_est_joueur: bool, pos: Vector2) -> void:
 	nom = p_nom
 	teinte = p_teinte
 	est_joueur = p_est_joueur
 	vitesse = VITESSE_JOUEUR if est_joueur else VITESSE_BOT
+	if est_joueur:
+		# Puissance du héros (Route/pièces) : +3 % vitesse, −3 % recharge par niveau.
+		vitesse *= Profil.bonus_puissance(nom)
+		facteur_cd = 1.0 / Profil.bonus_puissance(nom)
 	position = Vector3(pos.x, 0.0, pos.y)
 
 
@@ -298,7 +305,7 @@ func bot_choisir() -> void:
 func utiliser_onde() -> void:
 	if cd_onde > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_onde = CD_ONDE
+	cd_onde = CD_ONDE * facteur_cd
 	# Visée assistée : pivote vers la meilleure cible à portée (porteur en priorité).
 	var cible := arene.meilleure_cible_onde(self)
 	if cible != null:
@@ -318,7 +325,7 @@ func utiliser_onde() -> void:
 func utiliser_dash() -> void:
 	if cd_dash > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_dash = CD_DASH
+	cd_dash = CD_DASH * facteur_cd
 	var dir := _direction_voulue()
 	dir_dash = dir.normalized() if dir.length() > 0.05 else derniere_dir
 	dash_restant = DIST_DASH
@@ -329,7 +336,7 @@ func utiliser_dash() -> void:
 func utiliser_bouclier() -> void:
 	if cd_bouclier > 0.0 or gel_restant > 0.0 or ko_restant > 0.0 or arene.etat != Arene.Etat.JEU:
 		return
-	cd_bouclier = CD_BOUCLIER
+	cd_bouclier = CD_BOUCLIER * facteur_cd
 	bouclier_restant = DUREE_BOUCLIER
 	arene.fx.anneau(pos2(), 1.4, Color(0.7, 0.45, 1.0))
 	Audio.jouer("bouclier")
