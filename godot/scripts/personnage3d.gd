@@ -102,8 +102,13 @@ var _ailes_lumiere: Array = []   ## ailes de lumière du niveau 3
 ## partout (lobby ET match) : 2 bracelets de lumière, 3 cape d'éclat,
 ## 4 aura au sol, 5 FORME ÉCLAT (couronne, grande cape, effets permanents).
 var puissance := 1
-var _effet: CPUParticles3D       ## particules signatures du héros
+var _effet_type := ""            ## effet signature du héros (fiche)
+var _effet_delai := 0.0          ## cadence d'émission
+var _lunes: Array = []           ## les lunes en orbite de Nova
 var _aura: MeshInstance3D        ## aura du palier 4
+var _yeux: Array = []            ## groupes d'yeux (clignement)
+var _clign_delai := 2.0
+var _clign_reste := 0.0
 
 
 func _ready() -> void:
@@ -197,15 +202,19 @@ func _construire_lumin(fiche: Dictionary) -> void:
 		Materiaux.mesh(_racine, Materiaux.sphere(0.05), peau,
 			Vector3(cote * 0.26, 1.1, 0.0), Vector3.ONE, false)
 	# Yeux : grands, blancs, iris chaud, éclat de vie (planche) — posés en
-	# avant de la surface du crâne pour rester lisibles.
+	# avant de la surface du crâne, groupés pour pouvoir CLIGNER.
 	for cote: float in [-1.0, 1.0]:
-		Materiaux.mesh(_racine, Materiaux.sphere(0.075), Materiaux.toon(Color.WHITE),
-			Vector3(cote * 0.105, 1.12, 0.225), Vector3(1.0, 1.15, 0.6), false)
-		Materiaux.mesh(_racine, Materiaux.sphere(0.042), Materiaux.toon(Color(0.32, 0.19, 0.1)),
-			Vector3(cote * 0.1, 1.12, 0.265), Vector3.ONE, false)
-		Materiaux.mesh(_racine, Materiaux.sphere(0.018), Materiaux.toon(Color.WHITE),
-			Vector3(cote * 0.08, 1.15, 0.295), Vector3.ONE, false)
-		# Sourcil marqué.
+		var oeil := Node3D.new()
+		oeil.position = Vector3(cote * 0.105, 1.12, 0.0)
+		_racine.add_child(oeil)
+		_yeux.append(oeil)
+		Materiaux.mesh(oeil, Materiaux.sphere(0.075), Materiaux.toon(Color.WHITE),
+			Vector3(0.0, 0.0, 0.225), Vector3(1.0, 1.15, 0.6), false)
+		Materiaux.mesh(oeil, Materiaux.sphere(0.042), Materiaux.toon(Color(0.32, 0.19, 0.1)),
+			Vector3(-cote * 0.005, 0.0, 0.265), Vector3.ONE, false)
+		Materiaux.mesh(oeil, Materiaux.sphere(0.018), Materiaux.toon(Color.WHITE),
+			Vector3(-cote * 0.025, 0.03, 0.295), Vector3.ONE, false)
+		# Sourcil marqué (hors du groupe : il ne cligne pas).
 		var sourcil := BoxMesh.new()
 		sourcil.size = Vector3(0.1, 0.025, 0.03)
 		var s := Materiaux.mesh(_racine, sourcil, mat_cheveux,
@@ -230,65 +239,159 @@ func _construire_lumin(fiche: Dictionary) -> void:
 	# Halo fresnel discret : la lumière d'Iluminia nimbe la silhouette.
 	Materiaux.mesh(_racine, Materiaux.sphere(0.5), Nuanceurs.fresnel(couleur.lightened(0.3), 0.45),
 		Vector3(0.0, 0.8, 0.0), Vector3(0.72, 1.55, 0.62), false)
-	# Effet signature + attributs d'évolution permanente.
+	# Détails d'identité, effet signature, attributs d'évolution.
+	_details_signature()
 	_construire_effet(str(fiche.get("effet", "etincelles")))
 	_appliquer_evolution()
 
 
-## Les PARTICULES SIGNATURES : chaque héros sème sa propre lumière en
-## courant (en permanence à la Forme Éclat). Max des étincelles d'or,
-## Zep des éclairs cyan, Nova de la poussière d'étoiles, Ficelle des
-## braises roses.
+## Les VÊTEMENTS SIGNATURES : chaque héros a SES détails (planche).
+func _details_signature() -> void:
+	match etiquette:
+		"Max": # Fermeture éclair et cordons de capuche.
+			var zip := BoxMesh.new()
+			zip.size = Vector3(0.02, 0.14, 0.015)
+			Materiaux.mesh(_racine, zip, Materiaux.toon(couleur.darkened(0.4)),
+				Vector3(0.0, 0.55, 0.185), Vector3.ONE, false)
+			for cote: float in [-1.0, 1.0]:
+				Materiaux.mesh(_racine, Materiaux.cylindre(0.012, 0.09), Materiaux.toon(Identite.CREME),
+					Vector3(cote * 0.06, 0.8, 0.18), Vector3.ONE, false)
+				Materiaux.mesh(_racine, Materiaux.sphere(0.018), Materiaux.toon(Identite.OR),
+					Vector3(cote * 0.06, 0.75, 0.18), Vector3.ONE, false)
+		"Zep": # Écharpe au vent + réacteurs aux baskets.
+			var pan := BoxMesh.new()
+			pan.size = Vector3(0.15, 0.34, 0.03)
+			var echarpe := Materiaux.mesh(_racine, pan, Materiaux.toon(Identite.CREME),
+				Vector3(0.06, 0.72, -0.22))
+			echarpe.rotation_degrees = Vector3(-32.0, 8.0, 0.0)
+			for pied: Node3D in [_pied_g, _pied_d]:
+				Materiaux.mesh(pied, Materiaux.sphere(0.028), Materiaux.emissif(Identite.CYAN, 2.4),
+					Vector3(0.0, 0.08, -0.15), Vector3.ONE, false)
+		"Nova": # Jupe étoilée + diadème.
+			var jupe := CylinderMesh.new()
+			jupe.top_radius = 0.13
+			jupe.bottom_radius = 0.24
+			jupe.height = 0.16
+			jupe.radial_segments = 16
+			Materiaux.mesh(_racine, jupe, Materiaux.toon(couleur.lightened(0.25)),
+				Vector3(0.0, 0.48, 0.0))
+			var diademe := Materiaux.mesh(_racine, Materiaux.tore(0.1, 0.015),
+				Materiaux.emissif(Identite.OR, 1.6), Vector3(0.0, 1.32, 0.1), Vector3.ONE, false)
+			diademe.rotation_degrees = Vector3(64.0, 0.0, 0.0)
+		"Ficelle": # Bretelles de salopette à boucles dorées.
+			for cote: float in [-1.0, 1.0]:
+				var bretelle := BoxMesh.new()
+				bretelle.size = Vector3(0.05, 0.22, 0.018)
+				var mi := Materiaux.mesh(_racine, bretelle, Materiaux.toon(couleur.darkened(0.35)),
+					Vector3(cote * 0.09, 0.76, 0.18), Vector3.ONE, false)
+				mi.rotation_degrees = Vector3(-8.0, 0.0, cote * -6.0)
+				Materiaux.mesh(_racine, Materiaux.sphere(0.022), Materiaux.toon(Identite.OR),
+					Vector3(cote * 0.09, 0.66, 0.195), Vector3.ONE, false)
+
+
+## Les EFFETS SIGNATURES : une mécanique visuelle PROPRE à chaque héros —
+## pas une simple recoloration. Max sème des étoiles qui tournoient, Zep
+## crépite d'arcs électriques en zigzag, Nova est escortée par des lunes
+## en orbite (et laisse un voile stellaire), Ficelle exhale des cœurs de
+## braise qui montent en ondulant.
 func _construire_effet(type: String) -> void:
-	_effet = CPUParticles3D.new()
-	_effet.amount = 12
-	_effet.lifetime = 0.8
-	_effet.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
-	_effet.emission_sphere_radius = 0.22
-	_effet.position = Vector3(0.0, 0.3, 0.0)
-	_effet.spread = 65.0
-	_effet.direction = Vector3.UP
-	var forme := SphereMesh.new()
-	forme.radial_segments = 6
-	forme.rings = 3
-	var teinte := Identite.OR
-	match type:
-		"etincelles": # Max : étincelles d'or qui sautent des pas.
-			teinte = Identite.OR
-			_effet.initial_velocity_min = 1.2
-			_effet.initial_velocity_max = 2.2
-			_effet.gravity = Vector3(0.0, -6.0, 0.0)
-			forme.radius = 0.045
-		"eclairs": # Zep : crépitements cyan.
-			teinte = Identite.CYAN
-			_effet.initial_velocity_min = 0.4
-			_effet.initial_velocity_max = 1.0
-			_effet.gravity = Vector3.ZERO
-			_effet.lifetime = 0.35
-			_effet.emission_sphere_radius = 0.4
-			_effet.position = Vector3(0.0, 0.6, 0.0)
-			forme.radius = 0.035
-			forme.height = 0.2 # éclats étirés
-		"etoiles": # Nova : poussière d'étoiles qui flotte.
-			teinte = Identite.CREME
-			_effet.initial_velocity_min = 0.2
-			_effet.initial_velocity_max = 0.6
-			_effet.gravity = Vector3(0.0, 0.8, 0.0)
-			_effet.lifetime = 1.3
-			forme.radius = 0.035
-		"braises": # Ficelle : braises roses qui montent.
-			teinte = Identite.MAGENTA
-			_effet.initial_velocity_min = 0.5
-			_effet.initial_velocity_max = 1.1
-			_effet.gravity = Vector3(0.0, 2.2, 0.0)
-			_effet.lifetime = 1.0
-			forme.radius = 0.04
-	if forme.height <= forme.radius * 2.0:
-		forme.height = forme.radius * 2.0
-	forme.material = Materiaux.emissif(teinte, 2.4)
-	_effet.mesh = forme
-	_effet.emitting = false
-	add_child(_effet)
+	_effet_type = type
+	if type == "etoiles":
+		_construire_lunes()
+
+
+## Les deux lunes de Nova : en orbite permanente, même à l'arrêt.
+func _construire_lunes() -> void:
+	for i in 2:
+		var lune := Materiaux.mesh(_racine, Materiaux.sphere(0.05 if i == 0 else 0.035),
+			Materiaux.emissif(Identite.CREME if i == 0 else Identite.VIOLET, 2.2),
+			Vector3.ZERO, Vector3.ONE, false)
+		_lunes.append(lune)
+
+
+## Émission cadencée des effets signatures (dans le MONDE : ils traînent
+## derrière le héros en mouvement).
+func _emettre_effet() -> void:
+	var monde := get_parent()
+	if monde == null or not visible:
+		return
+	var e := scale.x # les effets suivent l'échelle d'affichage du héros
+	match _effet_type:
+		"etincelles": # Max : étoile d'or qui tournoie en retombant.
+			var etoile := Node3D.new()
+			for k in 2:
+				var branche := BoxMesh.new()
+				branche.size = Vector3(0.16, 0.035, 0.02) * e
+				var mi := MeshInstance3D.new()
+				mi.mesh = branche
+				mi.material_override = Materiaux.emissif(Identite.OR, 2.6)
+				mi.rotation_degrees = Vector3(0.0, 0.0, 90.0 * k + 45.0)
+				etoile.add_child(mi)
+			etoile.position = global_position + Vector3(randf_range(-0.2, 0.2) * e, 0.25 * e, randf_range(-0.2, 0.2) * e)
+			monde.add_child(etoile)
+			var tw := etoile.create_tween()
+			tw.set_parallel(true)
+			tw.tween_property(etoile, "rotation:y", TAU * 1.5, 0.55)
+			tw.tween_property(etoile, "position:y", etoile.position.y + 0.5 * e, 0.55)
+			tw.tween_property(etoile, "scale", Vector3.ONE * 0.05, 0.55).set_ease(Tween.EASE_IN)
+			tw.chain().tween_callback(etoile.queue_free)
+		"eclairs": # Zep : arc électrique en zigzag, flash bref.
+			var arc := Node3D.new()
+			var teinte := Identite.CYAN if randf() < 0.75 else Color.WHITE
+			var p := Vector3.ZERO
+			var zig := 1.0
+			for k in 3:
+				var seg := BoxMesh.new()
+				seg.size = Vector3(0.022, 0.14, 0.022) * e
+				var mi := MeshInstance3D.new()
+				mi.mesh = seg
+				mi.material_override = Materiaux.emissif(teinte, 3.0)
+				mi.position = p + Vector3(zig * 0.045, 0.1, 0.0) * e
+				mi.rotation_degrees = Vector3(0.0, randf_range(-30.0, 30.0), zig * 38.0)
+				arc.add_child(mi)
+				p = mi.position + Vector3(zig * 0.045, 0.1, 0.0) * e
+				zig = -zig
+			arc.position = global_position + Vector3(randf_range(-0.35, 0.35) * e, 0.5 * e, randf_range(-0.35, 0.35) * e)
+			arc.rotation.y = randf_range(0.0, TAU)
+			monde.add_child(arc)
+			var tw := arc.create_tween()
+			tw.tween_property(arc, "scale", Vector3.ONE * 0.4, 0.13).set_ease(Tween.EASE_IN)
+			tw.tween_callback(arc.queue_free)
+		"etoiles": # Nova : voile stellaire — motes qui flottent sur place.
+			var mote := MeshInstance3D.new()
+			mote.mesh = Materiaux.sphere(0.035 * e)
+			mote.material_override = Materiaux.emissif(Identite.CREME, 2.2)
+			mote.position = global_position + Vector3(randf_range(-0.3, 0.3) * e, randf_range(0.4, 1.1) * e, randf_range(-0.3, 0.3) * e)
+			monde.add_child(mote)
+			var tw := mote.create_tween()
+			tw.set_parallel(true)
+			tw.tween_property(mote, "position:y", mote.position.y + 0.4 * e, 1.1)
+			tw.tween_property(mote, "scale", Vector3.ONE * 0.05, 1.1).set_ease(Tween.EASE_IN)
+			tw.chain().tween_callback(mote.queue_free)
+		"braises": # Ficelle : cœur de braise qui monte en ondulant.
+			var coeur := Node3D.new()
+			var mat := Materiaux.emissif(Identite.MAGENTA, 2.4)
+			for cote: float in [-1.0, 1.0]:
+				var lobe := MeshInstance3D.new()
+				lobe.mesh = Materiaux.sphere(0.045 * e)
+				lobe.material_override = mat
+				lobe.position = Vector3(cote * 0.032 * e, 0.02 * e, 0.0)
+				coeur.add_child(lobe)
+			var pointe := MeshInstance3D.new()
+			pointe.mesh = Materiaux.cone(0.055 * e, 0.09 * e)
+			pointe.material_override = mat
+			pointe.rotation_degrees = Vector3(180.0, 0.0, 0.0)
+			pointe.position = Vector3(0.0, -0.03 * e, 0.0)
+			coeur.add_child(pointe)
+			coeur.position = global_position + Vector3(randf_range(-0.25, 0.25) * e, 0.6 * e, randf_range(-0.25, 0.25) * e)
+			monde.add_child(coeur)
+			var tw := coeur.create_tween()
+			tw.set_parallel(true)
+			tw.tween_property(coeur, "position:y", coeur.position.y + 0.85 * e, 0.9)
+			tw.tween_property(coeur, "position:x", coeur.position.x + randf_range(-0.15, 0.15) * e, 0.9) \
+				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+			tw.tween_property(coeur, "scale", Vector3.ONE * 0.1, 0.9).set_ease(Tween.EASE_IN)
+			tw.chain().tween_callback(coeur.queue_free)
 
 
 ## Les ATTRIBUTS D'ÉVOLUTION : le but visible de la progression — chaque
@@ -500,9 +603,27 @@ func _process(delta: float) -> void:
 		var balancier := sin(_t * 14.0) * (0.7 if en_marche else 0.05)
 		_bras_g.rotation.x = -balancier
 		_bras_d.rotation.x = balancier
-	# Particules signatures : en course, en permanence à la Forme Éclat.
-	if _effet != null:
-		_effet.emitting = en_marche or puissance >= 5
+	# Effets signatures : émis en course, en permanence à la Forme Éclat.
+	if _effet_type != "" and genre != "dragon" and (en_marche or puissance >= 5):
+		var cadence: float = {"etincelles": 0.16, "eclairs": 0.09,
+			"etoiles": 0.22, "braises": 0.28}.get(_effet_type, 0.2)
+		_effet_delai -= delta
+		if _effet_delai <= 0.0:
+			_effet_delai = cadence
+			_emettre_effet()
+	# Les lunes de Nova orbitent en permanence, même à l'arrêt.
+	for i in _lunes.size():
+		var lune: MeshInstance3D = _lunes[i]
+		var a := _t * (1.6 if i == 0 else -1.1) + i * PI
+		lune.position = Vector3(cos(a) * 0.42, 0.95 + sin(_t * 2.0 + i) * 0.08, sin(a) * 0.42)
+	# Clignement des yeux : la vie dans le regard.
+	_clign_delai -= delta
+	if _clign_delai <= 0.0:
+		_clign_delai = randf_range(2.4, 4.6)
+		_clign_reste = 0.11
+	_clign_reste = maxf(_clign_reste - delta, 0.0)
+	for oeil in _yeux:
+		oeil.scale.y = 0.12 if _clign_reste > 0.0 else 1.0
 	if _aura != null:
 		_aura.rotation.y += delta * 0.8
 	# Anneaux d'Éveil qui tournent, ailes de lumière qui battent.

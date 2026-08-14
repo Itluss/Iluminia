@@ -851,14 +851,15 @@ class SurfaceMenu extends Control:
 		var croix := UI.fenetre(self, rect, "Comment jouer")
 		_actions.append({"rect": croix, "action": "retour"})
 		var lignes: Array = [
-			"1. Choisis ta réponse de maths, puis ATTRAPE le bébé dragon.",
-			"2. Porte-le dans la zone de TA réponse et TIENS 1,5 s : +100 !",
-			"3. Vole le dragon aux autres avec l'Onde de choc (bouton orange).",
-			"4. Suis la flèche-boussole : or = dragon libre, rouge = volé.",
+			"1. Choisis ta réponse, ATTRAPE le dragon, dépose-le dans TA zone.",
+			"2. LA CAGNOTTE : porté, le dragon se charge (+8/s, max +80).",
+			"   Déposer vite = sûr. Garder = gros gain… mais volable : jackpot !",
+			"3. Les BUISSONS 🌿 te cachent : embuscades, fuites, dépôts en douce.",
+			"4. Reste dans la zone d'un adversaire pour CONTESTER son dépôt (×2).",
+			"5. Vole le dragon à l'Onde ; charge ton SUPER avec les éclats.",
 			"",
-			"1er du match : un ŒUF DE DRAGON à faire éclore au Sanctuaire.",
-			"Trophées → monte de ligue. Pièces → boutique et couleurs.",
-			"Ton dragon compagnon vole à tes côtés en partie !",
+			"Bonnes réponses → ÉVEIL (plus fort à chaque dépôt, ailes au niv. 3).",
+			"1er du match : un ŒUF DE DRAGON pour le Sanctuaire !",
 		]
 		for i in lignes.size():
 			UI.texte(self, rect.position + Vector2(30.0, 52.0 + i * 30.0), str(lignes[i]), 15, Identite.TEXTE)

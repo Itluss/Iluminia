@@ -44,6 +44,7 @@ var theme := {}                 ## ambiance du match (Ambiance.THEMES)
 var chasseurs: Array = []
 var dragon: Dragon = null
 var zones: Array = []           ## {pos, teinte, lettre, colonne, mat, label, croix}
+var buissons: Array = []        ## {pos, rayon} — fourrés où se CACHER
 var cristaux: Array = []
 var question := {"enonce": "", "reponses": ["", "", "", ""], "bonne": 0}
 var etat := Etat.QUESTION
@@ -64,8 +65,48 @@ var _t := 0.0
 func demarrer() -> void:
 	_construire_sol()
 	_construire_zones()
+	_construire_buissons()
 	_construire_chevrons()
 	_nouvelle_manche()
+
+
+## LES BUISSONS LUMINEUX : des fourrés où se CACHER — invisible pour les
+## adversaires (embuscade au bord d'une zone, fuite avec le dragon…).
+## La boussole pointe toujours le dragon : se cacher retarde, ne gagne pas.
+func _construire_buissons() -> void:
+	var implantations: Array = [
+		Vector2(0.0, 7.2), Vector2(0.0, -7.2), Vector2(7.2, 0.0), Vector2(-7.2, 0.0),
+		Vector2(3.4, -3.4),
+	]
+	for pos: Vector2 in implantations:
+		buissons.append({"pos": pos, "rayon": 1.7})
+		var noeud := Node3D.new()
+		noeud.position = Vector3(pos.x, 0.0, pos.y)
+		add_child(noeud)
+		var rng := RandomNumberGenerator.new()
+		rng.seed = int(pos.x * 31.0 + pos.y * 7.0)
+		var feuillage := Materiaux.toon(Color(0.10, 0.34, 0.24))
+		feuillage.emission_enabled = true
+		feuillage.emission = Identite.CYAN
+		feuillage.emission_energy_multiplier = 0.12
+		for b in 6:
+			var p := Vector2.from_angle(TAU * b / 6.0 + rng.randf_range(-0.4, 0.4)) \
+				* rng.randf_range(0.4, 1.2)
+			Materiaux.mesh(noeud, Materiaux.sphere(rng.randf_range(0.55, 0.85)), feuillage,
+				Vector3(p.x, rng.randf_range(0.25, 0.5), p.y), Vector3(1.0, 0.75, 1.0))
+		# Petites baies lumineuses : le fourré se repère de loin.
+		for b in 4:
+			var p := Vector2.from_angle(rng.randf_range(0.0, TAU)) * rng.randf_range(0.3, 1.3)
+			Materiaux.mesh(noeud, Materiaux.sphere(0.06), Materiaux.emissif(Identite.CYAN, 1.5),
+				Vector3(p.x, rng.randf_range(0.5, 0.9), p.y), Vector3.ONE, false)
+
+
+## Vrai si cette position du plan est enfouie dans un buisson.
+func est_cache(pos: Vector2) -> bool:
+	for b in buissons:
+		if pos.distance_to(b.pos) < float(b.rayon):
+			return true
+	return false
 
 
 func _process(delta: float) -> void:
@@ -441,8 +482,18 @@ func _verifier_zones() -> void:
 		canal = {}
 		return
 	if canal.is_empty() or canal.chasseur != c or int(canal.zone) != zone_courante:
-		canal = {"chasseur": c, "zone": zone_courante, "progres": 0.0}
-	canal.progres = float(canal.progres) + get_process_delta_time() / DUREE_CANAL
+		canal = {"chasseur": c, "zone": zone_courante, "progres": 0.0, "conteste": false}
+	# ZONE CONTESTÉE : un adversaire dans la zone ralentit le dépôt de
+	# moitié — défendre une zone est une vraie tactique.
+	var conteste := false
+	for autre in chasseurs:
+		if autre != c and autre.ko_restant <= 0.0 \
+				and autre.pos2().distance_to(zones[zone_courante].pos) < RAYON_ZONE + 0.3:
+			conteste = true
+			break
+	canal.conteste = conteste
+	var vitesse_canal := 0.5 if conteste else 1.0
+	canal.progres = float(canal.progres) + get_process_delta_time() * vitesse_canal / DUREE_CANAL
 	if float(canal.progres) >= 1.0:
 		var z: int = int(canal.zone)
 		canal = {}
@@ -455,13 +506,14 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 	var bonne: int = question.bonne
 	var pos_zone: Vector2 = zones[i].pos
 	if i == bonne:
-		# +100, +15 d'énergie… et LA MANCHE CONTINUE : nouvelle question,
-		# le dragon renaît ailleurs dans 2 s — à qui le prochain point ?
-		c.score += 100
+		# +100 + LA CAGNOTTE du dragon, +15 d'énergie… et LA MANCHE
+		# CONTINUE : nouvelle question, le dragon renaît dans 2 s.
+		var gain := 100 + dragon.cagnotte
+		c.score += gain
 		c.energie = minf(c.energie + 15.0, c.energie_max)
 		fx.eclat_etoiles(pos_zone, zones[i].teinte, 30)
 		fx.anneau(pos_zone, RAYON_ZONE * 2.0, zones[i].teinte)
-		fx.texte_flottant(pos_zone, "+100 %s !" % c.nom, Color(1.0, 0.95, 0.6))
+		fx.texte_flottant(pos_zone, "+%d %s !" % [gain, c.nom], Color(1.0, 0.95, 0.6))
 		Audio.jouer("victoire")
 		# Réussir en maths fait ÉVOLUER le Lumin : l'Éveil monte d'un niveau.
 		c.monter_eveil()
@@ -658,11 +710,15 @@ func borner(pos: Vector2) -> Vector2:
 	return pos
 
 
-func chasseur_le_plus_proche(pos: Vector2) -> Chasseur:
+func chasseur_le_plus_proche(pos: Vector2, ignorer_caches := false) -> Chasseur:
 	var meilleur: Chasseur = null
 	var meilleure_d := INF
 	for c in chasseurs:
 		if c.ko_restant > 0.0:
+			continue
+		# Un chasseur tapi dans un buisson n'effraie pas le dragon de loin
+		# (l'embuscade fonctionne) — mais à bout portant, si.
+		if ignorer_caches and c.cache and pos.distance_to(c.pos2()) > 2.2:
 			continue
 		var d: float = pos.distance_to(c.pos2())
 		if d < meilleure_d:

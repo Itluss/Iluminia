@@ -248,9 +248,17 @@ func _dessiner(c: Control) -> void:
 				var ch: Chasseur = canal.chasseur
 				var ecran := camera.unproject_position(ch.position + Vector3(0.0, 1.9, 0.0))
 				var frac := clampf(float(canal.progres), 0.0, 1.0)
+				var conteste: bool = bool(canal.get("conteste", false))
 				c.draw_arc(ecran, 34.0, 0.0, TAU, 40, Color(1.0, 1.0, 1.0, 0.25), 8.0)
-				c.draw_arc(ecran, 34.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40, Identite.OR, 8.0)
-				UI.texte(c, ecran + Vector2(0.0, 60.0), "DÉPÔT…", 14, Identite.OR, true, 4)
+				c.draw_arc(ecran, 34.0, -PI / 2.0, -PI / 2.0 + TAU * frac, 40,
+					Identite.ROUGE if conteste else Identite.OR, 8.0)
+				UI.texte(c, ecran + Vector2(0.0, 60.0),
+					"CONTESTÉ !" if conteste else "DÉPÔT…", 14,
+					Identite.ROUGE if conteste else Identite.OR, true, 4)
+			# Furtif : rappel discret quand TU es tapi dans un buisson.
+			if joueur.cache:
+				UI.texte(c, Vector2(c.size.x / 2.0, 80.0), "🌿 CACHÉ — les autres ne te voient plus !",
+					16, Identite.VERT, true, 5)
 			# Consigne du tutoriel (première partie seulement).
 			var consigne := _texte_guide()
 			if consigne != "":

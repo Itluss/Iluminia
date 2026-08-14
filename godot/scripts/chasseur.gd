@@ -76,6 +76,7 @@ var immunite := 0.0
 var gel_restant := 0.0
 var ko_restant := 0.0
 
+var cache := false           ## tapi dans un buisson (invisible aux autres)
 var eveil := 0               ## niveau d'Éveil du match (0..3)
 var charge_super := 0        ## éclats accumulés vers le Super
 var surcharge_restant := 0.0 ## Overdrive de Zep (vitesse boostée)
@@ -224,8 +225,15 @@ func _process(delta: float) -> void:
 		_compagnon.en_marche = visuel.en_marche
 		_compagnon.regarder(derniere_dir)
 
+	# BUISSONS : tapi dans un fourré, on disparaît de l'écran adverse.
+	# Le joueur se voit toujours (enfoncé dans les feuilles) ; le dragon
+	# porté se cache avec son porteur — mais la boussole le pointe encore.
+	cache = arene.est_cache(pos2()) and ko_restant <= 0.0
+	visuel.visible = est_joueur or not cache
+	visuel.position.y = -0.14 if cache else 0.0
+
 	# État du visuel : anneau doré du porteur, bulles de protection.
-	visuel.montrer_anneau(porte_dragon())
+	visuel.montrer_anneau(porte_dragon() and not cache)
 	if bouclier_restant > 0.0:
 		visuel.montrer_bulle(1.0, Color(0.7, 0.45, 1.0))
 	elif bouclier_spawn > 0.0:
@@ -272,8 +280,8 @@ func _process(delta: float) -> void:
 		# Traînée cyan de l'Overdrive de Zep.
 		if surcharge_restant > 0.0 and visuel.en_marche:
 			arene.fx.traine(pos2(), Identite.CYAN)
-		# Poussière sous les pas : la course se sent.
-		if visuel.en_marche:
+		# Poussière sous les pas : la course se sent (pas en furtif).
+		if visuel.en_marche and not cache:
 			_poussiere_delai -= delta
 			if _poussiere_delai <= 0.0:
 				_poussiere_delai = 0.22
@@ -282,7 +290,8 @@ func _process(delta: float) -> void:
 	fixer_pos2(arene.borner(pos2()))
 
 	# Traînée dorée du porteur : la poursuite se lit d'un coup d'œil.
-	if porte_dragon() and visuel.en_marche:
+	# (Caché dans un buisson, plus de traînée — la discrétion paie.)
+	if porte_dragon() and visuel.en_marche and not cache:
 		_traine_delai -= delta
 		if _traine_delai <= 0.0:
 			_traine_delai = 0.09
@@ -363,6 +372,11 @@ func _ia_direction() -> Vector2:
 	if dr.libre():
 		return (dr.pos2() - pos2()).normalized()
 	if dr.porteur != self:
+		# Porteur CACHÉ dans un buisson : le bot ne le voit plus — il rôde
+		# vers la dernière zone connue, plus lentement et de travers.
+		if dr.porteur.cache and pos2().distance_to(dr.porteur.pos2()) > 3.0:
+			var flou := Vector2.from_angle(sin(Time.get_ticks_msec() / 700.0 + float(get_instance_id() % 7)) * TAU)
+			return ((dr.porteur.pos2() + flou * 2.5 - pos2()).normalized()) * 0.55
 		return (dr.porteur.pos2() - pos2()).normalized()
 	return Vector2.ZERO
 

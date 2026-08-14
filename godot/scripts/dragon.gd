@@ -12,9 +12,18 @@ const PANIQUE := 2.6         ## fuite paniquée, petits bonds
 const VITESSE_CALME := 2.0
 const VITESSE_FUITE := 2.6   ## toujours plus lent que bots (3,2) et joueur (4,4)
 
+## LA CAGNOTTE : porté, le dragon se charge de lumière (+8 pts/s, plafond
+## +80). Déposer vite = sûr mais petit ; garder = gros mais risqué — et
+## VOLER un dragon plein, c'est le jackpot. La stratégie de la partie.
+const CAGNOTTE_PAR_SECONDE := 8.0
+const CAGNOTTE_MAX := 80
+
 var arene: Arene
 var porteur: Chasseur = null
 var visuel: Personnage3D
+var cagnotte := 0        ## bonus accumulé, encaissé au dépôt (ou volé !)
+var _acc_cagnotte := 0.0
+var _label_cagnotte: Label3D
 var _temps_libre := 0.0  ## le dragon s'essouffle après 8 s de fuite
 
 
@@ -43,6 +52,18 @@ func _ready() -> void:
 		Materiaux.emissif(Identite.OR, 2.2), Vector3(0.0, 2.6, 0.0), Vector3.ONE, false)
 	fleche.rotation_degrees = Vector3(180.0, 0.0, 0.0)
 	fleche.name = "Fleche"
+	# La cagnotte flotte au-dessus du dragon porté : tout le monde la voit.
+	_label_cagnotte = Label3D.new()
+	_label_cagnotte.font_size = 96
+	_label_cagnotte.outline_size = 26
+	_label_cagnotte.pixel_size = 0.0022
+	_label_cagnotte.modulate = Identite.OR
+	_label_cagnotte.outline_modulate = Materiaux.COULEUR_CONTOUR
+	_label_cagnotte.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	_label_cagnotte.no_depth_test = true
+	_label_cagnotte.position = Vector3(0.0, 1.5, 0.0)
+	_label_cagnotte.visible = false
+	add_child(_label_cagnotte)
 
 
 func pos2() -> Vector2:
@@ -58,6 +79,9 @@ func libre() -> bool:
 
 
 func _process(delta: float) -> void:
+	# Porté par un chasseur embusqué : caché avec lui (sauf pour l'écran
+	# du joueur-porteur) — la boussole, elle, le pointe toujours.
+	visible = porteur == null or porteur.est_joueur or not porteur.cache
 	# La balise ne brille que quand le dragon est à prendre.
 	_balise.visible = porteur == null
 	if _balise.visible:
@@ -66,16 +90,22 @@ func _process(delta: float) -> void:
 		fleche.rotation.y += delta * 2.0
 	if porteur != null:
 		_temps_libre = 0.0
+		# La cagnotte grossit tant qu'on le porte — la tension aussi.
+		_acc_cagnotte += delta * CAGNOTTE_PAR_SECONDE
+		cagnotte = mini(int(_acc_cagnotte), CAGNOTTE_MAX)
+		_label_cagnotte.text = "+%d" % cagnotte
+		_label_cagnotte.visible = cagnotte > 0
 		# Dans les bras du porteur, légèrement devant lui, soulevé.
 		var devant := porteur.pos2() + porteur.regard() * 0.55
 		position = Vector3(devant.x, 0.55, devant.y)
 		visuel.regarder(porteur.regard())
 		visuel.en_marche = false
 		return
+	_label_cagnotte.visible = false
 	position.y = 0.0
 	_temps_libre += delta
 
-	var proche := arene.chasseur_le_plus_proche(pos2())
+	var proche := arene.chasseur_le_plus_proche(pos2(), true)
 	if proche == null:
 		visuel.en_marche = false
 		return

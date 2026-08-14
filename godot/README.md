@@ -122,10 +122,14 @@ Pages sans en-têtes COOP/COEP, mobile compris.
    chasseurs et **s'enfuit** (plus lent qu'eux). L'attraper = marcher
    dessus. Le porteur suit ses chevrons-boussole vers la zone A/B/C/D de
    SA réponse et doit **canaliser 1,5 s** dans la zone pour déposer.
-3. **Dépôt réussi = +100… et la manche continue** : le dragon renaît
-   ailleurs 2 s plus tard et une **nouvelle question** tombe — tout le
-   monde re-choisit sa réponse en pleine action (format « Gem Grab »).
-   Au gong des 60 s, tenir le dragon rapporte **+50**.
+3. **Dépôt réussi = +100 + LA CAGNOTTE… et la manche continue** : porté,
+   le dragon se charge de lumière (+8 pts/s, plafond +80). Déposer vite
+   est sûr ; garder gonfle le gain… mais un vol emporte la cagnotte —
+   jackpot pour le voleur. Le dragon renaît 2 s plus tard avec une
+   **nouvelle question**. Au gong des 60 s, tenir le dragon = **+50**.
+   **Stratégies** : les **buissons** 🌿 rendent invisible aux adversaires
+   (embuscades, fuites — la boussole pointe toujours le dragon) ; rester
+   dans la zone d'un adversaire **CONTESTE** son dépôt (2× plus lent).
 4. **Mauvaise zone** — refus, dragon lâché sur place, fautif gelé 2 s,
    réponse barrée POUR LUI seulement ; la partie continue pour les autres.
 
