@@ -50,7 +50,7 @@ func _ready() -> void:
 	# sans demande explicite de Camille.
 	camera = Camera3D.new()
 	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.size = 13.5
+	camera.size = 14.5
 	add_child(camera)
 	_cible_camera = joueur.position
 	camera.position = _cible_camera + DECALAGE_CAMERA

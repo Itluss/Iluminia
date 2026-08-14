@@ -18,11 +18,31 @@ var visuel: Personnage3D
 var _temps_libre := 0.0  ## le dragon s'essouffle après 8 s de fuite
 
 
+var _balise: Node3D  ## colonne de lumière + flèche dorée : IMPOSSIBLE à rater
+
+
 func _ready() -> void:
 	visuel = Personnage3D.new()
 	visuel.genre = "dragon"
 	visuel.couleur = Color(0.45, 0.82, 0.55)
+	visuel.scale = Vector3.ONE * 1.35 # l'objet de la convoitise se voit de loin
 	add_child(visuel)
+	# Balise du dragon libre : faisceau doré + flèche qui rebondit au-dessus.
+	_balise = Node3D.new()
+	add_child(_balise)
+	var faisceau := CylinderMesh.new()
+	faisceau.top_radius = 0.55
+	faisceau.bottom_radius = 0.55
+	faisceau.height = 5.0
+	faisceau.radial_segments = 16
+	faisceau.cap_top = false
+	faisceau.cap_bottom = false
+	Materiaux.mesh(_balise, faisceau, Materiaux.verre(Identite.OR, 0.22, 1.2),
+		Vector3(0.0, 2.5, 0.0), Vector3.ONE, false)
+	var fleche := Materiaux.mesh(_balise, Materiaux.cone(0.4, 0.7),
+		Materiaux.emissif(Identite.OR, 2.2), Vector3(0.0, 2.6, 0.0), Vector3.ONE, false)
+	fleche.rotation_degrees = Vector3(180.0, 0.0, 0.0)
+	fleche.name = "Fleche"
 
 
 func pos2() -> Vector2:
@@ -38,6 +58,12 @@ func libre() -> bool:
 
 
 func _process(delta: float) -> void:
+	# La balise ne brille que quand le dragon est à prendre.
+	_balise.visible = porteur == null
+	if _balise.visible:
+		var fleche := _balise.get_node("Fleche") as Node3D
+		fleche.position.y = 2.6 + absf(sin(Time.get_ticks_msec() / 280.0)) * 0.4
+		fleche.rotation.y += delta * 2.0
 	if porteur != null:
 		_temps_libre = 0.0
 		# Dans les bras du porteur, légèrement devant lui, soulevé.

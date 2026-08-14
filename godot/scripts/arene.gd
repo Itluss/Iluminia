@@ -15,14 +15,14 @@ extends Node3D
 
 enum Etat { QUESTION, JEU, INTERLUDE, PODIUM }
 
-const RAYON_ARENE := 13.0
+const RAYON_ARENE := 15.5
 const COMPTE_QUESTION := 6.0    ## questionCountdown
 const DUREE_MANCHE := 45.0      ## mancheDuration
 const GEL_MAUVAISE := 2.0       ## wrongFreezeSeconds
-const DUREE_MATCH := 180.0      ## chrono global du match → podium
+const DUREE_MATCH := 240.0      ## chrono global du match → podium
 const DUREE_INTERLUDE := 3.0
 const RAYON_ZONE := 2.3
-const DISTANCE_ZONES := 9.0
+const DISTANCE_ZONES := 10.5
 const CRISTAL_PERIODE := 8.0
 const CRISTAL_MAX := 3
 const CRISTAL_ENERGIE := 20.0
@@ -378,6 +378,10 @@ func _faire_apparaitre_dragon() -> void:
 	dragon.position = Vector3(meilleure.x, 0.0, meilleure.y)
 	add_child(dragon)
 	fx.eclat_etoiles(meilleure, Color(0.55, 0.9, 0.6), 14)
+	fx.anneau(meilleure, 3.0, Identite.OR)
+	fx.texte_flottant(meilleure, "DRAGON !", Identite.OR)
+	if hud != null:
+		hud.toast("LE DRAGON EST APPARU — suis la lumière dorée !")
 
 
 func _verifier_zones() -> void:

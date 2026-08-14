@@ -56,10 +56,12 @@ héros** et niveau/XP de compte (gagnés au podium : 20 + score/2, étoiles
 selon le rang), tutoriel vu, son. Un **tutoriel guidé** (3 consignes
 contextuelles) accompagne la toute première manche.
 
-Confort et fun : résolution de référence 1024×576 (interface ~25 % plus
-grande), caméra rapprochée (taille 13,5), arène resserrée (rayon 13 u),
-le dragon s'essouffle après 8 s de fuite, traînée dorée derrière le
-porteur, célébration à la capture.
+Confort et fun : résolution de référence 864×486 (interface nettement
+plus grande), caméra rapprochée (14,5), arène équilibrée (rayon 15,5 u),
+match de 4 minutes, bots ralentis avec temps de réaction, le dragon
+s'essouffle après 8 s de fuite et porte une BALISE dorée (faisceau +
+flèche rebondissante) quand il est libre, traînée dorée derrière le
+porteur, célébration à la capture, annonce à chaque apparition.
 Crochet de dev : `ILUMINIA_ECRAN=personnages|pouvoirs|cadeaux|aide` ouvre
 un sous-écran directement (captures automatisées).
 

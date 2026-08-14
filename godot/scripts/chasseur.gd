@@ -9,7 +9,7 @@ extends Node3D
 ## joueurs distants en remplaçant leurs entrées (voir reseau.gd).
 
 const VITESSE_JOUEUR := 4.4
-const VITESSE_BOT := 3.2
+const VITESSE_BOT := 3.0
 const ENERGIE_MAX := 100.0
 
 # Onde de choc : contrôle + vol du dragon, pas une exécution (10 ≪ 34).
@@ -58,6 +58,7 @@ var ko_restant := 0.0
 
 var visuel: Personnage3D
 var _traine_delai := 0.0  ## cadence de la traînée dorée du porteur
+var _pause_ia := 0.0      ## temps de réaction des bots (laisse jouer l'humain)
 
 
 ## À appeler AVANT l'ajout à l'arbre.
@@ -205,6 +206,9 @@ func _entrees_pouvoirs() -> void:
 
 
 func _ia_direction() -> Vector2:
+	# Les bots « réfléchissent » par instants : l'humain a des fenêtres pour agir.
+	if _pause_ia > 0.0:
+		return Vector2.ZERO
 	var dr := arene.dragon
 	if dr == null:
 		return Vector2.ZERO
@@ -230,6 +234,10 @@ func _ia_direction() -> Vector2:
 
 ## Réflexes des bots : mêmes pouvoirs et cooldowns que le joueur.
 func _ia_pouvoirs(delta: float) -> void:
+	_pause_ia = maxf(_pause_ia - delta, 0.0)
+	# De temps en temps, un bot hésite (~1 pause de 0,7 s toutes les 5 s).
+	if _pause_ia <= 0.0 and randf() < 0.2 * delta:
+		_pause_ia = 0.7
 	var dr := arene.dragon
 	if dr == null:
 		return

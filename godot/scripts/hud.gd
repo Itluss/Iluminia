@@ -130,11 +130,11 @@ func _calculer_boutons() -> Array:
 	if joueur == null:
 		return []
 	return [
-		{"centre": Vector2(t.x - 356.0, t.y - 70.0), "cote": 88.0, "action": "onde", "touche": "E",
+		{"centre": Vector2(t.x - 338.0, t.y - 64.0), "cote": 84.0, "action": "onde", "touche": "E",
 			"cd": joueur.cd_onde, "cd_max": Chasseur.CD_ONDE, "teinte": Identite.ORANGE},
-		{"centre": Vector2(t.x - 250.0, t.y - 116.0), "cote": 88.0, "action": "dash", "touche": "R",
+		{"centre": Vector2(t.x - 238.0, t.y - 106.0), "cote": 84.0, "action": "dash", "touche": "R",
 			"cd": joueur.cd_dash, "cd_max": Chasseur.CD_DASH, "teinte": Identite.BLEU},
-		{"centre": Vector2(t.x - 140.0, t.y - 190.0), "cote": 96.0, "action": "bouclier", "touche": "␣",
+		{"centre": Vector2(t.x - 132.0, t.y - 168.0), "cote": 92.0, "action": "bouclier", "touche": "␣",
 			"cd": joueur.cd_bouclier, "cd_max": Chasseur.CD_BOUCLIER, "teinte": Identite.VIOLET},
 	]
 
@@ -294,15 +294,15 @@ func _dessiner_question_grande(c: Control) -> void:
 
 ## Panneau latéral compact pendant le jeu (choix modifiable, refus barrés).
 func _dessiner_panneau_lateral(c: Control) -> void:
-	var largeur := 296.0
-	var rect := Rect2(c.size.x - largeur - 12.0, 74.0, largeur, 232.0)
+	var largeur := 280.0
+	var rect := Rect2(c.size.x - largeur - 10.0, 64.0, largeur, 206.0)
 	UI.panneau(c, rect)
-	UI.texte(c, rect.position + Vector2(16.0, 30.0), str(arene.question.enonce), 16, Identite.TEXTE)
-	_dessiner_reponses(c, Rect2(rect.position + Vector2(14.0, 44.0), Vector2(largeur - 28.0, 176.0)), 40.0, 17)
+	UI.texte(c, rect.position + Vector2(14.0, 28.0), str(arene.question.enonce), 15, Identite.TEXTE)
+	_dessiner_reponses(c, Rect2(rect.position + Vector2(12.0, 40.0), Vector2(largeur - 24.0, 158.0)), 36.0, 16)
 	if joueur.choix == -1:
 		var pulse := 0.6 + 0.4 * absf(sin(Time.get_ticks_msec() / 250.0))
 		c.draw_rect(rect.grow(4.0), Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, pulse * 0.6), false, 3.0)
-		UI.texte(c, Vector2(rect.position.x + largeur / 2.0, rect.end.y + 26.0), "Choisis ta réponse !", 17,
+		UI.texte(c, Vector2(rect.position.x + largeur / 2.0, rect.position.y - 12.0), "Choisis ta réponse !", 17,
 			Color(Identite.OR.r, Identite.OR.g, Identite.OR.b, pulse), true)
 
 
@@ -395,9 +395,9 @@ func _indicateur(c: Control, pos_monde: Vector2, teinte: Color, lettre: String) 
 	var ecran := camera.unproject_position(Vector3(pos_monde.x, 0.8, pos_monde.y))
 	if ecran.x > marge and ecran.x < c.size.x - marge and ecran.y > marge and ecran.y < c.size.y - marge:
 		return
-	var borne := Vector2(clampf(ecran.x, marge, c.size.x - marge), clampf(ecran.y, 136.0, c.size.y - marge))
-	if borne.x > c.size.x - 334.0 and borne.y < 336.0:
-		borne.y = 336.0
+	# Marge droite élargie : la colonne de droite est occupée (panneau de
+	# question en haut, boutons de pouvoirs en bas).
+	var borne := Vector2(clampf(ecran.x, marge, c.size.x - 330.0), clampf(ecran.y, 136.0, c.size.y - marge))
 	var dir := (ecran - c.size / 2.0).normalized()
 	c.draw_colored_polygon(PackedVector2Array([
 		borne + dir * 16.0, borne + dir.rotated(2.5) * 9.0, borne + dir.rotated(-2.5) * 9.0,
@@ -423,8 +423,8 @@ func _dessiner_joystick(c: Control) -> void:
 
 ## Podium : bannière VICTOIRE, classement à pastilles de rang, REJOUER doré.
 func _dessiner_podium(c: Control) -> void:
-	var largeur := minf(c.size.x - 80.0, 540.0)
-	var rect := Rect2((c.size.x - largeur) / 2.0, c.size.y * 0.17, largeur, 320.0)
+	var largeur := minf(c.size.x - 80.0, 560.0)
+	var rect := Rect2((c.size.x - largeur) / 2.0, c.size.y * 0.12, largeur, 296.0)
 	UI.panneau(c, rect)
 	var classement: Array = arene.chasseurs.duplicate()
 	classement.sort_custom(func(a, b): return a.score > b.score)
@@ -434,8 +434,8 @@ func _dessiner_podium(c: Control) -> void:
 	var couleurs_rang: Array = [Identite.OR, Color(0.75, 0.78, 0.85), Color(0.8, 0.55, 0.35), Identite.PANNEAU_CLAIR]
 	for i in classement.size():
 		var ch: Chasseur = classement[i]
-		var y := rect.position.y + 74.0 + i * 50.0
-		var ligne := Rect2(rect.position.x + 22.0, y - 21.0, largeur - 44.0, 42.0)
+		var y := rect.position.y + 62.0 + i * 46.0
+		var ligne := Rect2(rect.position.x + 22.0, y - 20.0, largeur - 44.0, 40.0)
 		c.draw_style_box(UI.style("podium_%d" % i,
 			Color(0.29, 0.24, 0.1) if i == 0 else Identite.PANNEAU_CLAIR.darkened(0.2),
 			Identite.CONTOUR, Identite.RAYON_SM, Identite.BORD, 2), ligne)
@@ -453,9 +453,9 @@ func _dessiner_podium(c: Control) -> void:
 			texte_gains += "    %s passe NIVEAU %d !" % [str(gains.heros), Profil.niveau_heros(str(gains.heros))]
 		UI.texte(c, Vector2(c.size.x / 2.0, rect.end.y - 18.0), texte_gains, 18, Identite.OR, true)
 	var pulse := 1.0 + 0.04 * sin(Time.get_ticks_msec() / 220.0)
-	var bl := 240.0 * pulse
+	var bl := 260.0 * pulse
 	var bh := 62.0 * pulse
-	var bouton := Rect2(Vector2(c.size.x / 2.0 - bl / 2.0, rect.end.y + 24.0 - (bh - 62.0) / 2.0), Vector2(bl, bh))
+	var bouton := Rect2(Vector2(c.size.x / 2.0 - bl / 2.0, rect.end.y + 16.0 - (bh - 62.0) / 2.0), Vector2(bl, bh))
 	UI.bouton(c, bouton, Identite.OR, "rejouer", false, Identite.RAYON_LG)
 	UI.texte(c, Vector2(c.size.x / 2.0, bouton.position.y + bouton.size.y / 2.0 + 9.0), "REJOUER !", 26, Identite.TEXTE, true, 7)
 
