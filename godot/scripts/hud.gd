@@ -115,7 +115,7 @@ func _texte_guide() -> String:
 		1:
 			return "Pose ton pouce à GAUCHE et bouge le joystick !"
 		2:
-			return "Attrape le bébé dragon — suis la pastille verte !"
+			return "Attrape le bébé dragon — suis la flèche DORÉE !"
 		3:
 			if joueur.porte_dragon():
 				return "Bravo ! Suis les chevrons vers la zone de TA réponse !"
@@ -264,7 +264,7 @@ func _dessiner(c: Control) -> void:
 			Color(Identite.CREME.r, Identite.CREME.g, Identite.CREME.b, alpha), true)
 
 
-## Pilules du haut : chrono de MANCHE au centre, chrono du MATCH + score.
+## Pilules du haut : chrono de MANCHE au centre, n° de manche + score.
 func _dessiner_pilules(c: Control) -> void:
 	var centre_x := c.size.x / 2.0
 	var texte_manche := ""
@@ -279,9 +279,8 @@ func _dessiner_pilules(c: Control) -> void:
 		c.draw_circle(Vector2(centre_x - 64.0, 32.0), 10.0, Identite.VERT)
 		UI.texte(c, Vector2(centre_x + 12.0, 41.0), texte_manche, 21, Identite.TEXTE, true)
 	UI.panneau(c, Rect2(10.0, 10.0, 218.0, 72.0))
-	var m := int(maxf(arene.temps_match, 0.0)) / 60
-	var s := int(maxf(arene.temps_match, 0.0)) % 60
-	UI.texte(c, Vector2(24.0, 38.0), "Match %d:%02d" % [m, s], 17, Identite.TEXTE_ATTENUE)
+	UI.texte(c, Vector2(24.0, 38.0), "Manche %d / %d" % [arene.manche_courante, Arene.NB_MANCHES],
+		17, Identite.TEXTE_ATTENUE)
 	UI.texte(c, Vector2(24.0, 66.0), "%s — %d pts" % [joueur.nom, joueur.score], 19, Identite.OR)
 
 

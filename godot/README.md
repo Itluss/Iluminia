@@ -113,21 +113,24 @@ Tout est 100 % procédural (aucun asset externe, sons synthétisés) : le jeu
 entier pèse ~34 Mo. Threads désactivés à l'export → fonctionne sur GitHub
 Pages sans en-têtes COOP/COEP, mobile compris.
 
-## La boucle (V5 — la question se traite AVANT l'action)
+## La boucle (V6 — la question se traite AVANT l'action)
 
 1. **QUESTION (6 s)** — question de maths CM1 en grand, tout le monde est
    figé, chacun choisit sa réponse (modifiable jusqu'au départ, bots
    compris — précision 0,5).
-2. **JEU (45 s)** — le dragon apparaît loin des chasseurs et **s'enfuit**
-   (plus lent qu'eux). L'attraper = marcher dessus. Le porteur suit ses
-   chevrons-boussole vers la zone A/B/C/D de SA réponse.
-3. **Fins de manche** — bonne zone déposée : **+100**, fin immédiate.
-   Chrono à 0 : le porteur actuel gagne (+100) — garder le dragon reste un
-   objectif quand on doute. Dragon au sol : personne ne marque.
+2. **JEU (manche de 60 s, CONTINUE)** — le dragon apparaît loin des
+   chasseurs et **s'enfuit** (plus lent qu'eux). L'attraper = marcher
+   dessus. Le porteur suit ses chevrons-boussole vers la zone A/B/C/D de
+   SA réponse et doit **canaliser 1,5 s** dans la zone pour déposer.
+3. **Dépôt réussi = +100… et la manche continue** : le dragon renaît
+   ailleurs 2 s plus tard et une **nouvelle question** tombe — tout le
+   monde re-choisit sa réponse en pleine action (format « Gem Grab »).
+   Au gong des 60 s, tenir le dragon rapporte **+50**.
 4. **Mauvaise zone** — refus, dragon lâché sur place, fautif gelé 2 s,
    réponse barrée POUR LUI seulement ; la partie continue pour les autres.
 
-Match de 3 minutes, podium, on rejoue d'un toucher.
+Match en **3 manches de 60 s**, podium et récompenses, on rejoue d'un
+toucher.
 
 ## Voler le dragon
 

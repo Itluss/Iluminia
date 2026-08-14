@@ -76,9 +76,13 @@ de couleurs débloquées par le **coffre quotidien**, méta persistée par
 l'autoload `godot/scripts/profil.gd` (user://, IndexedDB sur le web),
 récompenses de compte au podium. Navigation testée en vrai navigateur
 (Playwright : PERSONNAGES → Zep → JOUER → partie avec Zep).
-Boucle V5 fidèle au spike (QUESTION 6 s figée → JEU 45 s, vol du dragon à
-l'Onde de choc, énergie/K.O., cristaux, gel 2 s sur mauvaise zone, refus
-individuels barrés, podium à 3 min) ; valeurs reprises de
+Boucle V6 (2026-08-14, « la partie doit durer ~1 min ») : QUESTION 6 s
+figée → JEU en **manche fixe de 60 s** — un dépôt réussi ne termine PLUS
+la manche (+100, dragon qui renaît 2 s après, nouvelle question en pleine
+action, format « Gem Grab ») ; +50 au porteur au gong ; match en
+3 manches → podium. Vol du dragon à l'Onde de choc, énergie/K.O.,
+cristaux, gel 2 s sur mauvaise zone, refus individuels barrés ; valeurs
+reprises de
 `docs/mecaniques-arene.md` avec 1 u = 60 px ; bots Zep/Nova/Ficelle
 (précision 0,5), questions maths CM1 générées (`godot/scripts/questions.gd`).
 Voir `godot/README.md` (architecture, contrôles, sprites, multi v2).

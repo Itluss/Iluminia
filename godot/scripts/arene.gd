@@ -2,10 +2,11 @@ class_name Arene
 extends Node3D
 ## L'arène 3D « Chasse au dragon » — le cœur d'Iluminia.
 ##
-## Boucle V5 (spec Camille 2026-08-11) : la question se traite AVANT
-## l'action, jamais pendant. QUESTION (6 s, tout le monde figé, chacun
-## choisit) → JEU (45 s : dragon fuyard, vol entre chasseurs, dépôt dans la
-## zone de SA réponse) → INTERLUDE → … → PODIUM à la fin du match.
+## Boucle V6 : la question se traite AVANT l'action, jamais pendant.
+## QUESTION (6 s, tout le monde figé, chacun choisit) → JEU (manche de
+## 60 s CONTINUE : dragon fuyard, vol entre chasseurs, dépôt dans la zone
+## de SA réponse ; un dépôt réussi rapporte +100, le dragon renaît et une
+## nouvelle question tombe) → INTERLUDE → … → PODIUM après 3 manches.
 ## Mauvaise zone : refus, dragon lâché, fautif gelé 2 s, réponse barrée
 ## POUR LUI seulement — la partie ne s'arrête jamais pour les autres.
 ##
@@ -17,9 +18,13 @@ enum Etat { QUESTION, JEU, INTERLUDE, PODIUM }
 
 const RAYON_ARENE := 15.5
 const COMPTE_QUESTION := 6.0    ## questionCountdown
-const DUREE_MANCHE := 45.0      ## mancheDuration
+## LA MANCHE DURE 60 SECONDES, POINT. Un dépôt réussi ne termine plus la
+## manche : il rapporte +100, le dragon renaît ailleurs et une NOUVELLE
+## question tombe — l'action est continue (format « Gem Grab »).
+const DUREE_MANCHE := 60.0
+const NB_MANCHES := 3           ## un match = 3 manches → podium
 const GEL_MAUVAISE := 2.0       ## wrongFreezeSeconds
-const DUREE_MATCH := 240.0      ## chrono global du match → podium
+const DELAI_RENAISSANCE := 2.0  ## le dragon renaît 2 s après un dépôt
 const DUREE_INTERLUDE := 3.0
 const RAYON_ZONE := 2.3
 const DISTANCE_ZONES := 10.5
@@ -43,7 +48,8 @@ var cristaux: Array = []
 var question := {"enonce": "", "reponses": ["", "", "", ""], "bonne": 0}
 var etat := Etat.QUESTION
 var temps_etat := COMPTE_QUESTION
-var temps_match := DUREE_MATCH
+var manche_courante := 1
+var delai_dragon := 0.0         ## renaissance du dragon après un dépôt
 var cristal_temps := CRISTAL_PERIODE
 var message_interlude := ""
 var recompense_podium := {}     ## gains de compte affichés au podium
@@ -79,17 +85,22 @@ func _process(delta: float) -> void:
 				_lancer_jeu()
 		Etat.JEU:
 			temps_etat -= delta
-			temps_match -= delta
 			_gerer_cristaux(delta)
 			_verifier_zones()
+			# Renaissance du dragon après un dépôt réussi.
+			if delai_dragon > 0.0:
+				delai_dragon -= delta
+				if delai_dragon <= 0.0:
+					_faire_apparaitre_dragon()
 			if temps_etat <= 0.0:
 				_fin_manche_chrono()
 		Etat.INTERLUDE:
 			temps_etat -= delta
 			if temps_etat <= 0.0:
-				if temps_match <= 0.0:
+				if manche_courante >= NB_MANCHES:
 					_podium()
 				else:
+					manche_courante += 1
 					_nouvelle_manche()
 		Etat.PODIUM:
 			pass # redémarrage via hud → rejouer()
@@ -434,12 +445,13 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 	var bonne: int = question.bonne
 	var pos_zone: Vector2 = zones[i].pos
 	if i == bonne:
-		# +100, +15 d'énergie, fin de manche immédiate.
+		# +100, +15 d'énergie… et LA MANCHE CONTINUE : nouvelle question,
+		# le dragon renaît ailleurs dans 2 s — à qui le prochain point ?
 		c.score += 100
 		c.energie = minf(c.energie + 15.0, Chasseur.ENERGIE_MAX)
 		fx.eclat_etoiles(pos_zone, zones[i].teinte, 30)
 		fx.anneau(pos_zone, RAYON_ZONE * 2.0, zones[i].teinte)
-		fx.texte_flottant(pos_zone, "+100 !", Color(1.0, 0.95, 0.6))
+		fx.texte_flottant(pos_zone, "+100 %s !" % c.nom, Color(1.0, 0.95, 0.6))
 		Audio.jouer("victoire")
 		if c.est_joueur:
 			fx.secousse(0.4)
@@ -447,9 +459,8 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 			_quete("bonnes_reponses")
 		dragon.queue_free()
 		dragon = null
-		message_interlude = "%s dépose le dragon : +100 points !" % c.nom
-		etat = Etat.INTERLUDE
-		temps_etat = DUREE_INTERLUDE
+		delai_dragon = DELAI_RENAISSANCE
+		_nouvelle_question_en_cours()
 	else:
 		# Refus : réponse barrée pour lui, dragon lâché, fautif gelé.
 		c.testees.append(i)
@@ -466,17 +477,34 @@ func _tenter_zone(c: Chasseur, i: int) -> void:
 				hud.sur_mauvaise_reponse()
 
 
+## Nouvelle question EN PLEINE MANCHE (après chaque dépôt réussi) :
+## tout le monde re-choisit, les bots relisent un instant.
+func _nouvelle_question_en_cours() -> void:
+	canal = {}
+	question = Questions.generer()
+	for c in chasseurs:
+		c.choix = -1
+		c.testees = []
+		if not c.est_joueur:
+			c._pause_ia = randf_range(1.0, 2.0)
+			c.bot_choisir()
+	if hud != null:
+		hud.sur_nouvelle_question()
+		hud.toast("NOUVELLE QUESTION — re-choisis ta réponse !")
+
+
 func _fin_manche_chrono() -> void:
-	# Garder le dragon reste un objectif quand on doute de la réponse.
+	# Au gong, garder le dragon rapporte un bonus.
 	if dragon != null and dragon.porteur != null:
-		dragon.porteur.score += 100
-		message_interlude = "%s garde le dragon au gong : +100 !" % dragon.porteur.nom
+		dragon.porteur.score += 50
+		message_interlude = "Fin de la manche %d — %s garde le dragon : +50 !" % [manche_courante, dragon.porteur.nom]
 		Audio.jouer("victoire")
 	else:
-		message_interlude = "Temps écoulé — le dragon s'échappe, personne ne marque."
+		message_interlude = "Fin de la manche %d sur %d !" % [manche_courante, NB_MANCHES]
 	if dragon != null:
 		dragon.queue_free()
 		dragon = null
+	delai_dragon = 0.0
 	etat = Etat.INTERLUDE
 	temps_etat = DUREE_INTERLUDE
 
@@ -512,13 +540,12 @@ func _quete(type: String) -> void:
 	if hud != null and not terminees.is_empty():
 		hud.toast("QUÊTE TERMINÉE : %s — récompense au lobby !" % str(terminees[0]))
 		Audio.jouer("niveau")
-	if hud != null:
-		hud.sur_podium()
 
 
 ## Nouveau match complet (depuis le podium).
 func rejouer() -> void:
-	temps_match = DUREE_MATCH
+	manche_courante = 1
+	delai_dragon = 0.0
 	recompense_podium = {}
 	for c in chasseurs:
 		c.score = 0
