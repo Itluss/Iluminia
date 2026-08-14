@@ -171,10 +171,13 @@ func _semer_demo_pivot() -> void:
 	if not competences.is_empty():
 		return
 	var etats_demo := {
-		"calc_addition": ["maitrisee", 92.0], "calc_dizaine": ["apprentissage", 45.0],
-		"nb_lire": ["maitrisee", 88.0], "nb_comparer": ["acquise", 76.0],
-		"fr_comprendre": ["acquise", 70.0], "fr_comparer": ["apprentissage", 35.0],
-		"geo_perimetres": ["acquise", 72.0], "fr_equivalentes": ["a_consolider", 55.0],
+		"nb_lire": ["maitrisee", 94.0], "nb_comparer": ["acquise", 78.0],
+		"nb_addsous": ["acquise", 74.0], "nb_multiplications": ["apprentissage", 72.0],
+		"nb_divisions": ["apprentissage", 35.0],
+		"fr_decouvrir": ["acquise", 76.0], "fr_representer": ["acquise", 70.0],
+		"fr_comparer": ["apprentissage", 61.0],
+		"geo_figures": ["acquise", 95.0], "geo_perimetres": ["apprentissage", 48.0],
+		"geo_angles": ["apprentissage", 25.0],
 	}
 	for id in etats_demo:
 		competences[id] = {"etat": etats_demo[id][0], "score": etats_demo[id][1]}
@@ -182,6 +185,7 @@ func _semer_demo_pivot() -> void:
 	if ville.is_empty():
 		ville = [{"type": "maison", "x": 5, "y": 5, "rot": 0}]
 	pieces = maxi(pieces, 120)
+	ressources = {"bois": 32, "pierre": 185, "nourriture": 12}
 	sauver()
 
 
