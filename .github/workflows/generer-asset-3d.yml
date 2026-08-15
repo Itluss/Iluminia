@@ -20,7 +20,14 @@ on:
       prompt:
         description: "Description de l'asset (le style Illuminia est ajouté automatiquement)"
         required: false
-        default: ""
+        default: >-
+          A magical adventurers guild house for a children's learning game.
+          Cream limestone walls with chunky beveled stone blocks, a huge curved
+          bell-shaped deep royal blue tiled roof with golden trim following its
+          curve, a tall glowing cyan arched portal doorway framed in thick gold,
+          a round golden star medallion on the front gable, an asymmetric side
+          tower topped with a blue dome and a golden spire, purple banners,
+          warm lanterns at the entrance, wide stone steps
       image:
         description: "Chemin d'une image de référence DANS le dépôt (image-to-3D, plus fidèle)"
         required: false
