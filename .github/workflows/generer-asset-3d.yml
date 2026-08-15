@@ -96,18 +96,26 @@ jobs:
               print("  dimensions %.2f × %.2f × %.2f" % tuple(b[1] - b[0]))
           PY
 
-      - name: Déposer l'asset sur la branche
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -B "${{ inputs.branche }}"
-          git add godot/assets/artkit/genere/
-          git commit -m "Asset 3D généré : ${{ inputs.nom }}" || {
-            echo "::warning::Aucun changement à commiter."; exit 0; }
-          git push -u origin "${{ inputs.branche }}" --force-with-lease
-
+      # L'ARTEFACT D'ABORD : quoi qu'il arrive ensuite, le modèle est
+      # récupérable. Une génération payée ne doit jamais être perdue.
       - uses: actions/upload-artifact@v4
         with:
           name: asset-3d-${{ inputs.nom }}
           path: godot/assets/artkit/genere/
           retention-days: 14
+
+      # Dépôt sur la branche : le runner ignore l'état distant de cette
+      # branche (il vient de la créer localement), donc --force-with-lease
+      # échoue toujours. On récupère d'abord la référence distante, et un
+      # échec ici n'invalide pas la génération — l'artefact existe déjà.
+      - name: Déposer l'asset sur la branche
+        continue-on-error: true
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${{ inputs.branche }}" || true
+          git checkout -B "${{ inputs.branche }}"
+          git add godot/assets/artkit/genere/
+          git commit -m "Asset 3D généré : ${{ inputs.nom }}" || {
+            echo "::warning::Aucun changement à commiter."; exit 0; }
+          git push -u origin "${{ inputs.branche }}" --force
