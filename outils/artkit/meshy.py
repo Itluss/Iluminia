@@ -96,54 +96,77 @@ def _data_uri(chemin):
         return "data:%s;base64,%s" % (type_mime, base64.b64encode(f.read()).decode())
 
 
-def generer(nom, prompt, image=None, texturer=True, cle=None):
-    """Produit un .glb et retourne son chemin. IMAGE-to-3D si une
-    référence visuelle est fournie (fidélité à la planche), sinon
-    TEXT-to-3D."""
+def generer(nom, prompt, image=None, texturer=True, cle=None,
+            polycount=30000, modele="latest"):
+    """Produit un .glb et retourne son chemin.
+
+    IMAGE-TO-3D dès qu'une référence visuelle existe : c'est LE mode qui
+    donne un asset fidèle à la direction artistique. Le texte n'est
+    qu'un repli, et il produit des formes approximatives.
+
+    Réglages qui font la différence de qualité (leçon du premier essai) :
+      - ai_model="latest" : le modèle le plus récent, pas le défaut ;
+      - enable_pbr=True   : cartes de relief et de rugosité — sans elles
+                            les surfaces sont plates et molles ;
+      - polycount généreux : on décime APRÈS, jamais avant (un détail
+                            perdu à la génération ne revient pas) ;
+      - texture_prompt    : la matière est dirigée, pas subie.
+    """
     cle = cle or os.environ.get("MESHY_API_KEY", "")
     if not cle:
         raise SystemExit("MESHY_API_KEY absente de l'environnement.")
 
+    texture_prompt = ("hand-painted stylized game texture, cream limestone "
+                      "blocks, deep royal blue roof tiles, polished gold trim, "
+                      "glowing cyan magical glass, purple fabric banners, "
+                      "clean flat colors, crisp edges, no dirt, no wear")
+
     if image:
-        print("Image-to-3D depuis %s" % image, flush=True)
+        print("IMAGE-TO-3D depuis %s (modele %s, PBR, %d tris)"
+              % (image, modele, polycount), flush=True)
         rep = _requete("/v1/image-to-3d", "POST", {
             "image_url": _data_uri(image),
-            "enable_pbr": False,
+            "ai_model": modele,
+            "enable_pbr": True,
             "should_remesh": True,
             "should_texture": texturer,
+            "symmetry_mode": "auto",
             "topology": "triangle",
-            "target_polycount": 12000,
+            "target_polycount": polycount,
+            "texture_prompt": texture_prompt,
         }, cle)
         tache = rep["result"] if isinstance(rep.get("result"), str) else rep.get("id")
         fini = _attendre("/v1/image-to-3d/" + tache, cle, "image-3D")
     else:
         description = _decrire(prompt)
-        print("Text-to-3D (aperçu) — %d caractères" % len(description), flush=True)
-        # « realistic » est le seul style accepté par l'API : la
-        # stylisation vient donc entièrement de la description.
+        print("TEXT-TO-3D (apercu) — %d caracteres, modele %s"
+              % (len(description), modele), flush=True)
         rep = _requete("/v2/text-to-3d", "POST", {
             "mode": "preview",
             "prompt": description,
+            "ai_model": modele,
             "art_style": "realistic",
             "should_remesh": True,
+            "symmetry_mode": "auto",
             "topology": "triangle",
-            "target_polycount": 12000,
+            "target_polycount": polycount,
         }, cle)
         tache = rep["result"] if isinstance(rep.get("result"), str) else rep.get("id")
-        fini = _attendre("/v2/text-to-3d/" + tache, cle, "aperçu")
+        fini = _attendre("/v2/text-to-3d/" + tache, cle, "apercu")
         if texturer:
-            print("Text-to-3D (texturage)", flush=True)
+            print("TEXT-TO-3D (texturage PBR)", flush=True)
             rep2 = _requete("/v2/text-to-3d", "POST", {
                 "mode": "refine",
                 "preview_task_id": tache,
-                "enable_pbr": False,
+                "enable_pbr": True,
+                "texture_prompt": texture_prompt,
             }, cle)
             tache2 = rep2["result"] if isinstance(rep2.get("result"), str) else rep2.get("id")
             fini = _attendre("/v2/text-to-3d/" + tache2, cle, "texture")
 
     lien = (fini.get("model_urls") or {}).get("glb")
     if not lien:
-        raise SystemExit("Aucun .glb dans la réponse :\n"
+        raise SystemExit("Aucun .glb dans la reponse :\n"
                          + json.dumps(fini, indent=2)[:800])
     os.makedirs(SORTIE, exist_ok=True)
     chemin = os.path.join(SORTIE, nom + ".glb")
@@ -159,7 +182,10 @@ if __name__ == "__main__":
     p.add_argument("--prompt", default="")
     p.add_argument("--image", default="")
     p.add_argument("--sans-texture", action="store_true")
+    p.add_argument("--polycount", type=int, default=30000)
+    p.add_argument("--modele", default="latest")
     a = p.parse_args()
     if not a.prompt and not a.image:
         sys.exit("Fournir --prompt et/ou --image")
-    generer(a.nom, a.prompt, a.image or None, not a.sans_texture)
+    generer(a.nom, a.prompt, a.image or None, not a.sans_texture,
+            polycount=a.polycount, modele=a.modele)
