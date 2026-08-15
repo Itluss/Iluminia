@@ -23,8 +23,7 @@ var _indice_surligne := -2
 
 
 func _ready() -> void:
-	# L'UNIVERS D'ILLUMINIA : jour enchanté (bible : univers.gd).
-	Univers.installer_ambiance(self)
+	Ambiance.installer(self, Ambiance.THEME_JOUR)
 	_construire_terrain()
 	_construire_grille()
 	# CAMÉRA : orthographique 3/4 iso légère — cadrage stable et lisible
@@ -35,6 +34,14 @@ func _ready() -> void:
 	add_child(_camera)
 	_placer_camera()
 	_camera.current = true
+	# Appoint doux vers les façades (+Z/+X) : le portail et les accents
+	# restent lisibles même côté ombre — sans surexposer la scène.
+	var appoint := DirectionalLight3D.new()
+	appoint.rotation_degrees = Vector3(-28.0, 35.0, 0.0)
+	appoint.light_energy = 0.28
+	appoint.light_color = Color(1.0, 0.96, 0.9)
+	appoint.shadow_enabled = false
+	add_child(appoint)
 
 
 func _placer_camera() -> void:
@@ -160,14 +167,70 @@ func retirer_fantome() -> void:
 		_noeud_fantome = null
 
 
-## Le terrain de départ : l'ÎLE-CLAIRIÈRE sculptée de l'art kit —
-## plateau organique, strates de terre et de falaise, chemin de sable
-## qui invite, taches d'herbe. La zone constructible reste plate (y = 0)
-## et l'espace vide domine : « ma ville va grandir ici ».
+## Le terrain de départ : une PROMESSE — parcelle lisible, herbe douce à
+## nuances, bordure de terre et roche, micro-détails très rares. L'espace
+## vide domine : « je pars de peu, ma ville va grandir ».
 func _construire_terrain() -> void:
-	var ile: Node3D = (load(Univers.TERRAIN_ILE) as PackedScene).instantiate()
-	Univers.harmoniser_gltf(ile)
-	add_child(ile)
+	var demi := Cite.TAILLE_GRILLE / 2.0
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20260815
+	# Une seule nappe d'herbe (aucune couture de tuiles = aucune grille
+	# perceptible) puis de GRANDES taches organiques plus claires/foncées.
+	var sol := BoxMesh.new()
+	sol.size = Vector3(Cite.TAILLE_GRILLE, 0.3, Cite.TAILLE_GRILLE)
+	Materiaux.mesh(self, sol, Materiaux.toon(Color(0.36, 0.66, 0.37)),
+		Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
+	for i in 9:
+		var variation := rng.randf_range(-0.03, 0.035)
+		var teinte := Color(0.36 + variation, 0.66 + variation, 0.37 + variation)
+		var tache := Vector2(rng.randf_range(-demi + 1.6, demi - 1.6),
+			rng.randf_range(-demi + 1.6, demi - 1.6))
+		Materiaux.mesh(self, Materiaux.sphere(1.0), Materiaux.toon(teinte),
+			Vector3(tache.x, -0.235, tache.y),
+			Vector3(rng.randf_range(1.6, 3.2), 0.25, rng.randf_range(1.3, 2.6)), false)
+	# Bordure : couche de terre puis roche, avec pierres saillantes.
+	var terre := BoxMesh.new()
+	terre.size = Vector3(Cite.TAILLE_GRILLE + 0.4, 1.0, Cite.TAILLE_GRILLE + 0.4)
+	Materiaux.mesh(self, terre, Materiaux.toon(Color(0.48, 0.34, 0.24)),
+		Vector3(0.0, -0.8, 0.0), Vector3.ONE, false)
+	var roche := BoxMesh.new()
+	roche.size = Vector3(Cite.TAILLE_GRILLE + 0.1, 1.2, Cite.TAILLE_GRILLE + 0.1)
+	Materiaux.mesh(self, roche, Materiaux.toon(Color(0.42, 0.4, 0.44)),
+		Vector3(0.0, -1.85, 0.0), Vector3.ONE, false)
+	for i in 14:
+		var cote := i % 4
+		var le_long := rng.randf_range(-demi + 0.5, demi - 0.5)
+		var p: Vector3 = [Vector3(le_long, 0, demi + 0.18), Vector3(le_long, 0, -demi - 0.18),
+			Vector3(demi + 0.18, 0, le_long), Vector3(-demi - 0.18, 0, le_long)][cote]
+		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.16, 0.3)),
+			Materiaux.toon(Color(0.5, 0.47, 0.5)),
+			p + Vector3(0.0, rng.randf_range(-1.4, -0.4), 0.0), Vector3(1.0, 0.8, 1.0), false)
+	# Micro-détails du sol (non interactifs, très discrets).
+	for i in 7:
+		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
+		Materiaux.mesh(self, Materiaux.sphere(0.045),
+			Materiaux.toon([Color(0.95, 0.75, 0.3), Color(0.9, 0.5, 0.7), Color(0.95, 0.95, 0.9)][i % 3]),
+			Vector3(p.x, 0.05, p.y), Vector3.ONE, false)
+	for i in 4:
+		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
+		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.1, 0.18)),
+			Materiaux.toon(Color(0.55, 0.53, 0.56)), Vector3(p.x, 0.04, p.y), Vector3(1.0, 0.6, 1.0), false)
+	# Amorce de chemin devant la maison (3 dalles).
+	for i in 3:
+		var dalle := BoxMesh.new()
+		dalle.size = Vector3(0.5, 0.05, 0.42)
+		Materiaux.mesh(self, dalle, Materiaux.toon(Color(0.72, 0.68, 0.6)),
+			Vector3(1.0 - demi + 4.4 + i * 0.6, 0.03, 1.0 - demi + 7.6), Vector3.ONE, false)
+	# Nuages doux au loin (le beau ciel de la maquette).
+	for i in 5:
+		var nuage := Node3D.new()
+		var ang := TAU * i / 5.0 + 0.5
+		nuage.position = Vector3(cos(ang) * 18.0, rng.randf_range(4.0, 8.0), sin(ang) * 18.0)
+		add_child(nuage)
+		for b in 3:
+			Materiaux.mesh(nuage, Materiaux.sphere(rng.randf_range(0.9, 1.5)),
+				Materiaux.toon(Color(0.98, 0.99, 1.0)),
+				Vector3(b * 1.2 - 1.2, rng.randf_range(-0.2, 0.2), 0.0), Vector3(1.0, 0.6, 0.85), false)
 
 
 ## Grille de construction — INVISIBLE en mode normal.
