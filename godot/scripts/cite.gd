@@ -105,6 +105,47 @@ const ENVIRONNEMENT := {
 }
 
 
+## LES OBJECTIFS DE LA VILLE (CityGoal) — la ville PROPOSE, l'enfant
+## choisit. Structure générique et extensible : catégories BUILD /
+## UPGRADE / POPULATION / FOOD / RESOURCE / KNOWLEDGE / DISCOVERY ;
+## le coût vient TOUJOURS du catalogue (jamais codé dans l'interface).
+## Un seul objectif de démonstration pour l'instant — le vrai moteur
+## d'objectifs viendra plus tard.
+const OBJECTIFS := [
+	{"id": "construire_potager", "categorie": "BUILD", "batiment": "potager",
+		"accroche": "Ta ville a besoin de nourriture",
+		"titre": "Construire un potager",
+		"description": "De nouveaux habitants arriveront bientôt."},
+]
+
+
+## Statut d'un objectif : COMPLETED (fait), BLOCKED (palier de
+## connaissance insuffisant), READY (constructible maintenant),
+## AVAILABLE (débloqué mais pièces insuffisantes).
+static func statut_objectif(objectif: Dictionary, xp: int, or_joueur: int,
+		ville_posee: Array) -> String:
+	var type := str(objectif.get("batiment", ""))
+	for b in ville_posee:
+		if str(b.type) == type:
+			return "COMPLETED"
+	var fiche: Dictionary = BATIMENTS.get(type, {})
+	if palier(xp) < int(fiche.get("palier", 0)):
+		return "BLOCKED"
+	return "READY" if or_joueur >= int(fiche.get("or", 0)) else "AVAILABLE"
+
+
+## L'objectif courant de la ville (le premier non accompli), avec son
+## statut — vide si tout est accompli.
+static func objectif_courant(xp: int, or_joueur: int, ville_posee: Array) -> Dictionary:
+	for objectif in OBJECTIFS:
+		var statut := statut_objectif(objectif, xp, or_joueur, ville_posee)
+		if statut != "COMPLETED":
+			var copie: Dictionary = (objectif as Dictionary).duplicate()
+			copie.statut = statut
+			return copie
+	return {}
+
+
 ## Palier atteint pour une quantité d'XP de connaissance.
 static func palier(xp: int) -> int:
 	var p := 0

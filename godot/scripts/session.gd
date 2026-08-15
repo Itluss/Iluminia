@@ -48,6 +48,12 @@ var session := {
 }
 var _bilan_applique := false             ## idempotence du bonus de session
 
+## LearningIntent (transitoire) : d'où vient la session et où revenir.
+## Vide = lancée depuis l'Arbre (comportement historique conservé) ;
+## {"source": "ville", "raison": "gagner_pieces", "retour": "ville",
+##  "objectif": "construire_potager"} = lancée par un besoin de la ville.
+var intention := {}
+
 var _chrono := 0.0               ## temps passé dans l'étape courante
 var _fige := false               ## crochet de capture : gèle l'avancement
 var _debut := 0.0                ## fondu d'entrée (transition courte)
@@ -74,6 +80,15 @@ func _ready() -> void:
 	surface.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	couche.add_child(surface)
 	_debut = Time.get_ticks_msec() / 1000.0
+
+	# Le moteur d'apprentissage est réutilisable depuis plusieurs
+	# contextes : l'intention (transitoire) dit d'où l'on vient.
+	var brut := OS.get_environment("ILUMINIA_INTENTION")
+	if brut != "":
+		OS.set_environment("ILUMINIA_INTENTION", "")
+		var parts := brut.split(":")
+		intention = {"source": parts[0], "raison": parts[1] if parts.size() > 1 else "",
+			"retour": parts[0], "objectif": parts[2] if parts.size() > 2 else ""}
 
 	if OS.get_environment("ILUMINIA_CLASSE") != "":
 		Profil.classe = OS.get_environment("ILUMINIA_CLASSE")
@@ -304,13 +319,16 @@ func _appliquer_maitrise() -> void:
 	Profil.fixer_etat_competence(id, etat, score)
 
 
-## Sortie de session (bilan ou départ anticipé).
+## Sortie de session (bilan ou départ anticipé). Une session lancée
+## DEPUIS LA VILLE ramène à la ville — jamais à l'arbre par défaut.
 func _terminer(destination: String) -> void:
 	if not _bilan_applique:
 		# Départ anticipé : la maîtrise travaillée est conservée, sans
 		# bonus de session (l'effort complet récompense l'effort complet).
 		_bilan_applique = true
 		_appliquer_maitrise()
+	if destination == "arbre" and str(intention.get("retour", "")) == "ville":
+		destination = "ville"
 	match destination:
 		"ville":
 			get_tree().change_scene_to_file.call_deferred("res://scenes/ville.tscn")
@@ -557,10 +575,12 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 				UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "ALLER À MA VILLE", 12,
 					Identite.TEXTE, true, 2)
 				_actions.append({"rect": cta, "action": "fin:ville"})
-		# Retour à l'arbre, toujours disponible.
+		# Retour vers l'origine : la ville si la session vient d'elle.
+		var vers_ville: bool = str(session_noeud.intention.get("retour", "")) == "ville"
 		var retour := Rect2(cx - 205.0 + 14.0, panneau.end.y - 52.0, 150.0, 42.0)
-		UI.bouton(self, retour, Identite.BLEU, "bilan_arbre", false, Identite.RAYON_MD)
-		UI.texte(self, retour.get_center() + Vector2(0.0, 5.0), "RETOUR À L'ARBRE", 10,
+		UI.bouton(self, retour, Identite.BLEU, "bilan_retour", false, Identite.RAYON_MD)
+		UI.texte(self, retour.get_center() + Vector2(0.0, 5.0),
+			"RETOUR À MA VILLE" if vers_ville else "RETOUR À L'ARBRE", 10,
 			Identite.TEXTE, true, 2)
 		_actions.append({"rect": retour, "action": "fin:arbre"})
 

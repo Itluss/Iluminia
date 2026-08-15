@@ -30,6 +30,11 @@ var _t := 0.0
 
 
 func _ready() -> void:
+	# LA VILLE EST LA HOME. Seul le tout premier lancement passe par le
+	# choix de la classe (sur l'écran Apprendre), puis revient ici.
+	if Profil.classe == "" and OS.get_environment("ILUMINIA_CLASSE") == "":
+		get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
+		return
 	Ambiance.installer(self, Ambiance.THEME_JOUR)
 	_construire_terrain()
 	_construire_grille()
@@ -394,6 +399,8 @@ func _case_sous(pos_ecran: Vector2) -> Vector2i:
 
 
 func _process(delta: float) -> void:
+	if surface == null:
+		return   # redirection du premier lancement en cours
 	_t += delta
 	surface.queue_redraw()
 
@@ -435,9 +442,23 @@ func _input(event: InputEvent) -> void:
 func _executer(action: String) -> void:
 	var morceaux := action.split(":")
 	match morceaux[0]:
-		"retour":
+		"retour", "apprendre":
+			# APPRENDRE : l'arbre des connaissances est désormais une
+			# section — la ville reste la Home.
 			Audio.jouer("clic")
+			OS.set_environment("ILUMINIA_ECRAN", "")
 			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
+		"apprendre_gagner":
+			# LearningIntent : la ville envoie l'enfant apprendre POUR un
+			# besoin précis, et la session le ramènera ICI.
+			Audio.jouer("depart")
+			var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
+			OS.set_environment("ILUMINIA_INTENTION",
+				"ville:gagner_pieces:%s" % str(objectif.get("id", "")))
+			var reco := Savoir.recommandation()
+			if reco != "":
+				OS.set_environment("ILUMINIA_COMPETENCE", reco)
+			get_tree().change_scene_to_file.call_deferred("res://scenes/session.tscn")
 		"collection", "progression":
 			Audio.jouer("clic")
 			OS.set_environment("ILUMINIA_ECRAN", morceaux[0])
@@ -539,6 +560,7 @@ class SurfaceVille extends Control:
 		elif ville.selection >= 0:
 			_ui_selection()
 		else:
+			_panneau_objectif()
 			_pied()
 		if _toast_temps > 0.0:
 			UI.banniere(self, Vector2(size.x / 2.0, size.y - 104.0), 480.0, _toast, 15)
@@ -727,7 +749,7 @@ class SurfaceVille extends Control:
 						"%d / %d" % [Profil.pieces, int(fiche["or"])], 10, Identite.OR, true, 2)
 					UI.texte(self, bouton.get_center() + Vector2(0.0, 11.0), "GAGNER DES PIÈCES", 7,
 						Identite.TEXTE_ATTENUE, true, 2)
-					_actions.append({"rect": bouton, "action": "retour"})
+					_actions.append({"rect": bouton, "action": "apprendre_gagner"})
 			y += pas
 		UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 12.0),
 			"VOIR LES BÂTIMENTS VERROUILLÉS", 9, Identite.TEXTE_ATTENUE, true, 3)
@@ -790,6 +812,48 @@ class SurfaceVille extends Control:
 
 	# --------------------------------------------------------- pied
 
+	## BESOIN DE LA VILLE (CityGoalPanel) : la ville propose un objectif ;
+	## s'il manque des pièces, le CTA envoie APPRENDRE — jamais un simple
+	## « pas assez de pièces ». Coût lu dans le catalogue, jamais ici.
+	func _panneau_objectif() -> void:
+		var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
+		if objectif.is_empty():
+			return
+		var rect := Rect2(8.0, size.y - 196.0, 264.0, 132.0)
+		UI.rect_degrade(self, rect.grow(2.0), Identite.RAYON_MD, Identite.CONTOUR, Identite.CONTOUR)
+		UI.rect_degrade(self, rect, Identite.RAYON_MD, Color("142a52"), Color("0d1a3a"))
+		UI.contour_arrondi(self, rect, Identite.RAYON_MD, Color(Identite.CYAN.r, Identite.CYAN.g,
+			Identite.CYAN.b, 0.55), 1.5)
+		var x := rect.position.x + 12.0
+		UI.texte(self, Vector2(x, rect.position.y + 20.0), "BESOIN DE LA VILLE", 10, Identite.CYAN, false, 3)
+		var type := str(objectif.get("batiment", ""))
+		_mini_batiment_type(rect.position + Vector2(26.0, 44.0), 13.0, type)
+		UI.texte(self, Vector2(x + 34.0, rect.position.y + 42.0), str(objectif.titre), 12, Identite.TEXTE)
+		UI.texte(self, Vector2(x, rect.position.y + 62.0), str(objectif.description).left(44), 9,
+			Identite.TEXTE_ATTENUE)
+		var cout := int(Cite.BATIMENTS.get(type, {}).get("or", 0))
+		if not UI.image(self, "res-coin", Rect2(rect.position + Vector2(12.0, 72.0), Vector2(14.0, 14.0))):
+			draw_circle(rect.position + Vector2(19.0, 79.0), 6.0, Identite.OR)
+		UI.texte(self, Vector2(x + 20.0, rect.position.y + 84.0), "%d pièces" % cout, 11, Identite.OR)
+		var cta := Rect2(x, rect.position.y + 94.0, rect.size.x - 24.0, 30.0)
+		match str(objectif.statut):
+			"READY":
+				UI.bouton(self, cta, Identite.VERT, "vo_construire", false, Identite.RAYON_SM)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), "CONSTRUIRE", 11, Identite.TEXTE, true, 3)
+				_actions.append({"rect": cta, "action": "construire:%s" % type})
+			"AVAILABLE":
+				UI.texte(self, Vector2(x + 100.0, rect.position.y + 84.0),
+					"%d / %d" % [Profil.pieces, cout], 10, Identite.TEXTE_ATTENUE)
+				UI.bouton(self, cta, Identite.ORANGE, "vo_gagner", false, Identite.RAYON_SM)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), "GAGNER DES PIÈCES", 11,
+					Identite.TEXTE, true, 3)
+				_actions.append({"rect": cta, "action": "apprendre_gagner"})
+			"BLOCKED":
+				UI.bouton(self, cta, Identite.VIOLET, "vo_debloquer", false, Identite.RAYON_SM)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), "APPRENDRE POUR DÉBLOQUER", 10,
+					Identite.TEXTE, true, 2)
+				_actions.append({"rect": cta, "action": "apprendre"})
+
 	func _pied() -> void:
 		var y := size.y - 56.0
 		# Hibou : conseillé pour toi (secondaire).
@@ -803,21 +867,21 @@ class SurfaceVille extends Control:
 			if str(pose.type) == "potager":
 				conseil_txt = "Continue d'apprendre pour l'Atelier !"
 		UI.texte(self, conseil.position + Vector2(50.0, 36.0), conseil_txt, 10, Identite.TEXTE)
-		# Message produit compact.
-		UI.texte(self, Vector2(316.0, y + 20.0), "APPRENDRE POUR CONSTRUIRE", 10, Identite.OR)
-		UI.texte(self, Vector2(316.0, y + 36.0), "La connaissance est ta force.", 9, Identite.TEXTE_ATTENUE)
-		# Navigation basse (MA VILLE actif).
-		var nav: Array = [["retour_actif", "MA VILLE"], ["collection", "COLLECTION"], ["progression", "PROGRESSION"]]
+		# NAVIGATION PRINCIPALE — la ville est la Home : MA VILLE actif,
+		# APPRENDRE mène à l'arbre des connaissances (section dédiée).
+		var nav: Array = [["ville_actif", "MA VILLE"], ["apprendre", "APPRENDRE"],
+			["collection", "COLLECTION"], ["progression", "PROGRESSION"]]
 		for i in nav.size():
 			var n: Array = nav[i]
-			var rect := Rect2(size.x - 336.0 + i * 112.0, y, 106.0, 48.0)
+			var rect := Rect2(size.x - 424.0 + i * 106.0, y, 100.0, 48.0)
 			if i == 0:
 				UI.rect_degrade(self, rect.grow(3.0), Identite.RAYON_MD + 3,
 					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.4),
 					Color(Identite.CYAN.r, Identite.CYAN.g, Identite.CYAN.b, 0.12))
 				UI.bouton(self, rect, Identite.BLEU, "vn_%d" % i, false, Identite.RAYON_MD)
 			else:
-				UI.bouton(self, rect, Identite.PANNEAU_CLAIR, "vn_%d" % i, false, Identite.RAYON_MD)
+				UI.bouton(self, rect, Identite.VIOLET if i == 1 else Identite.PANNEAU_CLAIR,
+					"vn_%d" % i, false, Identite.RAYON_MD)
 				_actions.append({"rect": rect, "action": str(n[0])})
 			UI.texte(self, rect.get_center() + Vector2(0.0, 5.0), str(n[1]), 10, Identite.TEXTE, true)
 

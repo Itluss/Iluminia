@@ -104,9 +104,11 @@ func _executer(action: String) -> void:
 			Profil.basculer_son()
 			Audio.jouer("clic")
 		"classe":
+			# Classe choisie → LA VILLE, la Home de l'enfant.
 			Audio.jouer("victoire")
 			Profil.classe = morceaux[1]
 			Profil.sauver()
+			get_tree().change_scene_to_file.call_deferred("res://scenes/ville.tscn")
 		"competence":
 			Audio.jouer("clic")
 			competence_ouverte = morceaux[1]
