@@ -33,13 +33,20 @@ SORTIE = "godot/assets/artkit/genere/"
 
 # Style maison d'Illuminia — ajouté à CHAQUE description pour que tous
 # les assets sortent du même monde (la cohérence prime sur la variété).
-STYLE = ("stylized mobile game asset, Clash of Clans / Hay Day quality, "
-         "chunky exaggerated proportions, bold readable silhouette, "
-         "clean hand-painted look, smooth beveled shapes, no photorealism, "
-         "no clutter, vibrant saturated colors, soft ambient occlusion, "
-         "cream limestone walls, deep royal blue curved roof, "
-         "golden trim accents, glowing cyan magical light, "
-         "isometric game building, single centered object, plain background")
+# Volontairement COURT : l'API plafonne la description à 800 caractères,
+# et le budget doit rester au sujet, pas au style.
+STYLE = ("stylized mobile game building, Clash of Clans quality, chunky "
+         "exaggerated proportions, bold readable silhouette, hand-painted "
+         "look, vibrant colors, no photorealism, single centered object")
+
+LIMITE_PROMPT = 800
+
+
+def _decrire(sujet):
+    """Sujet + style, borné à la limite de l'API (le style est préservé,
+    c'est le sujet qui est tronqué proprement)."""
+    marge = LIMITE_PROMPT - len(STYLE) - 2
+    return sujet.strip()[:marge].strip().rstrip(",") + ", " + STYLE
 
 
 def _requete(chemin, methode="GET", corps=None, cle=""):
@@ -110,12 +117,14 @@ def generer(nom, prompt, image=None, texturer=True, cle=None):
         tache = rep["result"] if isinstance(rep.get("result"), str) else rep.get("id")
         fini = _attendre("/v1/image-to-3d/" + tache, cle, "image-3D")
     else:
-        description = prompt + ", " + STYLE
-        print("Text-to-3D (aperçu)", flush=True)
+        description = _decrire(prompt)
+        print("Text-to-3D (aperçu) — %d caractères" % len(description), flush=True)
+        # « realistic » est le seul style accepté par l'API : la
+        # stylisation vient donc entièrement de la description.
         rep = _requete("/v2/text-to-3d", "POST", {
             "mode": "preview",
             "prompt": description,
-            "art_style": "sculpture",
+            "art_style": "realistic",
             "should_remesh": True,
             "topology": "triangle",
             "target_polycount": 12000,
