@@ -303,6 +303,35 @@ func _initialize() -> void:
 	verifier(int(Simulation.duree_a_simuler(5000, 5000).duree_s) == 0,
 		"reprise au même instant : durée 0 — une période comptée ne rejoue pas")
 
+	# --------------------------------------------- fondation 3D (Prompt 6)
+	# CONVENTIONS : 1 case = 1 unité, pivot au CENTRE de l'emprise AU SOL,
+	# origine du monde au centre du terrain, rot = quarts de tour Y.
+	verifier(AdaptateurRendu.position_monde(4, 4, 3).is_equal_approx(Vector3(-0.5, 0.0, -0.5)),
+		"pivot 3D : centre de l'emprise, au sol (y = 0)")
+	verifier(AdaptateurRendu.case_depuis_sol(Vector3(-5.5, 0.0, -5.5)) == Vector2i(0, 0)
+		and AdaptateurRendu.case_depuis_sol(Vector3(5.5, 0.0, 5.5)) == Vector2i(11, 11),
+		"sol → case : les coins de la grille 12×12 exacts")
+	var insts := AdaptateurRendu.instructions([
+		{"type": "maison", "x": 4, "y": 4, "rot": 1, "niveau": 3},
+		{"type": "potager", "x": 0, "y": 0}])
+	verifier(insts.size() == 2 and str(insts[0].type) == "maison"
+		and int(insts[0].niveau) == 3 and int(insts[0].taille) == 3
+		and absf(float(insts[0].rotation_y) - PI / 2.0) < 0.0001,
+		"instructions de rendu : type, niveau, taille, rotation fidèles")
+	verifier(int(insts[1].niveau) == 1
+		and Vector3(insts[1].position).is_equal_approx(Vector3(-5.0, 0.0, -5.0)),
+		"défauts : niveau 1, position exacte du potager en (0,0)")
+	# La fabrique répond à TOUT le catalogue et la maison est une scène
+	# indépendante (remplaçable plus tard par un vrai .glb).
+	var sans_rendu: Array = []
+	for type_b in Cite.BATIMENTS:
+		if not FabriqueBatiments.types_geres().has(type_b):
+			sans_rendu.append(type_b)
+	verifier(sans_rendu.is_empty(),
+		"fabrique : tout le catalogue a un rendu (manquants : %s)" % [sans_rendu])
+	verifier(ResourceLoader.exists(str(FabriqueBatiments.SCENES.maison)),
+		"maison des aventuriers : scène dédiée remplaçable présente")
+
 	print("ÉCHECS : %d" % echecs)
 
 

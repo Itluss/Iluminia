@@ -20,11 +20,7 @@ var fantome := {"x": 6, "y": 7, "rot": 0, "valide": true}
 var selection := -1              ## indice du bâtiment sélectionné dans Profil.ville
 var catalogue_ouvert := true
 
-var _camera: Camera3D
-var _cible_camera := Vector3.ZERO
-var _noeuds_batiments: Array = []
-var _noeud_fantome: Node3D
-var _grille: Node3D
+var vue: VueVille                ## la COUCHE DE RENDU 3D (vue_ville.gd)
 var surface: SurfaceVille
 var _t := 0.0
 var _tick_accumule := 0.0
@@ -87,18 +83,11 @@ func _ready() -> void:
 	if Profil.classe == "" and OS.get_environment("ILUMINIA_CLASSE") == "":
 		get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
 		return
-	Ambiance.installer(self, Ambiance.THEME_JOUR)
-	_construire_terrain()
-	_construire_grille()
+	# LA 3D EST UNE COUCHE DE RENDU : la vue (scène indépendante) reçoit
+	# l'état métier et l'affiche — ville.gd reste l'orchestration.
+	vue = load("res://scenes/ville3d/vue_ville.tscn").instantiate()
+	add_child(vue)
 	_reconstruire_batiments()
-
-	_camera = Camera3D.new()
-	_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	_camera.size = 13.0
-	add_child(_camera)
-	_camera.position = _cible_camera + Vector3(9.0, 11.0, 9.0)
-	_camera.look_at(_cible_camera)
-	_camera.current = true
 
 	var couche := CanvasLayer.new()
 	add_child(couche)
@@ -174,223 +163,9 @@ func _ready() -> void:
 			_executer.call_deferred("annuler")
 
 
-## Le terrain sobre et beau : herbe douce à nuances, bordure de terre et
-## roche détaillée, MICRO-détails seulement (pierres, touffes, fleurs
-## minuscules, amorce de chemin) — 85 % du terrain reste libre.
-func _construire_terrain() -> void:
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 20260815
-	# Une seule nappe d'herbe (aucune couture de tuiles = aucune grille
-	# perceptible) puis de GRANDES taches organiques plus claires/foncées.
-	var sol := BoxMesh.new()
-	sol.size = Vector3(Cite.TAILLE_GRILLE, 0.3, Cite.TAILLE_GRILLE)
-	Materiaux.mesh(self, sol, Materiaux.toon(Color(0.36, 0.66, 0.37)),
-		Vector3(0.0, -0.15, 0.0), Vector3.ONE, false)
-	for i in 9:
-		var variation := rng.randf_range(-0.03, 0.035)
-		var teinte := Color(0.36 + variation, 0.66 + variation, 0.37 + variation)
-		var tache := Vector2(rng.randf_range(-demi + 1.6, demi - 1.6),
-			rng.randf_range(-demi + 1.6, demi - 1.6))
-		Materiaux.mesh(self, Materiaux.sphere(1.0), Materiaux.toon(teinte),
-			Vector3(tache.x, -0.235, tache.y),
-			Vector3(rng.randf_range(1.6, 3.2), 0.25, rng.randf_range(1.3, 2.6)), false)
-	# Bordure : couche de terre puis roche, avec pierres saillantes.
-	var terre := BoxMesh.new()
-	terre.size = Vector3(Cite.TAILLE_GRILLE + 0.4, 1.0, Cite.TAILLE_GRILLE + 0.4)
-	Materiaux.mesh(self, terre, Materiaux.toon(Color(0.48, 0.34, 0.24)),
-		Vector3(0.0, -0.8, 0.0), Vector3.ONE, false)
-	var roche := BoxMesh.new()
-	roche.size = Vector3(Cite.TAILLE_GRILLE + 0.1, 1.2, Cite.TAILLE_GRILLE + 0.1)
-	Materiaux.mesh(self, roche, Materiaux.toon(Color(0.42, 0.4, 0.44)),
-		Vector3(0.0, -1.85, 0.0), Vector3.ONE, false)
-	for i in 14:
-		var cote := i % 4
-		var le_long := rng.randf_range(-demi + 0.5, demi - 0.5)
-		var p: Vector3 = [Vector3(le_long, 0, demi + 0.18), Vector3(le_long, 0, -demi - 0.18),
-			Vector3(demi + 0.18, 0, le_long), Vector3(-demi - 0.18, 0, le_long)][cote]
-		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.16, 0.3)),
-			Materiaux.toon(Color(0.5, 0.47, 0.5)),
-			p + Vector3(0.0, rng.randf_range(-1.4, -0.4), 0.0), Vector3(1.0, 0.8, 1.0), false)
-	# Micro-détails du sol (non interactifs, très discrets).
-	for i in 7:
-		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
-		Materiaux.mesh(self, Materiaux.sphere(0.045),
-			Materiaux.toon([Color(0.95, 0.75, 0.3), Color(0.9, 0.5, 0.7), Color(0.95, 0.95, 0.9)][i % 3]),
-			Vector3(p.x, 0.05, p.y), Vector3.ONE, false)
-	for i in 4:
-		var p := Vector2(rng.randf_range(-demi + 1.0, demi - 1.0), rng.randf_range(-demi + 1.0, demi - 1.0))
-		Materiaux.mesh(self, Materiaux.sphere(rng.randf_range(0.1, 0.18)),
-			Materiaux.toon(Color(0.55, 0.53, 0.56)), Vector3(p.x, 0.04, p.y), Vector3(1.0, 0.6, 1.0), false)
-	# Amorce de chemin devant la maison (3 dalles).
-	for i in 3:
-		var dalle := BoxMesh.new()
-		dalle.size = Vector3(0.5, 0.05, 0.42)
-		Materiaux.mesh(self, dalle, Materiaux.toon(Color(0.72, 0.68, 0.6)),
-			Vector3(1.0 - demi + 4.4 + i * 0.6, 0.03, 1.0 - demi + 7.6), Vector3.ONE, false)
-	# Nuages doux au loin (le beau ciel de la maquette).
-	for i in 5:
-		var nuage := Node3D.new()
-		var ang := TAU * i / 5.0 + 0.5
-		nuage.position = Vector3(cos(ang) * 18.0, rng.randf_range(4.0, 8.0), sin(ang) * 18.0)
-		add_child(nuage)
-		for b in 3:
-			Materiaux.mesh(nuage, Materiaux.sphere(rng.randf_range(0.9, 1.5)),
-				Materiaux.toon(Color(0.98, 0.99, 1.0)),
-				Vector3(b * 1.2 - 1.2, rng.randf_range(-0.2, 0.2), 0.0), Vector3(1.0, 0.6, 0.85), false)
-
-
-## Grille de construction — INVISIBLE en mode normal.
-func _construire_grille() -> void:
-	_grille = Node3D.new()
-	_grille.visible = false
-	add_child(_grille)
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	for i in Cite.TAILLE_GRILLE + 1:
-		for aligne in 2:
-			var ligne := BoxMesh.new()
-			ligne.size = Vector3(Cite.TAILLE_GRILLE, 0.01, 0.03) if aligne == 0 \
-				else Vector3(0.03, 0.01, Cite.TAILLE_GRILLE)
-			var pos := Vector3(0.0, 0.06, i - demi) if aligne == 0 else Vector3(i - demi, 0.06, 0.0)
-			Materiaux.mesh(_grille, ligne, Materiaux.verre(Color.WHITE, 0.16, 0.3), pos, Vector3.ONE, false)
-
-
+## L'état métier est POUSSÉ vers la vue — la 3D ne lit jamais Profil.
 func _reconstruire_batiments() -> void:
-	for n in _noeuds_batiments:
-		n.queue_free()
-	_noeuds_batiments = []
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	for b in Profil.ville:
-		var taille := int(Cite.BATIMENTS.get(str(b.type), {}).get("taille", 2))
-		var noeud := Node3D.new()
-		noeud.position = Vector3(float(b.x) + taille / 2.0 - demi, 0.0, float(b.y) + taille / 2.0 - demi)
-		noeud.rotation.y = float(b.get("rot", 0)) * PI / 2.0
-		add_child(noeud)
-		_construire_batiment(noeud, str(b.type), int(b.get("niveau", 1)))
-		_noeuds_batiments.append(noeud)
-
-
-## LA MAISON DES AVENTURIERS (house_adventurer_placeholder) : bois +
-## pierre, toit orange chaud, fenêtres arquées cyan, cheminée, lanterne,
-## bannière étoilée bleue — grande, détaillée, le point focal.
-## Les niveaux d'évolution ajoutent des volumes (même identité).
-func _construire_maison(noeud: Node3D, niveau: int) -> void:
-	# Socle de pierre.
-	var socle := BoxMesh.new()
-	socle.size = Vector3(2.7, 0.5, 2.3)
-	Materiaux.mesh(noeud, socle, Materiaux.toon(Color(0.62, 0.6, 0.64)), Vector3(0.0, 0.25, 0.0))
-	# Corps à colombages (crème + poutres bois).
-	var corps := BoxMesh.new()
-	corps.size = Vector3(2.5, 1.3, 2.1)
-	Materiaux.mesh(noeud, corps, Materiaux.toon(Color(0.96, 0.9, 0.78)), Vector3(0.0, 1.15, 0.0))
-	for cote: float in [-1.0, 1.0]:
-		var poutre := BoxMesh.new()
-		poutre.size = Vector3(0.1, 1.3, 0.08)
-		Materiaux.mesh(noeud, poutre, Materiaux.toon(Color(0.45, 0.3, 0.18)),
-			Vector3(cote * 0.9, 1.15, 1.06), Vector3.ONE, false)
-	var traverse := BoxMesh.new()
-	traverse.size = Vector3(2.5, 0.1, 0.08)
-	Materiaux.mesh(noeud, traverse, Materiaux.toon(Color(0.45, 0.3, 0.18)),
-		Vector3(0.0, 1.72, 1.06), Vector3.ONE, false)
-	# Grand toit orange chaud.
-	var toit := PrismMesh.new()
-	toit.size = Vector3(3.1, 1.2, 2.7)
-	Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.83, 0.45, 0.22)), Vector3(0.0, 2.4, 0.0))
-	# Cheminée de pierre sombre (lisible contre le toit clair).
-	Materiaux.mesh(noeud, Materiaux.cylindre(0.14, 0.8), Materiaux.toon(Color(0.4, 0.38, 0.44)),
-		Vector3(0.85, 2.9, -0.5))
-	# Porte en bois + fenêtres arquées lumineuses.
-	var porte := BoxMesh.new()
-	porte.size = Vector3(0.5, 0.8, 0.08)
-	Materiaux.mesh(noeud, porte, Materiaux.toon(Color(0.5, 0.33, 0.2)), Vector3(0.0, 0.9, 1.08))
-	for cote: float in [-1.0, 1.0]:
-		Materiaux.mesh(noeud, Materiaux.sphere(0.17), Materiaux.emissif(Identite.CYAN, 0.8),
-			Vector3(cote * 0.75, 1.35, 1.08), Vector3(1.0, 1.1, 0.3), false)
-	# Lanterne dorée près de la porte.
-	Materiaux.mesh(noeud, Materiaux.sphere(0.08), Materiaux.emissif(Identite.OR, 2.0),
-		Vector3(0.42, 1.35, 1.12), Vector3.ONE, false)
-	# Bannière bleue Illuminia à étoile.
-	Materiaux.mesh(noeud, Materiaux.cylindre(0.04, 1.6), Materiaux.toon(Color(0.4, 0.28, 0.18)),
-		Vector3(-1.15, 3.2, 0.6))
-	var drapeau := BoxMesh.new()
-	drapeau.size = Vector3(0.65, 0.42, 0.04)
-	Materiaux.mesh(noeud, drapeau, Materiaux.toon(Identite.BLEU), Vector3(-0.78, 3.7, 0.6), Vector3.ONE, false)
-	Materiaux.mesh(noeud, Materiaux.sphere(0.07), Materiaux.emissif(Identite.OR, 1.6),
-		Vector3(-0.78, 3.7, 0.64), Vector3.ONE, false)
-	# Escalier d'entrée.
-	for m in 2:
-		var marche := BoxMesh.new()
-		marche.size = Vector3(0.8, 0.12, 0.3)
-		Materiaux.mesh(noeud, marche, Materiaux.toon(Color(0.66, 0.63, 0.66)),
-			Vector3(0.0, 0.06 + m * 0.12, 1.35 - m * 0.15), Vector3.ONE, false)
-	# ÉVOLUTION : chaque niveau ajoute un volume (même identité).
-	if niveau >= 2:
-		var annexe := BoxMesh.new()
-		annexe.size = Vector3(1.0, 1.0, 1.4)
-		Materiaux.mesh(noeud, annexe, Materiaux.toon(Color(0.93, 0.87, 0.75)), Vector3(1.6, 0.9, -0.2))
-		var toit_a := PrismMesh.new()
-		toit_a.size = Vector3(1.3, 0.6, 1.7)
-		Materiaux.mesh(noeud, toit_a, Materiaux.toon(Color(0.8, 0.42, 0.2)), Vector3(1.6, 1.7, -0.2))
-	if niveau >= 3:
-		var etage := BoxMesh.new()
-		etage.size = Vector3(1.6, 0.9, 1.5)
-		Materiaux.mesh(noeud, etage, Materiaux.toon(Color(0.96, 0.9, 0.78)), Vector3(-0.3, 2.5, -0.2))
-		var toit_e := PrismMesh.new()
-		toit_e.size = Vector3(2.0, 0.8, 1.9)
-		Materiaux.mesh(noeud, toit_e, Materiaux.toon(Color(0.83, 0.45, 0.22)), Vector3(-0.3, 3.35, -0.2))
-	if niveau >= 4:
-		Materiaux.mesh(noeud, Materiaux.cylindre(0.4, 2.6), Materiaux.toon(Color(0.9, 0.86, 0.78)),
-			Vector3(1.3, 1.3, 0.9))
-		Materiaux.mesh(noeud, Materiaux.cone(0.55, 0.9), Materiaux.toon(Identite.BLEU),
-			Vector3(1.3, 3.0, 0.9))
-	if niveau >= 5:
-		for cote: float in [-1.0, 1.0]:
-			Materiaux.mesh(noeud, Materiaux.cylindre(0.35, 3.2), Materiaux.toon(Color(0.9, 0.86, 0.78)),
-				Vector3(cote * 1.5, 1.6, -0.9))
-			Materiaux.mesh(noeud, Materiaux.cone(0.5, 0.9), Materiaux.toon(Identite.VIOLET),
-				Vector3(cote * 1.5, 3.65, -0.9))
-
-
-func _construire_batiment(noeud: Node3D, type: String, niveau := 1) -> void:
-	match type:
-		"maison":
-			# Grande et fière : le point focal du terrain (le débord de
-			# toit peut dépasser l'emprise logique, l'ancrage reste au sol).
-			noeud.scale = Vector3(1.32, 1.32, 1.32)
-			_construire_maison(noeud, niveau)
-		"potager":
-			for r in 3:
-				var rangee := BoxMesh.new()
-				rangee.size = Vector3(1.6, 0.14, 0.32)
-				Materiaux.mesh(noeud, rangee, Materiaux.toon(Color(0.44, 0.3, 0.2)),
-					Vector3(0.0, 0.07, -0.55 + r * 0.55))
-				for l in 4:
-					Materiaux.mesh(noeud, Materiaux.sphere(0.1), Materiaux.toon(Identite.VERT),
-						Vector3(-0.6 + l * 0.4, 0.2, -0.55 + r * 0.55), Vector3.ONE, false)
-			var barriere := BoxMesh.new()
-			barriere.size = Vector3(1.9, 0.28, 0.05)
-			Materiaux.mesh(noeud, barriere, Materiaux.toon(Color(0.6, 0.44, 0.28)),
-				Vector3(0.0, 0.2, 0.95), Vector3.ONE, false)
-		"atelier":
-			var murs := BoxMesh.new()
-			murs.size = Vector3(1.6, 1.0, 1.3)
-			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.68, 0.5, 0.32)), Vector3(0.0, 0.5, 0.0))
-			var toit := PrismMesh.new()
-			toit.size = Vector3(1.9, 0.7, 1.6)
-			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.45, 0.32, 0.22)), Vector3(0.0, 1.35, 0.0))
-		"forge":
-			var murs := BoxMesh.new()
-			murs.size = Vector3(1.7, 1.1, 1.4)
-			Materiaux.mesh(noeud, murs, Materiaux.toon(Color(0.52, 0.52, 0.58)), Vector3(0.0, 0.55, 0.0))
-			var toit := PrismMesh.new()
-			toit.size = Vector3(2.0, 0.8, 1.7)
-			Materiaux.mesh(noeud, toit, Materiaux.toon(Color(0.3, 0.3, 0.36)), Vector3(0.0, 1.5, 0.0))
-			Materiaux.mesh(noeud, Materiaux.sphere(0.16), Materiaux.emissif(Identite.ORANGE, 1.8),
-				Vector3(0.0, 0.62, 0.74), Vector3.ONE, false)
-		_:
-			var bloc := BoxMesh.new()
-			bloc.size = Vector3(1.5, 1.0, 1.5)
-			Materiaux.mesh(noeud, bloc, Materiaux.toon(Identite.PANNEAU_CLAIR), Vector3(0.0, 0.5, 0.0))
+	vue.reconstruire(Profil.ville)
 
 
 # ------------------------------------------------------- mode construction
@@ -400,7 +175,7 @@ func entrer_construction(type: String) -> void:
 	type_en_construction = type
 	selection = -1
 	fantome = {"x": 6, "y": 7, "rot": 0, "valide": false}
-	_grille.visible = true
+	vue.montrer_grille(true)
 	_valider_fantome()
 	_reconstruire_fantome()
 
@@ -415,15 +190,23 @@ func sortir_construction() -> void:
 		_reconstruire_batiments()
 	mode = Mode.NORMAL
 	type_en_construction = ""
-	_grille.visible = false
-	if _noeud_fantome != null:
-		_noeud_fantome.queue_free()
-		_noeud_fantome = null
+	vue.montrer_grille(false)
+	vue.retirer_fantome()
 
 
 ## Cases occupées (helper pur partagé — Cite.cases_occupees).
 func _cases_occupees() -> Dictionary:
 	return Cite.cases_occupees(Profil.ville)
+
+
+## Délégations à la VUE 3D (le fantôme et le tap traversent la vue —
+## la validation logique, elle, reste ici, côté orchestration).
+func _reconstruire_fantome() -> void:
+	vue.afficher_fantome(type_en_construction, fantome)
+
+
+func _case_sous(pos_ecran: Vector2) -> Vector2i:
+	return vue.case_sous(pos_ecran)
 
 
 func _valider_fantome() -> void:
@@ -436,33 +219,6 @@ func _valider_fantome() -> void:
 			if c.x < 0 or c.y < 0 or c.x >= Cite.TAILLE_GRILLE or c.y >= Cite.TAILLE_GRILLE or occ.has(c):
 				valide = false
 	fantome.valide = valide
-
-
-func _reconstruire_fantome() -> void:
-	if _noeud_fantome != null:
-		_noeud_fantome.queue_free()
-	_noeud_fantome = Node3D.new()
-	add_child(_noeud_fantome)
-	var taille := int(Cite.BATIMENTS.get(type_en_construction, {}).get("taille", 2))
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	_noeud_fantome.position = Vector3(float(fantome.x) + taille / 2.0 - demi, 0.0,
-		float(fantome.y) + taille / 2.0 - demi)
-	_noeud_fantome.rotation.y = int(fantome.rot) * PI / 2.0
-	var teinte := Color(0.25, 0.95, 0.5) if bool(fantome.valide) else Color(0.98, 0.25, 0.25)
-	# Emprise au sol bien lisible + volume translucide + poteaux d'angle.
-	var emprise := BoxMesh.new()
-	emprise.size = Vector3(taille, 0.1, taille)
-	Materiaux.mesh(_noeud_fantome, emprise, Materiaux.emissif(teinte, 0.7),
-		Vector3(0.0, 0.06, 0.0), Vector3.ONE, false)
-	var volume := BoxMesh.new()
-	volume.size = Vector3(taille * 0.8, 1.0, taille * 0.8)
-	Materiaux.mesh(_noeud_fantome, volume, Materiaux.verre(teinte, 0.3, 1.2),
-		Vector3(0.0, 0.62, 0.0), Vector3.ONE, false)
-	for cx: float in [-1.0, 1.0]:
-		for cz: float in [-1.0, 1.0]:
-			Materiaux.mesh(_noeud_fantome, Materiaux.cylindre(0.05, 1.3),
-				Materiaux.emissif(teinte, 1.6),
-				Vector3(cx * taille / 2.0, 0.65, cz * taille / 2.0), Vector3.ONE, false)
 
 
 func valider_construction() -> void:
@@ -498,18 +254,6 @@ func valider_construction() -> void:
 	surface.toast("%s construit(e) — ta ville grandit !" % str(Cite.BATIMENTS[type_en_construction].titre))
 	sortir_construction()
 	_reconstruire_batiments()
-
-
-## Tap sur le terrain → case de la grille (rayon caméra → plan du sol).
-func _case_sous(pos_ecran: Vector2) -> Vector2i:
-	var origine := _camera.project_ray_origin(pos_ecran)
-	var direction := _camera.project_ray_normal(pos_ecran)
-	if absf(direction.y) < 0.001:
-		return Vector2i(-1, -1)
-	var t := -origine.y / direction.y
-	var p := origine + direction * t
-	var demi := Cite.TAILLE_GRILLE / 2.0
-	return Vector2i(int(floor(p.x + demi)), int(floor(p.z + demi)))
 
 
 func _process(delta: float) -> void:
@@ -563,11 +307,7 @@ func _input(event: InputEvent) -> void:
 					selection = i
 					Audio.jouer("clic")
 	elif event is InputEventScreenDrag and mode == Mode.NORMAL:
-		var d: Vector2 = event.relative * 0.02
-		_cible_camera += Vector3(-d.x - d.y, 0.0, d.x - d.y) * 0.7
-		_cible_camera.x = clampf(_cible_camera.x, -4.0, 4.0)
-		_cible_camera.z = clampf(_cible_camera.z, -4.0, 4.0)
-		_camera.position = _cible_camera + Vector3(9.0, 11.0, 9.0)
+		vue.panoramique(event.relative)
 
 
 func _executer(action: String) -> void:
