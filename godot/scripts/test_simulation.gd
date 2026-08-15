@@ -65,6 +65,47 @@ func _initialize() -> void:
 			break
 	verifier(arrive, "un habitant arrive après l'intervalle de croissance")
 
+	# ---------------------------------------------- progression hors-ligne
+	# 1-2. 1 h hors-ligne : bonnes quantités (nourriture et pièces).
+	var hl := Simulation.simuler_periode({"ville": maison_potager, "population": 2,
+		"nourriture": 10.0}, 3600.0)
+	verifier(absf(float(hl.nourriture_produite) - 120.0) < 0.01, "1 h : +120 nourriture produite")
+	var hl_or := Simulation.simuler_periode({"ville": [{"type": "maison"}, {"type": "atelier"}],
+		"population": 4, "nourriture": 50.0}, 3600.0)
+	verifier(int(hl_or.pieces_produites) == 60, "1 h d'atelier : +60 pièces")
+	# 3. La population consomme pendant l'absence (et croît : 2→4 en 6 min,
+	# conso exacte segmentée = 0.6 + 0.9 + 21.6 = 23.1).
+	verifier(absf(float(hl.nourriture_consommee) - 23.1) < 0.5, "consommation hors-ligne exacte")
+	# 7. La croissance hors-ligne fonctionne quand tout est réuni.
+	verifier(int(hl.etat.population) == 4, "croissance hors-ligne jusqu'à la capacité")
+	verifier(int(hl.nouveaux_habitants) == 2, "2 nouveaux habitants en 1 h")
+	# 4-5. Nourriture jamais négative ; la pénurie arrête la croissance.
+	var famine := Simulation.simuler_periode({"ville": maison, "population": 2,
+		"nourriture": 1.0}, 3600.0)
+	verifier(float(famine.etat.nourriture) >= 0.0, "hors-ligne : nourriture jamais négative")
+	verifier(bool(famine.atteint_zero), "hors-ligne : zéro nourriture détecté")
+	verifier(int(famine.etat.population) == 2, "hors-ligne : pénurie = croissance stoppée")
+	# 6. Jamais au-delà de la capacité, même après 24 h simulées.
+	var longue := Simulation.simuler_periode({"ville": maison_potager, "population": 2,
+		"nourriture": 10.0}, 86400.0)
+	verifier(int(longue.etat.population) == 4, "hors-ligne : capacité jamais dépassée")
+	# 8. 24 h d'absence, plafond 12 h → 12 h simulées seulement.
+	var fen := Simulation.duree_a_simuler(1000, 1000 + 86400)
+	verifier(int(fen.duree_s) == 12 * 3600 and bool(fen.ecrete), "plafond : 24 h → 12 h simulées")
+	# 10. Un timestamp futur ne casse rien (durée 0, pas de gains).
+	var futur := Simulation.duree_a_simuler(2000, 1000)
+	verifier(int(futur.duree_s) == 0, "horloge aberrante : durée 0")
+	# 11-12. Rapport significatif ou non.
+	verifier(not Simulation.rapport_significatif({"duree_s": 30, "pieces_produites": 500}),
+		"30 s d'absence : pas de rapport")
+	verifier(not Simulation.rapport_significatif({"duree_s": 7200, "pieces_produites": 0,
+		"nouveaux_habitants": 0, "delta_nourriture": 0.2}), "rien à dire : pas de rapport")
+	verifier(Simulation.rapport_significatif({"duree_s": 7200, "pieces_produites": 0,
+		"nouveaux_habitants": 2, "delta_nourriture": 0.0}), "habitants arrivés : rapport montré")
+	# 9 (anti-double-gain) : garanti par progression_hors_ligne — le
+	# timestamp avance en mémoire avant la première persistance, la
+	# période comptabilisée ne peut pas être rejouée (validé au scénario).
+
 	print("ÉCHECS : %d" % echecs)
 
 

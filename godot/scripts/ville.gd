@@ -28,6 +28,8 @@ var _grille: Node3D
 var surface: SurfaceVille
 var _t := 0.0
 var _tick_accumule := 0.0
+var rapport_retour := {}         ## OfflineReport significatif (modal BON RETOUR)
+var _t_rapport := 0.0            ## temps d'ouverture (count-up des gains)
 
 
 func _ready() -> void:
@@ -71,6 +73,18 @@ func _ready() -> void:
 		while restant > 0.0:
 			Simulation.appliquer(minf(restant, 5.0))
 			restant -= 5.0
+
+	# PROGRESSION HORS-LIGNE : la ville a continué de vivre pendant
+	# l'absence — un seul point de traitement, au lancement de l'écran.
+	# (Crochet DEV : ILUMINIA_ABSENCE=secondes force une absence.)
+	var maintenant := int(Time.get_unix_time_from_system())
+	if OS.get_environment("ILUMINIA_ABSENCE") != "":
+		Profil.dernier_tick = maintenant - int(OS.get_environment("ILUMINIA_ABSENCE"))
+	rapport_retour = Simulation.progression_hors_ligne(maintenant)
+	if not bool(rapport_retour.get("significatif", false)):
+		rapport_retour = {}
+	else:
+		_t_rapport = 0.0
 	match OS.get_environment("ILUMINIA_VILLE"):
 		"construction":
 			entrer_construction.call_deferred("potager")
@@ -412,6 +426,8 @@ func _process(delta: float) -> void:
 	if surface == null:
 		return   # redirection du premier lancement en cours
 	_t += delta
+	if not rapport_retour.is_empty():
+		_t_rapport += delta
 	# TICK DE SIMULATION : cadence fixe, mais calcul sur le temps
 	# RÉELLEMENT écoulé (l'économie reste juste si le rendu ralentit).
 	_tick_accumule += delta
@@ -517,6 +533,9 @@ func _executer(action: String) -> void:
 				surface.toast(str(Cite.BATIMENTS[str(b.type)].descr))
 		"ameliorer":
 			_ameliorer()
+		"fermer_rapport":
+			Audio.jouer("depart")
+			rapport_retour = {}
 		"boutique":
 			Audio.jouer("clic")
 			surface.toast("La boutique arrive — jamais de raccourci sur la connaissance !")
@@ -583,6 +602,64 @@ class SurfaceVille extends Control:
 			_pied()
 		if _toast_temps > 0.0:
 			UI.banniere(self, Vector2(size.x / 2.0, size.y - 104.0), 480.0, _toast, 15)
+		if not ville.rapport_retour.is_empty():
+			_modal_retour()
+
+	## BON RETOUR ! — le rapport de la vie de la ville pendant l'absence :
+	## un moment gratifiant (curiosité, jamais culpabilisation). Les
+	## chiffres montent doucement (count-up), le panneau reste fantasy.
+	func _modal_retour() -> void:
+		var r: Dictionary = ville.rapport_retour
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.04, 0.12, 0.72))
+		var rect := Rect2(size.x / 2.0 - 190.0, size.y / 2.0 - 150.0, 380.0, 300.0)
+		UI.panneau(self, rect)
+		UI.contour_arrondi(self, rect, Identite.RAYON_MD, Color(Identite.CYAN.r, Identite.CYAN.g,
+			Identite.CYAN.b, 0.5), 1.5)
+		UI.banniere(self, Vector2(rect.get_center().x, rect.position.y + 22.0), 250.0, "BON RETOUR !", 17)
+		UI.texte(self, Vector2(rect.get_center().x, rect.position.y + 52.0),
+			"Ta ville a continué de vivre pendant ton absence.", 10, Identite.TEXTE_ATTENUE, true, 1)
+		# Les gains, jamais les calculs internes — count-up ~0.9 s.
+		var k := clampf(ville._t_rapport / 0.9, 0.0, 1.0)
+		var lignes: Array = []
+		if absf(float(r.delta_nourriture)) >= 1.0:
+			lignes.append(["ble", "%+d nourriture" % int(roundf(float(r.delta_nourriture) * k))])
+		if int(r.pieces_produites) > 0:
+			lignes.append(["or", "+%d pièces" % int(roundf(float(r.pieces_produites) * k))])
+		if int(r.nouveaux_habitants) > 0:
+			lignes.append(["habitants", "+%d habitant%s" % [int(roundf(float(r.nouveaux_habitants) * k)),
+				"s" if int(r.nouveaux_habitants) > 1 else ""]])
+		var y := rect.position.y + 84.0
+		for l in lignes:
+			var carte := Rect2(rect.get_center().x - 110.0, y, 220.0, 34.0)
+			UI.rect_degrade(self, carte, 10.0, Color("14264d"), Color("0c1a3a"))
+			match str(l[0]):
+				"ble":
+					_ble(carte.position + Vector2(22.0, 17.0), 10.0)
+				"or":
+					if not UI.image(self, "res-coin", Rect2(carte.position + Vector2(12.0, 7.0), Vector2(20.0, 20.0))):
+						draw_circle(carte.position + Vector2(22.0, 17.0), 9.0, Identite.OR)
+				"habitants":
+					_habitants(carte.position + Vector2(22.0, 17.0), 10.0)
+			UI.texte(self, carte.position + Vector2(44.0, 22.0), str(l[1]), 14, Identite.TEXTE)
+			y += 40.0
+		# Faits notables — informatifs, jamais frustrants.
+		var notes: Array = []
+		if bool(r.atteint_zero):
+			notes.append("Ta réserve de nourriture s'est épuisée.")
+		if bool(r.atteint_capacite):
+			notes.append("Tes logements sont complets — construis-en pour accueillir plus d'habitants.")
+		if bool(r.ecrete):
+			notes.append("Tes bâtiments ont produit au maximum pendant %d h." %
+				int(Simulation.EQUILIBRAGE.hors_ligne.max_heures))
+		for n in notes:
+			UI.texte(self, Vector2(rect.get_center().x, y + 12.0), str(n), 9, Identite.CYAN, true, 1)
+			y += 17.0
+		var cta := Rect2(rect.get_center().x - 120.0, rect.end.y - 56.0, 240.0, 44.0)
+		UI.bouton(self, cta, Identite.ORANGE, "v_retour_ville", false, Identite.RAYON_MD)
+		UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "RETOURNER DANS MA VILLE", 12,
+			Identite.TEXTE, true, 2)
+		# La modale capture TOUTES les interactions (une seule action).
+		_actions = [{"rect": cta, "action": "fermer_rapport"}]
 
 	# --------------------------------------------------------- entête
 
