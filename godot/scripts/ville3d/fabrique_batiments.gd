@@ -16,6 +16,14 @@ const SCENES := {
 	"maison": "res://scenes/ville3d/maison_aventuriers.tscn",
 }
 
+## Assets .glb de l'ART KIT : un type → son modèle sculpté. Remplacer un
+## asset = remplacer son .glb (mêmes conventions), rien d'autre à toucher.
+const MODELES := {
+	"potager": "res://assets/artkit/architecture/potager.glb",
+	"atelier": "res://assets/artkit/architecture/atelier.glb",
+	"forge": "res://assets/artkit/architecture/moulin.glb",
+}
+
 
 ## Tout le catalogue est pris en charge (scène dédiée, constructeur
 ## simple ou bloc générique) — testé contre Cite.BATIMENTS.
@@ -30,37 +38,15 @@ static func construire(parent: Node3D, type: String, niveau := 1) -> void:
 		inst.niveau = niveau
 		parent.add_child(inst)
 		return
-	match type:
-		"potager":
-			for r in 3:
-				var rangee := BoxMesh.new()
-				rangee.size = Vector3(1.6, 0.14, 0.32)
-				Materiaux.mesh(parent, rangee, Materiaux.toon(Color(0.44, 0.3, 0.2)),
-					Vector3(0.0, 0.07, -0.55 + r * 0.55))
-				for l in 4:
-					Materiaux.mesh(parent, Materiaux.sphere(0.1), Materiaux.toon(Identite.VERT),
-						Vector3(-0.6 + l * 0.4, 0.2, -0.55 + r * 0.55), Vector3.ONE, false)
-			var barriere := BoxMesh.new()
-			barriere.size = Vector3(1.9, 0.28, 0.05)
-			Materiaux.mesh(parent, barriere, Materiaux.toon(Color(0.6, 0.44, 0.28)),
-				Vector3(0.0, 0.2, 0.95), Vector3.ONE, false)
-		"atelier":
-			var murs := BoxMesh.new()
-			murs.size = Vector3(1.6, 1.0, 1.3)
-			Materiaux.mesh(parent, murs, Materiaux.toon(Color(0.68, 0.5, 0.32)), Vector3(0.0, 0.5, 0.0))
-			var toit := PrismMesh.new()
-			toit.size = Vector3(1.9, 0.7, 1.6)
-			Materiaux.mesh(parent, toit, Materiaux.toon(Color(0.45, 0.32, 0.22)), Vector3(0.0, 1.35, 0.0))
-		"forge":
-			var murs_f := BoxMesh.new()
-			murs_f.size = Vector3(1.7, 1.1, 1.4)
-			Materiaux.mesh(parent, murs_f, Materiaux.toon(Color(0.52, 0.52, 0.58)), Vector3(0.0, 0.55, 0.0))
-			var toit_f := PrismMesh.new()
-			toit_f.size = Vector3(2.0, 0.8, 1.7)
-			Materiaux.mesh(parent, toit_f, Materiaux.toon(Color(0.3, 0.3, 0.36)), Vector3(0.0, 1.5, 0.0))
-			Materiaux.mesh(parent, Materiaux.sphere(0.16), Materiaux.emissif(Identite.ORANGE, 1.8),
-				Vector3(0.0, 0.62, 0.74), Vector3.ONE, false)
-		_:
-			var bloc := BoxMesh.new()
-			bloc.size = Vector3(1.5, 1.0, 1.5)
-			Materiaux.mesh(parent, bloc, Materiaux.toon(Identite.PANNEAU_CLAIR), Vector3(0.0, 0.5, 0.0))
+	if MODELES.has(type):
+		# Asset .glb de l'art kit : instancié, harmonisé au rendu du jeu,
+		# puis animé si le modèle expose des nœuds d'animation nommés.
+		var modele: Node3D = (load(str(MODELES[type])) as PackedScene).instantiate()
+		Univers.harmoniser_gltf(modele)
+		parent.add_child(modele)
+		Vie.animer(modele)
+		return
+	# Sans asset dédié : bloc générique PLACEHOLDER, jamais un final.
+	var bloc := BoxMesh.new()
+	bloc.size = Vector3(1.5, 1.0, 1.5)
+	Materiaux.mesh(parent, bloc, Materiaux.toon(Identite.PANNEAU_CLAIR), Vector3(0.0, 0.5, 0.0))
