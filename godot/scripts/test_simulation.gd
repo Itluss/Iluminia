@@ -177,6 +177,39 @@ func _initialize() -> void:
 	verifier(Simulation.capacite_population([{"type": "maison", "niveau": 2}]) == 8,
 		"maison améliorée : capacité doublée")
 
+	# --------------------------------------------- boucle ville→apprendre
+	# 1-2. Manque de pièces → intention EARN_COINS avec le bon montant.
+	var blq := Besoins.blocage_achat("potager", {"ville": maison, "population": 2,
+		"nourriture": 10.0, "connaissance_xp": 100, "pieces": 80})
+	verifier(str(blq.action) == "EARN_COINS" and int(blq.manquant) == 20,
+		"blocage pièces → intention EARN_COINS, manquant exact")
+	var it := {"source": "ville", "raison": "gagner_pieces", "batiment": "potager", "montant": 40}
+	var decode := Besoins.decoder_intention(Besoins.encoder_intention(it))
+	verifier(str(decode.raison) == "gagner_pieces" and str(decode.batiment) == "potager"
+		and int(decode.montant) == 40 and str(decode.retour) == "ville",
+		"intention : aller-retour encodage sans perte (cible conservée)")
+	# 3. Verrou de connaissance → GAIN_KNOWLEDGE.
+	var blq2 := Besoins.blocage_achat("atelier", {"ville": maison, "population": 6,
+		"nourriture": 10.0, "connaissance_xp": 50, "pieces": 10000})
+	verifier(str(blq2.action) == "GAIN_KNOWLEDGE", "verrou connaissance → GAIN_KNOWLEDGE")
+	# 4. Ordre des bloqueurs : connaissance avant population avant pièces.
+	var blq3 := Besoins.blocage_achat("forge", {"ville": maison, "population": 2,
+		"nourriture": 10.0, "connaissance_xp": 50, "pieces": 5})
+	verifier(str(blq3.type) == "KNOWLEDGE_LOCK", "bloqueur structurel d'abord : connaissance")
+	var blq4 := Besoins.blocage_achat("forge", {"ville": maison, "population": 2,
+		"nourriture": 100.0, "connaissance_xp": 800, "pieces": 5})
+	verifier(str(blq4.type) == "POPULATION_LOCK", "puis population, avant les pièces")
+	# 8. Session arbre : intention vide → aucune redirection ville.
+	verifier(Besoins.decoder_intention("").is_empty(), "session depuis l'arbre : intention vide")
+	# 10. La récompense qui atteint la cible rend le bâtiment disponible.
+	verifier(Simulation.disponibilite("potager", 100, 80, 2) == "PIECES_INSUFFISANTES"
+		and Simulation.disponibilite("potager", 100, 125, 2) == "DISPONIBLE",
+		"récompense suffisante → bâtiment automatiquement disponible")
+	# (5-6, 12 : crédit unique par question via l'étape QUESTION_ACTIVE et
+	# bonus unique via _bilan_applique, persistés au fil de l'eau —
+	# validés par captures ; 7, 9, 11 : retours et réévaluation validés
+	# par les scénarios A-D.)
+
 	print("ÉCHECS : %d" % echecs)
 
 

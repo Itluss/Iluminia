@@ -106,6 +106,22 @@ func _ready() -> void:
 		rapport_retour = {}
 	else:
 		_t_rapport = 0.0
+
+	# RETOUR CONTEXTUEL après une session lancée d'ici : le bâtiment
+	# ciblé est retrouvé — jamais « retour ville générique, débrouille-toi ».
+	var cible_retour := OS.get_environment("ILUMINIA_CIBLE")
+	if cible_retour != "" and Cite.BATIMENTS.has(cible_retour):
+		OS.set_environment("ILUMINIA_CIBLE", "")
+		catalogue_ouvert = true
+		var titre_c := str(Cite.BATIMENTS[cible_retour].titre)
+		match Simulation.disponibilite(cible_retour, Profil.connaissance_xp,
+				Profil.pieces, Profil.population):
+			"DISPONIBLE":
+				surface.toast.call_deferred("Tu peux maintenant construire le %s !" % titre_c)
+			_:
+				# Blocage recalculé (montant à jour, ou le bloqueur suivant
+				# dans l'ordre connaissance → population → pièces).
+				blocage = Besoins.blocage_achat(cible_retour, etat_besoins())
 	match OS.get_environment("ILUMINIA_VILLE"):
 		"construction":
 			entrer_construction.call_deferred("potager")
@@ -511,15 +527,40 @@ func _executer(action: String) -> void:
 			OS.set_environment("ILUMINIA_ECRAN", "")
 			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
 		"apprendre_gagner":
-			# LearningIntent : la ville envoie l'enfant apprendre POUR un
-			# besoin précis, et la session le ramènera ICI.
+			# EARN_COINS : la ville envoie l'enfant apprendre POUR un
+			# besoin précis (bâtiment + montant manquant), et la session
+			# le ramènera ICI, contexte restauré.
 			Audio.jouer("depart")
-			var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
-			OS.set_environment("ILUMINIA_INTENTION",
-				"ville:gagner_pieces:%s" % str(objectif.get("id", "")))
+			var cible := ""
+			var montant := 0
+			if not blocage.is_empty() and str(blocage.get("type", "")) == "NOT_ENOUGH_COINS":
+				cible = str(blocage.batiment)
+				montant = int(blocage.manquant)
+			else:
+				var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
+				cible = str(objectif.get("batiment", ""))
+				montant = maxi(int(Cite.BATIMENTS.get(cible, {}).get("or", 0)) - Profil.pieces, 0)
+			blocage = {}
+			OS.set_environment("ILUMINIA_INTENTION", Besoins.encoder_intention(
+				{"source": "ville", "raison": "gagner_pieces", "batiment": cible, "montant": montant}))
 			var reco := Savoir.recommandation()
 			if reco != "":
 				OS.set_environment("ILUMINIA_COMPETENCE", reco)
+			get_tree().change_scene_to_file.call_deferred("res://scenes/session.tscn")
+		"apprendre_progresser":
+			# GAIN_KNOWLEDGE : le bâtiment reste verrouillé par la
+			# connaissance — la session pédagogique fait progresser (la
+			# ville ne modifie JAMAIS la maîtrise scolaire directement).
+			Audio.jouer("depart")
+			var cible_p := str(blocage.get("batiment", ""))
+			var palier_requis := int(blocage.get("palier_requis", 0))
+			blocage = {}
+			OS.set_environment("ILUMINIA_INTENTION", Besoins.encoder_intention(
+				{"source": "ville", "raison": "progresser", "batiment": cible_p,
+				"palier": palier_requis}))
+			var reco_p := Savoir.recommandation()
+			if reco_p != "":
+				OS.set_environment("ILUMINIA_COMPETENCE", reco_p)
 			get_tree().change_scene_to_file.call_deferred("res://scenes/session.tscn")
 		"collection", "progression":
 			Audio.jouer("clic")
@@ -1096,7 +1137,7 @@ class SurfaceVille extends Control:
 				action = "apprendre_gagner"
 			"KNOWLEDGE_LOCK":
 				titre = titre % int(b.palier_requis)
-				action = "apprendre"
+				action = "apprendre_progresser"
 			"POPULATION_LOCK":
 				titre = titre % [int(b.habitants_manquants), "S" if int(b.habitants_manquants) > 1 else ""]
 				action = "fermer_blocage"

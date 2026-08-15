@@ -64,6 +64,24 @@ const TEXTES := {
 }
 
 
+## Encodage/décodage du LearningIntent (transport par variable
+## d'environnement entre écrans) — PURS et testables. Format :
+## source:raison:batiment:montant:palier (champs vides autorisés).
+static func encoder_intention(i: Dictionary) -> String:
+	return "%s:%s:%s:%d:%d" % [str(i.get("source", "")), str(i.get("raison", "")),
+		str(i.get("batiment", "")), int(i.get("montant", 0)), int(i.get("palier", 0))]
+
+
+static func decoder_intention(brut: String) -> Dictionary:
+	if brut == "":
+		return {}
+	var p := brut.split(":")
+	return {"source": p[0], "raison": p[1] if p.size() > 1 else "",
+		"retour": p[0], "batiment": p[2] if p.size() > 2 else "",
+		"montant": int(p[3]) if p.size() > 3 else 0,
+		"palier": int(p[4]) if p.size() > 4 else 0}
+
+
 ## Minutes avant la rupture de nourriture (INF si le taux net est ≥ 0) —
 ## pour ne jamais créer de fausse urgence avec 500 en réserve.
 static func temps_avant_rupture(ville_posee: Array, population: int, nourriture: float) -> float:

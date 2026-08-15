@@ -48,11 +48,32 @@ var session := {
 }
 var _bilan_applique := false             ## idempotence du bonus de session
 
-## LearningIntent (transitoire) : d'où vient la session et où revenir.
-## Vide = lancée depuis l'Arbre (comportement historique conservé) ;
-## {"source": "ville", "raison": "gagner_pieces", "retour": "ville",
-##  "objectif": "construire_potager"} = lancée par un besoin de la ville.
+## LearningIntent (transitoire) : d'où vient la session, pourquoi, et où
+## revenir. Vide = lancée depuis l'Arbre (comportement historique).
+## {"source": "ville", "raison": "gagner_pieces"|"progresser",
+##  "retour": "ville", "batiment": "potager", "montant": 40, "palier": 3}
+## Le montant cible est un OBJECTIF, jamais un crédit automatique : les
+## récompenses suivent le système pédagogique normal (+5/question, +15
+## de bonus) — la session peut rapporter plus ou moins que la cible.
 var intention := {}
+
+
+## Encodage/décodage de l'intention (transport par variable
+## d'environnement) — PURS et testables. Format :
+## source:raison:batiment:montant:palier (champs vides autorisés).
+static func encoder_intention(i: Dictionary) -> String:
+	return "%s:%s:%s:%d:%d" % [str(i.get("source", "")), str(i.get("raison", "")),
+		str(i.get("batiment", "")), int(i.get("montant", 0)), int(i.get("palier", 0))]
+
+
+static func decoder_intention(brut: String) -> Dictionary:
+	if brut == "":
+		return {}
+	var p := brut.split(":")
+	return {"source": p[0], "raison": p[1] if p.size() > 1 else "",
+		"retour": p[0], "batiment": p[2] if p.size() > 2 else "",
+		"montant": int(p[3]) if p.size() > 3 else 0,
+		"palier": int(p[4]) if p.size() > 4 else 0}
 
 var _chrono := 0.0               ## temps passé dans l'étape courante
 var _fige := false               ## crochet de capture : gèle l'avancement
@@ -86,9 +107,7 @@ func _ready() -> void:
 	var brut := OS.get_environment("ILUMINIA_INTENTION")
 	if brut != "":
 		OS.set_environment("ILUMINIA_INTENTION", "")
-		var parts := brut.split(":")
-		intention = {"source": parts[0], "raison": parts[1] if parts.size() > 1 else "",
-			"retour": parts[0], "objectif": parts[2] if parts.size() > 2 else ""}
+		intention = Besoins.decoder_intention(brut)
 
 	if OS.get_environment("ILUMINIA_CLASSE") != "":
 		Profil.classe = OS.get_environment("ILUMINIA_CLASSE")
@@ -225,6 +244,19 @@ func _executer(action: String) -> void:
 			Profil.basculer_son()
 			Audio.jouer("clic")
 		"fin":
+			if morceaux[1] == "encore":
+				# CONTINUER À APPRENDRE : nouvelle session, même objectif
+				# (montant restant recalculé — jamais une boucle forcée).
+				Audio.jouer("depart")
+				var suite := intention.duplicate()
+				suite.montant = maxi(int(Cite.BATIMENTS.get(str(intention.get("batiment", "")),
+					{}).get("or", 0)) - Profil.pieces, 0)
+				OS.set_environment("ILUMINIA_INTENTION", Besoins.encoder_intention(suite))
+				var reco := Savoir.recommandation()
+				if reco != "":
+					OS.set_environment("ILUMINIA_COMPETENCE", reco)
+				get_tree().change_scene_to_file.call_deferred("res://scenes/session.tscn")
+				return
 			# Depuis le bilan : la session est finie, sortie directe.
 			Audio.jouer("clic")
 			_terminer(morceaux[1])
@@ -329,6 +361,10 @@ func _terminer(destination: String) -> void:
 		_appliquer_maitrise()
 	if destination == "arbre" and str(intention.get("retour", "")) == "ville":
 		destination = "ville"
+	# RESTAURATION DE CONTEXTE : la ville retrouvera le bâtiment ciblé
+	# (sélection, solde à jour, achat possible ou blocage recalculé).
+	if destination == "ville" and str(intention.get("batiment", "")) != "":
+		OS.set_environment("ILUMINIA_CIBLE", str(intention.batiment))
 	match destination:
 		"ville":
 			get_tree().change_scene_to_file.call_deferred("res://scenes/ville.tscn")
@@ -564,6 +600,28 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 			UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "VOIR DANS MA VILLE", 12,
 				Identite.TEXTE, true, 2)
 			_actions.append({"rect": cta, "action": "fin:ville"})
+		elif str(session_noeud.intention.get("batiment", "")) != "":
+			# LE CONTEXTE DE L'OBJECTIF : où en est-on par rapport à la
+			# cible ? Jamais de boucle forcée : le retour reste possible.
+			var batiment := str(session_noeud.intention.batiment)
+			var cout := int(Cite.BATIMENTS.get(batiment, {}).get("or", 0))
+			var titre_b := str(Cite.BATIMENTS.get(batiment, {}).get("titre", batiment)).to_upper()
+			var atteint: bool = Profil.pieces >= cout
+			UI.texte(self, Vector2(cx, y_bas + 14.0),
+				"%s — %d / %d pièces%s" % [titre_b, Profil.pieces, cout,
+				"  ·  objectif atteint !" if atteint else ""],
+				11, Identite.VERT if atteint else Identite.CYAN, true, 1)
+			var cta := Rect2(panneau.end.x - 224.0, panneau.end.y - 52.0, 210.0, 42.0)
+			if atteint:
+				UI.bouton(self, cta, Identite.VERT, "bilan_cible_ok", false, Identite.RAYON_MD)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "RETOUR À MA VILLE", 12,
+					Identite.TEXTE, true, 2)
+				_actions.append({"rect": cta, "action": "fin:ville"})
+			else:
+				UI.bouton(self, cta, Identite.ORANGE, "bilan_encore", false, Identite.RAYON_MD)
+				UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "CONTINUER À APPRENDRE", 11,
+					Identite.TEXTE, true, 2)
+				_actions.append({"rect": cta, "action": "fin:encore"})
 		else:
 			var achat := session_noeud.achat_possible()
 			if not achat.is_empty():
@@ -575,14 +633,19 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 				UI.texte(self, cta.get_center() + Vector2(0.0, 5.0), "ALLER À MA VILLE", 12,
 					Identite.TEXTE, true, 2)
 				_actions.append({"rect": cta, "action": "fin:ville"})
-		# Retour vers l'origine : la ville si la session vient d'elle.
+		# Retour vers l'origine : la ville si la session vient d'elle —
+		# sauf si le CTA principal est déjà « RETOUR À MA VILLE » (doublon).
 		var vers_ville: bool = str(session_noeud.intention.get("retour", "")) == "ville"
-		var retour := Rect2(cx - 205.0 + 14.0, panneau.end.y - 52.0, 150.0, 42.0)
-		UI.bouton(self, retour, Identite.BLEU, "bilan_retour", false, Identite.RAYON_MD)
-		UI.texte(self, retour.get_center() + Vector2(0.0, 5.0),
-			"RETOUR À MA VILLE" if vers_ville else "RETOUR À L'ARBRE", 10,
-			Identite.TEXTE, true, 2)
-		_actions.append({"rect": retour, "action": "fin:arbre"})
+		var cible_b := str(session_noeud.intention.get("batiment", ""))
+		var cible_atteinte: bool = palier_atteint < 0 and cible_b != "" \
+			and Profil.pieces >= int(Cite.BATIMENTS.get(cible_b, {}).get("or", 0))
+		if not cible_atteinte:
+			var retour := Rect2(cx - 205.0 + 14.0, panneau.end.y - 52.0, 150.0, 42.0)
+			UI.bouton(self, retour, Identite.BLEU, "bilan_retour", false, Identite.RAYON_MD)
+			UI.texte(self, retour.get_center() + Vector2(0.0, 5.0),
+				"RETOUR À MA VILLE" if vers_ville else "RETOUR À L'ARBRE", 10,
+				Identite.TEXTE, true, 2)
+			_actions.append({"rect": retour, "action": "fin:arbre"})
 
 	# --------------------------------------------------- CinematicStage
 
@@ -660,6 +723,7 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 		var q: Dictionary = session_noeud.question_courante()
 		var teinte: Color = session_noeud.teinte_branche
 		var cx := zone.get_center().x
+		_bandeau_objectif(zone)
 		# BADGE DE DOMAINE : pill violette + glow (langage des bandeaux).
 		var badge := Rect2(cx - 88.0, zone.position.y + zone.size.y * 0.005, 176.0, 30.0)
 		draw_circle(badge.get_center(), 60.0, Color(teinte.r, teinte.g, teinte.b, 0.10))
@@ -733,6 +797,33 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 		UI.texte(self, Vector2(cx, cy + 15.0), "?", 42, Identite.OR, true)
 		# LES TROIS RÉPONSES : énormes, tactiles — le choix EST la réponse.
 		_boutons_reponses(cx, zone.position.y + zone.size.y * 0.885, zone, q)
+
+	## TON OBJECTIF — transition légère, pas un écran : pendant une session
+	## lancée par un besoin de la ville, un rappel discret et VIVANT (le
+	## restant se met à jour à chaque gain) rend la causalité évidente.
+	func _bandeau_objectif(zone: Rect2) -> void:
+		var i: Dictionary = session_noeud.intention
+		var batiment := str(i.get("batiment", ""))
+		if str(i.get("source", "")) != "ville" or batiment == "":
+			return
+		var titre := str(Cite.BATIMENTS.get(batiment, {}).get("titre", batiment))
+		var texte := ""
+		var teinte := Identite.OR
+		if str(i.get("raison", "")) == "gagner_pieces":
+			var restant := maxi(int(Cite.BATIMENTS.get(batiment, {}).get("or", 0)) - Profil.pieces, 0)
+			if restant <= 0:
+				texte = "%s : objectif atteint !" % titre.to_upper()
+				teinte = Identite.VERT
+			else:
+				texte = "%s : encore %d pièces" % [titre.to_upper(), restant]
+		else:
+			texte = "DÉBLOQUER : %s" % titre.to_upper()
+			teinte = Identite.VIOLET.lightened(0.3)
+		var rect := Rect2(zone.position.x + 4.0, zone.position.y + zone.size.y * 0.235 - 16.0,
+			texte.length() * 6.2 + 22.0, 22.0)
+		UI.rect_degrade(self, rect, 11.0, Color(0.09, 0.12, 0.3, 0.9), Color(0.06, 0.08, 0.22, 0.9))
+		UI.contour_arrondi(self, rect, 11.0, Color(teinte.r, teinte.g, teinte.b, 0.6), 1.5)
+		UI.texte(self, Vector2(rect.get_center().x, rect.position.y + 15.0), texte, 9, teinte, true, 1)
 
 	## SessionProgress : ligne violette, étapes passées remplies, étape
 	## courante avec glow pulsant, futures sombres. Dynamique.
