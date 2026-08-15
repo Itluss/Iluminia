@@ -20,7 +20,7 @@ extends RefCounted
 ## panoramique borné, AUCUNE rotation libre.
 const CAMERA := {
 	"decalage": Vector3(9.0, 11.0, 9.0),
-	"taille_ortho": 11.5,
+	"taille_ortho": 9.2,
 	"borne_pan": 4.0,
 }
 
