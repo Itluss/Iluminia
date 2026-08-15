@@ -254,6 +254,8 @@ func valider_construction() -> void:
 	surface.toast("%s construit(e) — ta ville grandit !" % str(Cite.BATIMENTS[type_en_construction].titre))
 	sortir_construction()
 	_reconstruire_batiments()
+	# Récompense immédiate : petite apparition (overshoot + éclat).
+	vue.animer_apparition(Profil.ville.size() - 1)
 
 
 func _process(delta: float) -> void:
@@ -277,6 +279,7 @@ func _process(delta: float) -> void:
 	if _sauvegarde_accumulee >= 25.0:
 		_sauvegarde_accumulee = 0.0
 		Profil.sauver_si_sale()
+	vue.surligner(selection)   # feedback 3D de sélection (idempotent)
 	surface.queue_redraw()
 
 

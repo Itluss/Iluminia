@@ -18,6 +18,8 @@ var _cible_camera := Vector3.ZERO
 var _noeuds_batiments: Array = []
 var _noeud_fantome: Node3D
 var _grille: Node3D
+var _surbrillance: Node3D
+var _indice_surligne := -2
 
 
 func _ready() -> void:
@@ -32,6 +34,14 @@ func _ready() -> void:
 	add_child(_camera)
 	_placer_camera()
 	_camera.current = true
+	# Appoint doux vers les façades (+Z/+X) : le portail et les accents
+	# restent lisibles même côté ombre — sans surexposer la scène.
+	var appoint := DirectionalLight3D.new()
+	appoint.rotation_degrees = Vector3(-28.0, 35.0, 0.0)
+	appoint.light_energy = 0.28
+	appoint.light_color = Color(1.0, 0.96, 0.9)
+	appoint.shadow_enabled = false
+	add_child(appoint)
 
 
 func _placer_camera() -> void:
@@ -68,9 +78,57 @@ func reconstruire(ville_posee: Array) -> void:
 		var noeud := Node3D.new()
 		noeud.position = inst.position
 		noeud.rotation.y = float(inst.rotation_y)
+		noeud.set_meta("taille", int(inst.taille))
 		add_child(noeud)
 		FabriqueBatiments.construire(noeud, str(inst.type), int(inst.niveau))
 		_noeuds_batiments.append(noeud)
+	_indice_surligne = -2   # la surbrillance suit un nœud recréé
+
+
+## SÉLECTION : anneau lumineux doux sous le bâtiment — feedback
+## immédiat, ni scale brutal, ni popup. Idempotent (appelable à chaque
+## frame) ; indice < 0 = aucune sélection.
+func surligner(indice: int) -> void:
+	if indice == _indice_surligne:
+		return
+	_indice_surligne = indice
+	if _surbrillance != null:
+		_surbrillance.queue_free()
+		_surbrillance = null
+	if indice < 0 or indice >= _noeuds_batiments.size():
+		return
+	var noeud: Node3D = _noeuds_batiments[indice]
+	var taille := int(noeud.get_meta("taille", 2))
+	var anneau := TorusMesh.new()
+	anneau.inner_radius = taille * 0.62
+	anneau.outer_radius = taille * 0.7
+	_surbrillance = Materiaux.mesh(noeud, anneau,
+		Materiaux.emissif(Color(0.35, 0.85, 1.0), 1.3),
+		Vector3(0.0, 0.05, 0.0), Vector3(1.0, 0.35, 1.0), false)
+
+
+## APPARITION (première construction) : 0,5 s — léger overshoot de
+## scale + éclat de lumière qui s'éteint. Récompense immédiate, zéro
+## effet lourd.
+func animer_apparition(indice: int) -> void:
+	if indice < 0 or indice >= _noeuds_batiments.size():
+		return
+	var noeud: Node3D = _noeuds_batiments[indice]
+	noeud.scale = Vector3.ONE * 0.9
+	var tw := create_tween()
+	tw.tween_property(noeud, "scale", Vector3.ONE * 1.06, 0.28) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tw.tween_property(noeud, "scale", Vector3.ONE, 0.22) \
+		.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	var lum := OmniLight3D.new()
+	lum.light_color = Color(0.55, 0.9, 1.0)
+	lum.light_energy = 2.6
+	lum.omni_range = 6.0
+	lum.position = Vector3(0.0, 1.6, 0.0)
+	noeud.add_child(lum)
+	var tw2 := create_tween()
+	tw2.tween_property(lum, "light_energy", 0.0, 0.55)
+	tw2.tween_callback(lum.queue_free)
 
 
 func montrer_grille(visible_grille: bool) -> void:
