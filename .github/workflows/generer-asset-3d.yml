@@ -29,9 +29,13 @@ on:
           tower topped with a blue dome and a golden spire, purple banners,
           warm lanterns at the entrance, wide stone steps
       image:
-        description: "Chemin d'une image de référence DANS le dépôt (image-to-3D, plus fidèle)"
+        description: "Image de référence dans le dépôt (IMAGE-TO-3D : bien plus fidèle que le texte)"
         required: false
-        default: ""
+        default: "outils/artkit/references/maison_aventuriers.png"
+      polycount:
+        description: "Triangles visés à la génération (on décime après, jamais avant)"
+        required: true
+        default: "30000"
       texturer:
         description: "Texturer le modèle (coûte davantage de crédits)"
         type: boolean
@@ -76,6 +80,7 @@ jobs:
           [ -n "${{ inputs.prompt }}" ] && ARGS+=(--prompt "${{ inputs.prompt }}")
           [ -n "${{ inputs.image }}" ] && ARGS+=(--image "${{ inputs.image }}")
           [ "${{ inputs.texturer }}" = "false" ] && ARGS+=(--sans-texture)
+          ARGS+=(--polycount "${{ inputs.polycount }}")
           python3 outils/artkit/meshy.py "${ARGS[@]}"
 
       - name: Inspecter le modèle produit
