@@ -27,6 +27,7 @@ var _noeud_fantome: Node3D
 var _grille: Node3D
 var surface: SurfaceVille
 var _t := 0.0
+var _tick_accumule := 0.0
 
 
 func _ready() -> void:
@@ -62,6 +63,14 @@ func _ready() -> void:
 		Profil.pieces = int(OS.get_environment("ILUMINIA_OR"))
 	if OS.get_environment("ILUMINIA_XP") != "":
 		Profil.connaissance_xp = int(OS.get_environment("ILUMINIA_XP"))
+	if OS.get_environment("ILUMINIA_POP") != "":
+		Profil.population = int(OS.get_environment("ILUMINIA_POP"))
+	if OS.get_environment("ILUMINIA_SIM_AVANCE") != "":
+		# Avance rapide de la simulation (tests du scénario manuel).
+		var restant := float(OS.get_environment("ILUMINIA_SIM_AVANCE"))
+		while restant > 0.0:
+			Simulation.appliquer(minf(restant, 5.0))
+			restant -= 5.0
 	match OS.get_environment("ILUMINIA_VILLE"):
 		"construction":
 			entrer_construction.call_deferred("potager")
@@ -368,7 +377,8 @@ func valider_construction() -> void:
 		Audio.jouer("denied")
 		surface.toast("Cet emplacement est occupé — choisis une case libre !")
 		return
-	if not Cite.constructible(type_en_construction, Profil.connaissance_xp, Profil.pieces):
+	if Simulation.disponibilite(type_en_construction, Profil.connaissance_xp,
+			Profil.pieces, Profil.population) != "DISPONIBLE":
 		Audio.jouer("denied")
 		return
 	# TRANSACTION ATOMIQUE : le débit précède la pose et la refuse si le
@@ -402,6 +412,15 @@ func _process(delta: float) -> void:
 	if surface == null:
 		return   # redirection du premier lancement en cours
 	_t += delta
+	# TICK DE SIMULATION : cadence fixe, mais calcul sur le temps
+	# RÉELLEMENT écoulé (l'économie reste juste si le rendu ralentit).
+	_tick_accumule += delta
+	if _tick_accumule >= float(Simulation.EQUILIBRAGE.simulation.tick_s):
+		var resultat := Simulation.appliquer(_tick_accumule)
+		_tick_accumule = 0.0
+		if bool(resultat.habitant_arrive):
+			Audio.jouer("victoire")
+			surface.toast("Un nouvel habitant a rejoint ta ville !")
 	surface.queue_redraw()
 
 
@@ -605,14 +624,29 @@ class SurfaceVille extends Control:
 			_mini_batiment_type(centre.position + Vector2(288.0, 32.0), 20.0, "atelier")
 			UI.texte(self, Vector2(centre.position.x + 288.0, centre.position.y + 60.0),
 				nom_rec.to_upper().left(14), 9, Identite.OR, true, 3)
-		# PIÈCES — l'unique monnaie (les gemmes ont disparu de l'économie).
+		# RESSOURCES DE LA VILLE : pièces, nourriture (+ taux net) et
+		# population — lues depuis la simulation, jamais recalculées ici.
 		var res := Rect2(592.0, 8.0, 146.0, 66.0)
 		UI.panneau(self, res)
-		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(14.0, 14.0), Vector2(26.0, 26.0))):
-			draw_circle(res.position + Vector2(27.0, 27.0), 12.0, Identite.OR)
-		UI.texte(self, res.position + Vector2(50.0, 33.0), str(Profil.pieces), 16, Identite.TEXTE)
-		UI.texte(self, Vector2(res.get_center().x, res.position.y + 56.0), "PIÈCES", 9,
-			Identite.TEXTE_ATTENUE, true, 3)
+		var sim := Simulation.resume()
+		if not UI.image(self, "res-coin", Rect2(res.position + Vector2(8.0, 4.0), Vector2(15.0, 15.0))):
+			draw_circle(res.position + Vector2(15.0, 11.0), 7.0, Identite.OR)
+		UI.texte(self, res.position + Vector2(28.0, 16.0), str(Profil.pieces), 12, Identite.TEXTE)
+		_ble(res.position + Vector2(15.0, 32.0), 8.0)
+		UI.texte(self, res.position + Vector2(28.0, 37.0), str(int(sim.nourriture)), 12, Identite.TEXTE)
+		var taux := float(sim.taux_net)
+		UI.texte(self, res.position + Vector2(66.0, 37.0), "%+.1f/min" % taux, 9,
+			Identite.VERT if taux >= 0.0 else Identite.ROUGE)
+		_habitants(res.position + Vector2(15.0, 53.0), 8.0)
+		UI.texte(self, res.position + Vector2(28.0, 58.0), "%d / %d" % [int(sim.population),
+			int(sim.capacite)], 12, Identite.TEXTE)
+		# PÉNURIE : un petit statut clair, jamais une alerte intrusive.
+		if str(sim.statut) == "PENURIE":
+			var pill := Rect2(size.x / 2.0 - 92.0, size.y - 84.0, 184.0, 22.0)
+			UI.rect_degrade(self, pill, 11.0, Color(0.35, 0.2, 0.05, 0.92), Color(0.25, 0.14, 0.04, 0.92))
+			UI.contour_arrondi(self, pill, 11.0, Identite.ORANGE, 1.5)
+			UI.texte(self, pill.get_center() + Vector2(0.0, 4.0), "Nourriture insuffisante", 10,
+				Identite.ORANGE, true, 1)
 		var b1 := Rect2(746.0, 8.0, 52.0, 50.0)
 		UI.bouton(self, b1, Identite.PANNEAU_CLAIR, "v_boutique", false, Identite.RAYON_SM)
 		UI.coffre(self, b1.get_center() + Vector2(0.0, 2.0), 22.0)
@@ -621,6 +655,21 @@ class SurfaceVille extends Control:
 		UI.bouton(self, b2, Identite.PANNEAU_CLAIR, "v_retour", false, Identite.RAYON_SM)
 		UI.texte(self, b2.get_center() + Vector2(0.0, 7.0), "←", 20, Identite.TEXTE, true)
 		_actions.append({"rect": b2, "action": "retour"})
+
+	## Épi de blé (nourriture) et habitants — pictos dessinés, pas d'emoji.
+	func _ble(p: Vector2, r: float) -> void:
+		draw_line(p + Vector2(0.0, r * 0.7), p + Vector2(0.0, -r * 0.3), Color("d8a93c"), 2.0)
+		for e in 3:
+			var h := -r * 0.15 - e * r * 0.32
+			draw_circle(p + Vector2(-r * 0.28, h), r * 0.2, Color("f2c85a"))
+			draw_circle(p + Vector2(r * 0.28, h), r * 0.2, Color("f2c85a"))
+		draw_circle(p + Vector2(0.0, -r * 0.75), r * 0.22, Color("f2c85a"))
+
+	func _habitants(p: Vector2, r: float) -> void:
+		draw_circle(p + Vector2(-r * 0.32, -r * 0.3), r * 0.3, Identite.CYAN)
+		draw_circle(p + Vector2(-r * 0.32, r * 0.35), r * 0.42, Identite.CYAN)
+		draw_circle(p + Vector2(r * 0.36, -r * 0.15), r * 0.26, Color("8fb8e8"))
+		draw_circle(p + Vector2(r * 0.36, r * 0.4), r * 0.36, Color("8fb8e8"))
 
 	## Miniatures de bâtiments (catalogue et aperçus).
 	func _mini_batiment_type(p: Vector2, r: float, type: String) -> void:
@@ -712,7 +761,9 @@ class SurfaceVille extends Control:
 			for pose in Profil.ville:
 				if str(pose.type) == type:
 					construit = true
-			var accessible: bool = palier >= int(fiche.palier)
+			var dispo := Simulation.disponibilite(str(type), Profil.connaissance_xp,
+				Profil.pieces, Profil.population)
+			var accessible: bool = dispo != "VERROU_CONNAISSANCE" and dispo != "VERROU_POPULATION"
 			var ligne := Rect2(x - 4.0, y, rect.size.x - 20.0, pas - 5.0)
 			var h := ligne.size.y
 			UI.rect_degrade(self, ligne, 10.0,
@@ -728,8 +779,11 @@ class SurfaceVille extends Control:
 				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0), "Construite : 1/1", 9, Identite.VERT)
 				UI.pastille(self, ligne.position + Vector2(ligne.size.x - 20.0, h / 2.0), 10.0, Identite.VERT, "✓", 12)
 			elif not accessible:
+				# Le verrou EXPLIQUE toujours pourquoi (connaissance ou habitants).
 				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0),
-					"Niv. connaissance %d requis" % int(fiche.palier), 9, Identite.TEXTE_ATTENUE)
+					"Niv. connaissance %d requis" % int(fiche.palier) if dispo == "VERROU_CONNAISSANCE"
+					else "%d habitants requis" % int(fiche.get("population_requise", 0)),
+					9, Identite.TEXTE_ATTENUE)
 				UI.image(self, "icon-lock", Rect2(ligne.position + Vector2(ligne.size.x - 30.0, h / 2.0 - 9.0), Vector2(18.0, 18.0)))
 			else:
 				# DÉBLOQUÉ (palier atteint) : achetable, ou « x / y » si les
@@ -737,7 +791,7 @@ class SurfaceVille extends Control:
 				if not UI.image(self, "res-coin", Rect2(ligne.position + Vector2(46.0, h / 2.0 + 2.0), Vector2(13.0, 13.0))):
 					draw_circle(ligne.position + Vector2(52.0, h / 2.0 + 8.0), 6.0, Identite.OR)
 				UI.texte(self, ligne.position + Vector2(63.0, h / 2.0 + 13.0), str(int(fiche["or"])), 10, Identite.OR)
-				var peut: bool = Cite.constructible(type, Profil.connaissance_xp, Profil.pieces)
+				var peut: bool = dispo == "DISPONIBLE"
 				var bouton := Rect2(ligne.end.x - 96.0, ligne.position.y + (h - 28.0) / 2.0, 88.0, 28.0)
 				if peut:
 					UI.bouton(self, bouton, Identite.VERT, "vc_%s" % type, false, Identite.RAYON_SM)
@@ -783,6 +837,22 @@ class SurfaceVille extends Control:
 		var b: Dictionary = Profil.ville[ville.selection]
 		var fiche: Dictionary = Cite.BATIMENTS[str(b.type)]
 		var niveau := int(b.get("niveau", 1))
+		# LES CONSÉQUENCES RÉELLES du bâtiment (simulation, pas décor).
+		var effets: Array = []
+		if int(fiche.get("capacite_population", 0)) > 0:
+			effets.append("Capacité : +%d habitants" % int(fiche.capacite_population))
+		var prod: Dictionary = fiche.get("production", {})
+		if float(prod.get("nourriture_min", 0.0)) > 0.0:
+			effets.append("Produit : +%.0f nourriture / min" % float(prod.nourriture_min))
+		if float(prod.get("or_min", 0.0)) > 0.0:
+			effets.append("Produit : +%.0f pièce(s) / min" % float(prod.or_min))
+		if int(fiche.get("population_requise", 0)) > 0:
+			effets.append("Condition : %d habitants" % int(fiche.population_requise))
+		if not effets.is_empty():
+			var bande_e := Rect2(size.x / 2.0 - 160.0, size.y - 148.0, 320.0, 24.0)
+			UI.rect_degrade(self, bande_e, 12.0, Color(0.06, 0.12, 0.3, 0.9), Color(0.04, 0.08, 0.22, 0.9))
+			UI.texte(self, bande_e.get_center() + Vector2(0.0, 4.0), "   —   ".join(effets), 10,
+				Identite.CYAN, true, 1)
 		# Trois actions tactiles (maquette : DÉPLACER / INFOS / AMÉLIORER).
 		var y := size.y - 116.0
 		var libelles: Array = [["deplacer", "DÉPLACER", Identite.BLEU],

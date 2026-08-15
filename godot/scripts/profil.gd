@@ -107,6 +107,12 @@ var ville: Array = []                 ## [{type, x, y, rot}] sur la grille invis
 ## (équilibrage, debug, anti-double-récompense).
 var journal: Array = []               ## [{type, montant, source, t}] (100 max)
 var deblocages_en_attente: Array = [] ## contenus du dernier palier franchi
+## SIMULATION DE VILLE V1 (voir simulation.gd — la logique vit LÀ-BAS) :
+var nourriture := 10.0                ## réserve de nourriture (flottant interne)
+var population := 2                   ## habitants actuels (capacité = logements)
+var croissance_progres := 0.0         ## secondes accumulées vers le prochain habitant
+var or_fraction := 0.0                ## production de pièces en cours (< 1)
+var dernier_tick := 0                 ## unix — prêt pour la simulation hors-ligne
 var stats_semaine := {"acquises": 0, "maitrisees": 0, "difficultes": 0, "corrigees": 0,
 	"minutes_apprentissage": 0}       ## le résumé de l'Espace Parent
 var semaine_stats := 0                ## n° de semaine des stats (remise à zéro auto)
@@ -239,7 +245,7 @@ func _semer_demo_pivot() -> void:
 	connaissance_xp = 150
 	if ville.is_empty():
 		ville = [{"type": "maison", "x": 4, "y": 4, "rot": 0, "niveau": 1}]
-	pieces = maxi(pieces, 120)
+	pieces = maxi(pieces, 150)
 	sauver()
 
 
@@ -633,6 +639,11 @@ func sauver() -> void:
 	cfg.set_value("profil", "competences", competences)
 	cfg.set_value("profil", "journal", journal)
 	cfg.set_value("profil", "deblocages_en_attente", deblocages_en_attente)
+	cfg.set_value("profil", "nourriture", nourriture)
+	cfg.set_value("profil", "population", population)
+	cfg.set_value("profil", "croissance_progres", croissance_progres)
+	cfg.set_value("profil", "or_fraction", or_fraction)
+	cfg.set_value("profil", "dernier_tick", dernier_tick)
 	cfg.set_value("profil", "ville", ville)
 	cfg.set_value("profil", "stats_semaine", stats_semaine)
 	cfg.set_value("profil", "semaine_stats", semaine_stats)
@@ -692,6 +703,11 @@ func charger() -> void:
 	var da = cfg.get_value("profil", "deblocages_en_attente", deblocages_en_attente)
 	if da is Array:
 		deblocages_en_attente = da
+	nourriture = float(cfg.get_value("profil", "nourriture", nourriture))
+	population = int(cfg.get_value("profil", "population", population))
+	croissance_progres = float(cfg.get_value("profil", "croissance_progres", croissance_progres))
+	or_fraction = float(cfg.get_value("profil", "or_fraction", or_fraction))
+	dernier_tick = int(cfg.get_value("profil", "dernier_tick", dernier_tick))
 	var vi = cfg.get_value("profil", "ville", ville)
 	if vi is Array:
 		ville = vi
