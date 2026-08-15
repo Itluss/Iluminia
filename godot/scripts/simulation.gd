@@ -279,7 +279,10 @@ static func appliquer(delta_s: float) -> Dictionary:
 	if int(resultat.or_gagne) > 0:
 		p.crediter_pieces(int(resultat.or_gagne), "CITY_PRODUCTION", "ville")
 	p.dernier_tick = int(Time.get_unix_time_from_system())
-	p.sauver()
+	# Tick passif : PAS d'écriture disque toutes les 2 s — l'état est
+	# marqué sale et la ville persiste périodiquement (transactions et
+	# crédits restent immédiats via l'API économique).
+	p.marquer_sale()
 	return resultat
 
 

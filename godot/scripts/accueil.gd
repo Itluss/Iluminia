@@ -118,6 +118,10 @@ func _executer(action: String) -> void:
 			if Savoir.etat(competence_ouverte) == "verrouillee":
 				Audio.jouer("denied")
 				surface.toast("Débloque d'abord les prérequis de cette compétence !")
+			elif not Savoir.supportee(competence_ouverte):
+				# Pas de générateur adapté = pas de session qui ment.
+				Audio.jouer("denied")
+				surface.toast("Cette compétence arrive bientôt — son contenu est en préparation !")
 			else:
 				Audio.jouer("depart")
 				_lancer_session()
@@ -608,12 +612,21 @@ class SurfaceAccueil extends Control:
 		UI.rect_degrade(self, carte3, 8.0, Color("14264d"), Color("0c1a3a"))
 		_mini_batiment(carte3.get_center() + Vector2(0.0, -4.0), 13.0)
 		UI.texte(self, carte3.get_center() + Vector2(0.0, 18.0), "Bâtiment", 8, Identite.TEXTE_ATTENUE, true, 3)
-		# CTA CONTINUER — épais, tactile, mobile game premium.
+		# CTA CONTINUER — épais, tactile ; une compétence sans générateur
+		# adapté affiche honnêtement BIENTÔT DISPONIBLE (pas de session
+		# qui prétendrait la travailler).
 		var cta := Rect2(x, rect.end.y - 66.0, rect.size.x - 28.0, 54.0)
-		UI.bouton(self, cta, Identite.VERT, "cta_session", false, Identite.RAYON_MD)
-		UI.texte(self, cta.get_center() + Vector2(0.0, -2.0), "CONTINUER", 17, Identite.TEXTE, true, 6)
-		UI.texte(self, cta.get_center() + Vector2(0.0, 16.0), "Travailler cette compétence", 10, Identite.CREME, true, 3)
-		_actions.append({"rect": cta, "action": "session"})
+		if Savoir.supportee(id):
+			UI.bouton(self, cta, Identite.VERT, "cta_session", false, Identite.RAYON_MD)
+			UI.texte(self, cta.get_center() + Vector2(0.0, -2.0), "CONTINUER", 17, Identite.TEXTE, true, 6)
+			UI.texte(self, cta.get_center() + Vector2(0.0, 16.0), "Travailler cette compétence", 10, Identite.CREME, true, 3)
+			_actions.append({"rect": cta, "action": "session"})
+		else:
+			UI.bouton(self, cta, Color("2a3054"), "cta_bientot", false, Identite.RAYON_MD)
+			UI.texte(self, cta.get_center() + Vector2(0.0, -2.0), "BIENTÔT DISPONIBLE", 13,
+				Color(0.62, 0.65, 0.8), true, 3)
+			UI.texte(self, cta.get_center() + Vector2(0.0, 16.0), "Contenu en préparation", 10,
+				Color(0.55, 0.58, 0.72), true, 3)
 
 	## Quelle compétence a `id` pour prérequis (la « prochaine étape »).
 	func _suivante_debloquee_par(id: String) -> String:

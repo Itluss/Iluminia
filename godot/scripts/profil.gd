@@ -114,9 +114,37 @@ var croissance_progres := 0.0         ## secondes accumulées vers le prochain h
 var or_fraction := 0.0                ## production de pièces en cours (< 1)
 var dernier_tick := 0                 ## unix — prêt pour la simulation hors-ligne
 var batiments_decouverts: Array = []  ## mémoire des opportunités déjà vues
+var recompenses_traitees: Array = []  ## clés de récompenses déjà créditées (200 max)
+var _sale := false                    ## état modifié, sauvegarde différée en attente
 var stats_semaine := {"acquises": 0, "maitrisees": 0, "difficultes": 0, "corrigees": 0,
 	"minutes_apprentissage": 0}       ## le résumé de l'Espace Parent
 var semaine_stats := 0                ## n° de semaine des stats (remise à zéro auto)
+
+
+## La simulation passive marque l'état SALE au lieu d'écrire le disque
+## toutes les 2 s ; la sauvegarde part périodiquement (~25 s), aux
+## transactions importantes (immédiates), aux changements de scène et à
+## la mise en arrière-plan.
+func marquer_sale() -> void:
+	_sale = true
+
+
+func sauver_si_sale() -> void:
+	if _sale:
+		sauver()
+
+
+## RÉCOMPENSE IDEMPOTENTE ET DURABLE : chaque crédit d'apprentissage
+## porte une clé unique (session + question / bonus) mémorisée de façon
+## PERSISTANTE — double-clic, re-rendu, rechargement ou retour arrière
+## ne créditent jamais deux fois. Renvoie false si déjà traité.
+func appliquer_recompense_unique(cle: String, montant: int, type: String, source := "") -> bool:
+	var filtre := Cite.filtrer_recompense(recompenses_traitees, cle)
+	if bool(filtre.deja):
+		return false
+	recompenses_traitees = filtre.traitees
+	crediter_pieces(montant, type, source)
+	return true
 
 
 ## ------------------------------------------------ économie centralisée
@@ -189,15 +217,14 @@ func fixer_etat_competence(id: String, etat: String, score := -1.0) -> int:
 	if score >= 0.0:
 		entree.score = clampf(score, 0.0, 100.0)
 	competences[id] = entree
-	var gain := 0
+	# LA RÈGLE DE PROGRESSION est centralisée et PURE (Cite.xp_progression,
+	# testée) : l'XP de connaissance ne vient QUE d'une vraie transition.
 	var fiche := Savoir.competence(id)
-	if not fiche.is_empty() and avant != etat:
-		# XP à la première acquisition / maîtrise uniquement (anti-farm).
+	var gain := 0 if fiche.is_empty() else Cite.xp_progression(int(fiche.get("xp", 0)), avant, etat)
+	if avant != etat:
 		if etat == "acquise" and not ["acquise", "maitrisee"].has(avant):
-			gain = int(fiche.xp)
 			stats_semaine.acquises += 1
 		elif etat == "maitrisee" and avant != "maitrisee":
-			gain = int(fiche.xp) / 2
 			stats_semaine.maitrisees += 1
 		elif etat == "a_consolider":
 			stats_semaine.difficultes += 1
@@ -311,14 +338,16 @@ func gagner_xp(quantite: float) -> int:
 
 
 func gagner_pieces(quantite: int) -> void:
-	pieces += quantite
+	# LEGACY (pré-pivot) : redirigé vers l'API économique centrale.
+	crediter_pieces(quantite, "LEGACY", "gagner_pieces")
+	return
 	sauver()
 
 
 func depenser(cout: int) -> bool:
 	if pieces < cout:
 		return false
-	pieces -= cout
+	debiter_pieces(cout, "LEGACY", "depense")
 	sauver()
 	return true
 
@@ -429,7 +458,7 @@ func eclore() -> Dictionary:
 	var bonus := 0
 	if not nouveau:
 		bonus = 50
-		pieces += bonus
+		crediter_pieces(bonus, "LEGACY", "eclosion")
 	elif compagnon == "":
 		compagnon = choisie # premier dragon : il t'accompagne d'office
 	sauver()
@@ -465,7 +494,7 @@ func reclamer_route(seuil: int) -> Dictionary:
 		route_reclamee.append(seuil)
 		match str(palier.type):
 			"pieces":
-				pieces += int(palier.montant)
+				crediter_pieces(int(palier.montant), "LEGACY", "route")
 			"oeuf":
 				oeufs += 1
 			"heros":
@@ -476,7 +505,7 @@ func reclamer_route(seuil: int) -> Dictionary:
 				var nouveau: bool = not dragons.has(espece)
 				dragons[espece] = int(dragons.get(espece, 0)) + 1
 				if not nouveau:
-					pieces += 50
+					crediter_pieces(50, "LEGACY", "route_defaut")
 				elif compagnon == "":
 					compagnon = espece
 		sauver()
@@ -573,7 +602,7 @@ func reclamer_quete(indice: int) -> int:
 	if int(q.progres) < int(q.cible) or bool(q.reclamee):
 		return 0
 	q.reclamee = true
-	pieces += int(q.pieces)
+	crediter_pieces(int(q.pieces), "LEGACY", "quete")
 	sauver()
 	return int(q.pieces)
 
@@ -598,7 +627,7 @@ func ouvrir_cadeau() -> Dictionary:
 		oeufs += 1
 		resultat = {"type": "oeuf"}
 	else:
-		pieces += 80
+		crediter_pieces(80, "LEGACY", "cadeau")
 		resultat = {"type": "pieces", "pieces": 80}
 	sauver()
 	return resultat
@@ -646,10 +675,12 @@ func sauver() -> void:
 	cfg.set_value("profil", "or_fraction", or_fraction)
 	cfg.set_value("profil", "dernier_tick", dernier_tick)
 	cfg.set_value("profil", "batiments_decouverts", batiments_decouverts)
+	cfg.set_value("profil", "recompenses_traitees", recompenses_traitees)
 	cfg.set_value("profil", "ville", ville)
 	cfg.set_value("profil", "stats_semaine", stats_semaine)
 	cfg.set_value("profil", "semaine_stats", semaine_stats)
 	cfg.save(CHEMIN)
+	_sale = false
 
 
 func charger() -> void:
@@ -713,6 +744,9 @@ func charger() -> void:
 	var bd = cfg.get_value("profil", "batiments_decouverts", batiments_decouverts)
 	if bd is Array:
 		batiments_decouverts = bd
+	var rt = cfg.get_value("profil", "recompenses_traitees", recompenses_traitees)
+	if rt is Array:
+		recompenses_traitees = rt
 	var vi = cfg.get_value("profil", "ville", ville)
 	if vi is Array:
 		ville = vi

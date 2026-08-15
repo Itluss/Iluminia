@@ -41,6 +41,7 @@ const SUJETS := {
 						"questions": {"notion": "relatifs", "niveau": 1}},
 					{"id": "nb_comparer", "titre": "Comparer des nombres",
 						"niveaux": ["CM1", "CM2", "6e"], "prerequis": ["nb_lire"], "xp": 50,
+						"generateur": "comparer_entiers",
 						"questions": {"notion": "relatifs", "niveau": 1}},
 					{"id": "nb_addsous", "titre": "Additions et soustractions",
 						"niveaux": ["CM1", "CM2"], "prerequis": ["nb_comparer"], "xp": 60,
@@ -64,6 +65,7 @@ const SUJETS := {
 						"questions": {"notion": "fractions", "niveau": 1}},
 					{"id": "fr_comparer", "titre": "Comparer des fractions",
 						"niveaux": ["CM2", "6e", "5e"], "prerequis": ["fr_representer"], "xp": 70,
+						"generateur": "comparer_fractions",
 						"questions": {"notion": "fractions", "niveau": 2}},
 					{"id": "fr_equivalentes", "titre": "Fractions équivalentes",
 						"niveaux": ["6e", "5e"], "prerequis": ["fr_comparer"], "xp": 80,
@@ -128,22 +130,59 @@ static func etat(id: String) -> String:
 	var fiche := competence(id)
 	if fiche.is_empty():
 		return "verrouillee"
+	var profil := _profil()
 	for pre in fiche.prerequis:
-		if not ["acquise", "maitrisee"].has(Profil.etat_competence_brut(str(pre))):
+		if not ["acquise", "maitrisee"].has(profil.etat_competence_brut(str(pre))):
 			return "verrouillee"
-	return Profil.etat_competence_brut(id)
+	return profil.etat_competence_brut(id)
 
 
-## RECOMMANDATION FORTE (+ liberté : l'enfant peut choisir toute
-## compétence déverrouillée) : la première à consolider, sinon la
-## première en apprentissage, sinon une découverte accessible.
-static func recommandation(sujet := "mathematiques") -> String:
+## L'autoload Profil résolu à l'EXÉCUTION : les fonctions pures de ce
+## fichier restent compilables (et testables) sans le jeu complet.
+static func _profil() -> Node:
+	return (Engine.get_main_loop() as SceneTree).root.get_node("Profil")
+
+
+## Une compétence est SUPPORTED si un générateur de questions ADAPTÉ
+## existe réellement — jamais de session qui prétend travailler une
+## compétence en posant un exercice sans rapport. Les autres nœuds
+## restent visibles dans l'arbre : « BIENTÔT DISPONIBLE ».
+static func supportee(id: String) -> bool:
+	return competence(id).has("generateur")
+
+
+## Les compétences réellement jouables (pur, testé).
+static func jouables() -> Array:
+	var sortie: Array = []
+	for sujet in SUJETS:
+		for c in competences(sujet):
+			if c.has("generateur"):
+				sortie.append(str(c.id))
+	return sortie
+
+
+## Le cœur PUR de la recommandation (testé) : parmi des états donnés,
+## la première candidate JOUABLE — à consolider > apprentissage >
+## découverte. Une compétence non supportée n'est jamais retournée.
+static func recommander_parmi(etats: Dictionary, sujet := "mathematiques") -> String:
 	var candidates := {"a_consolider": "", "apprentissage": "", "decouverte": ""}
 	for c in competences(sujet):
-		var e := etat(str(c.id))
+		if not c.has("generateur"):
+			continue
+		var e := str(etats.get(str(c.id), "verrouillee"))
 		if candidates.has(e) and candidates[e] == "":
 			candidates[e] = str(c.id)
 	for cle in ["a_consolider", "apprentissage", "decouverte"]:
 		if candidates[cle] != "":
 			return candidates[cle]
 	return ""
+
+
+## RECOMMANDATION FORTE (+ liberté : l'enfant peut choisir toute
+## compétence déverrouillée) : la première à consolider, sinon la
+## première en apprentissage, sinon une découverte accessible.
+static func recommandation(sujet := "mathematiques") -> String:
+	var etats := {}
+	for c in competences(sujet):
+		etats[str(c.id)] = etat(str(c.id))
+	return recommander_parmi(etats, sujet)

@@ -26,11 +26,63 @@ const TAILLE_GRILLE := 12       ## cases de côté du terrain v1
 ## ajoute un bonus. Une erreur ne retire JAMAIS de pièces. Sources
 ## futures prévues sans changer le modèle : CITY_PRODUCTION,
 ## ACHIEVEMENT, EVENT, SOCIAL.
+## LES PIÈCES récompensent l'ACTIVITÉ régulière ; l'XP DE CONNAISSANCE
+## ne récompense QUE la progression pédagogique réelle (transitions
+## d'état — voir xp_progression) : une bonne réponse isolée ne donne
+## JAMAIS d'XP de connaissance. Pas de farming de déblocages.
 const RECOMPENSES := {
 	"question_or": 5,        ## pièces par bonne réponse (QUESTION_REWARD)
-	"question_xp": 10,       ## XP de connaissance par bonne réponse
 	"bonus_session_or": 15,  ## bonus de session complète (SESSION_REWARD)
 }
+
+
+## LA RÈGLE CENTRALE DE PROGRESSION (pure, testée) : combien d'XP de
+## connaissance vaut une transition d'état pédagogique ? Zéro si l'état
+## ne change pas (10 bonnes réponses de plus sur une compétence
+## maîtrisée = 0 XP), zéro si la transition n'est pas une vraie montée.
+static func xp_progression(xp_competence: int, avant: String, apres: String) -> int:
+	if avant == apres:
+		return 0
+	if apres == "acquise" and not ["acquise", "maitrisee"].has(avant):
+		return xp_competence
+	if apres == "maitrisee" and avant != "maitrisee":
+		return xp_competence / 2
+	return 0
+
+
+## FILTRE D'IDEMPOTENCE (pur, testé) : une clé de récompense déjà
+## traitée ne crédite plus jamais — même après rechargement, la liste
+## étant persistée. Fenêtre glissante (pas de stockage infini).
+static func filtrer_recompense(traitees: Array, cle: String, fenetre := 200) -> Dictionary:
+	if traitees.has(cle):
+		return {"deja": true, "traitees": traitees}
+	var suite := traitees.duplicate()
+	suite.append(cle)
+	if suite.size() > fenetre:
+		suite = suite.slice(suite.size() - fenetre)
+	return {"deja": false, "traitees": suite}
+
+
+## Cases occupées par les bâtiments posés (pur — collisions).
+static func cases_occupees(ville_posee: Array) -> Dictionary:
+	var occ := {}
+	for b in ville_posee:
+		var taille := int(BATIMENTS.get(str(b.type), {}).get("taille", 2))
+		for dx in taille:
+			for dy in taille:
+				occ[Vector2i(int(b.x) + dx, int(b.y) + dy)] = true
+	return occ
+
+
+## DÉPLACEMENT (pur, testé) : changer les coordonnées d'un bâtiment,
+## RIEN d'autre — l'objet complet est copié (niveau et toute metadata
+## conservés), aucune transaction économique n'existe.
+static func batiment_deplace(original: Dictionary, x: int, y: int, rot: int) -> Dictionary:
+	var copie := original.duplicate(true)
+	copie.x = x
+	copie.y = y
+	copie.rot = rot
+	return copie
 
 ## Les PALIERS DE CONNAISSANCE : fortement croissants — les premières
 ## récompenses arrivent vite, le prestige se mérite longtemps.

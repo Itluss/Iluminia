@@ -28,10 +28,40 @@ var _grille: Node3D
 var surface: SurfaceVille
 var _t := 0.0
 var _tick_accumule := 0.0
+var _sauvegarde_accumulee := 0.0
 var rapport_retour := {}         ## OfflineReport significatif (modal BON RETOUR)
 var _t_rapport := 0.0            ## temps d'ouverture (count-up des gains)
 var blocage := {}                ## CityActionBlocker (l'intention du joueur)
+## TRANSACTION DE DÉPLACEMENT : l'original (objet COMPLET, niveau et
+## metadata inclus) reste récupérable tant que rien n'est validé —
+## ANNULER le restaure à l'identique, VALIDER ne change QUE les
+## coordonnées. Aucune transaction économique (déplacer n'est pas
+## rembourser puis racheter).
+var deplacement := {}            ## {indice, original}
 var _alerte_nourriture := false  ## hystérésis de l'alerte nourriture
+
+
+## CYCLE DE VIE MOBILE : arrière-plan → sauvegarde ; retour au premier
+## plan → LE MÊME chemin d'absence que _ready (progression_hors_ligne,
+## idempotente par timestamp : une fenêtre déjà consommée vaut zéro).
+func _notification(quoi: int) -> void:
+	match quoi:
+		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_WINDOW_FOCUS_OUT:
+			Profil.sauver()
+		NOTIFICATION_APPLICATION_RESUMED, NOTIFICATION_WM_WINDOW_FOCUS_IN:
+			if surface != null:
+				_traiter_absence()
+		NOTIFICATION_WM_CLOSE_REQUEST:
+			Profil.sauver()
+
+
+## Le SEUL point de consommation d'une période d'absence (appelé par
+## _ready et par le retour au premier plan — jamais deux traitements).
+func _traiter_absence() -> void:
+	var rapport := Simulation.progression_hors_ligne(int(Time.get_unix_time_from_system()))
+	if bool(rapport.get("significatif", false)):
+		rapport_retour = rapport
+		_t_rapport = 0.0
 
 
 ## L'état lu par le moteur de besoins (dérivé, jamais persisté).
@@ -98,14 +128,10 @@ func _ready() -> void:
 	# PROGRESSION HORS-LIGNE : la ville a continué de vivre pendant
 	# l'absence — un seul point de traitement, au lancement de l'écran.
 	# (Crochet DEV : ILUMINIA_ABSENCE=secondes force une absence.)
-	var maintenant := int(Time.get_unix_time_from_system())
 	if OS.get_environment("ILUMINIA_ABSENCE") != "":
-		Profil.dernier_tick = maintenant - int(OS.get_environment("ILUMINIA_ABSENCE"))
-	rapport_retour = Simulation.progression_hors_ligne(maintenant)
-	if not bool(rapport_retour.get("significatif", false)):
-		rapport_retour = {}
-	else:
-		_t_rapport = 0.0
+		Profil.dernier_tick = int(Time.get_unix_time_from_system()) \
+			- int(OS.get_environment("ILUMINIA_ABSENCE"))
+	_traiter_absence()
 
 	# RETOUR CONTEXTUEL après une session lancée d'ici : le bâtiment
 	# ciblé est retrouvé — jamais « retour ville générique, débrouille-toi ».
@@ -137,6 +163,15 @@ func _ready() -> void:
 			_executer.call_deferred("blocage:atelier")
 		"decouvrir":
 			_executer.call_deferred("reco:DISCOVER_BUILDING:atelier")
+		"deplacer":
+			# Transaction de déplacement OUVERTE (fantôme sur la maison).
+			selection = 0
+			_executer.call_deferred("deplacer")
+		"deplacer_annule":
+			# Ouvre PUIS annule : la maison doit être restaurée à l'identique.
+			selection = 0
+			_executer.call_deferred("deplacer")
+			_executer.call_deferred("annuler")
 
 
 ## Le terrain sobre et beau : herbe douce à nuances, bordure de terre et
@@ -371,6 +406,13 @@ func entrer_construction(type: String) -> void:
 
 
 func sortir_construction() -> void:
+	# Une transaction de déplacement encore ouverte = ANNULATION :
+	# l'original est restauré EXACTEMENT (position, rotation, niveau).
+	if not deplacement.is_empty():
+		Profil.ville.insert(mini(int(deplacement.indice), Profil.ville.size()),
+			deplacement.original)
+		deplacement = {}
+		_reconstruire_batiments()
 	mode = Mode.NORMAL
 	type_en_construction = ""
 	_grille.visible = false
@@ -379,15 +421,9 @@ func sortir_construction() -> void:
 		_noeud_fantome = null
 
 
-## Cases occupées par les bâtiments posés.
+## Cases occupées (helper pur partagé — Cite.cases_occupees).
 func _cases_occupees() -> Dictionary:
-	var occ := {}
-	for b in Profil.ville:
-		var taille := int(Cite.BATIMENTS.get(str(b.type), {}).get("taille", 2))
-		for dx in taille:
-			for dy in taille:
-				occ[Vector2i(int(b.x) + dx, int(b.y) + dy)] = true
-	return occ
+	return Cite.cases_occupees(Profil.ville)
 
 
 func _valider_fantome() -> void:
@@ -433,6 +469,17 @@ func valider_construction() -> void:
 	if not bool(fantome.valide):
 		Audio.jouer("denied")
 		surface.toast("Cet emplacement est occupé — choisis une case libre !")
+		return
+	if not deplacement.is_empty():
+		# DÉPLACEMENT VALIDÉ : seules les coordonnées changent (objet
+		# complet copié — niveau conservé), zéro économie.
+		Profil.ville.append(Cite.batiment_deplace(deplacement.original,
+			int(fantome.x), int(fantome.y), int(fantome.rot)))
+		deplacement = {}
+		Profil.sauver()
+		Audio.jouer("victoire")
+		sortir_construction()
+		_reconstruire_batiments()
 		return
 	if Simulation.disponibilite(type_en_construction, Profil.connaissance_xp,
 			Profil.pieces, Profil.population) != "DISPONIBLE":
@@ -480,6 +527,12 @@ func _process(delta: float) -> void:
 		if bool(resultat.habitant_arrive):
 			Audio.jouer("victoire")
 			surface.toast("Un nouvel habitant a rejoint ta ville !")
+	# Persistance ESPACÉE : le tick passif marque l'état sale, l'écriture
+	# disque part toutes les ~25 s (les transactions restent immédiates).
+	_sauvegarde_accumulee += delta
+	if _sauvegarde_accumulee >= 25.0:
+		_sauvegarde_accumulee = 0.0
+		Profil.sauver_si_sale()
 	surface.queue_redraw()
 
 
@@ -524,6 +577,7 @@ func _executer(action: String) -> void:
 			# APPRENDRE : l'arbre des connaissances est désormais une
 			# section — la ville reste la Home.
 			Audio.jouer("clic")
+			Profil.sauver_si_sale()
 			OS.set_environment("ILUMINIA_ECRAN", "")
 			get_tree().change_scene_to_file.call_deferred("res://scenes/accueil.tscn")
 		"apprendre_gagner":
@@ -582,18 +636,21 @@ func _executer(action: String) -> void:
 			Audio.jouer("clic")
 			sortir_construction()
 		"deplacer":
-			# Déplacement = mode construction sur le bâtiment existant.
+			# Déplacement = mode construction sur le bâtiment existant,
+			# adossé à une TRANSACTION restaurable (jamais de perte).
 			if selection >= 0:
 				Audio.jouer("clic")
 				var b: Dictionary = Profil.ville[selection]
-				var type := str(b.type)
+				deplacement = {"indice": selection, "original": b.duplicate(true)}
 				Profil.ville.remove_at(selection)
 				selection = -1
 				_reconstruire_batiments()
-				entrer_construction(type)
-				# Déjà possédé : replacé sans re-payer (remboursé, re-débité
-				# à la validation — solde net inchangé, tracé au journal).
-				Profil.crediter_pieces(int(Cite.BATIMENTS[type]["or"]), "DEPLACEMENT", type)
+				entrer_construction(str(b.type))
+				fantome.x = int(b.x)
+				fantome.y = int(b.y)
+				fantome.rot = int(b.get("rot", 0))
+				_valider_fantome()
+				_reconstruire_fantome()
 		"infos":
 			if selection >= 0:
 				Audio.jouer("clic")

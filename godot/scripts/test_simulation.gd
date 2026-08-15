@@ -1,10 +1,10 @@
 extends MainLoop
-## TESTS DE LOGIQUE du moteur de simulation (fonctions pures — aucun
-## profil requis). Lancer :
+## TESTS DE LOGIQUE des moteurs (fonctions pures — aucun profil requis).
+## Lancer :
 ##   godot --headless --path godot --script res://scripts/test_simulation.gd
-## Les tests 9 et 10 (débit unique, source de vérité commune) sont
-## garantis par l'architecture : debiter_pieces atomique + Profil unique
-## — validés par les captures d'achat de l'itération économie.
+## La CI échoue si la sortie ne se termine pas par « ÉCHECS : 0 »
+## (MainLoop n'expose pas de code de sortie : le workflow grep le bilan).
+## Ce qui n'est PAS couvert ici est marqué NON VÉRIFIÉ, jamais supposé.
 
 var echecs := 0
 
@@ -102,9 +102,11 @@ func _initialize() -> void:
 		"nouveaux_habitants": 0, "delta_nourriture": 0.2}), "rien à dire : pas de rapport")
 	verifier(Simulation.rapport_significatif({"duree_s": 7200, "pieces_produites": 0,
 		"nouveaux_habitants": 2, "delta_nourriture": 0.0}), "habitants arrivés : rapport montré")
-	# 9 (anti-double-gain) : garanti par progression_hors_ligne — le
-	# timestamp avance en mémoire avant la première persistance, la
-	# période comptabilisée ne peut pas être rejouée (validé au scénario).
+	# 9 (anti-double-gain) : la règle pure est testée plus bas
+	# (duree_a_simuler(t, t) == 0 → une période déjà comptée ne rejoue
+	# rien) ; le chemin complet avec persistance n'est PAS exécutable en
+	# headless --script (autoload Profil absent) : NON VÉRIFIÉ ici,
+	# observé uniquement au scénario manuel.
 
 	# ------------------------------------------------- moteur de besoins
 	var memoire_vide := {"batiments_decouverts": []}
@@ -205,10 +207,101 @@ func _initialize() -> void:
 	verifier(Simulation.disponibilite("potager", 100, 80, 2) == "PIECES_INSUFFISANTES"
 		and Simulation.disponibilite("potager", 100, 125, 2) == "DISPONIBLE",
 		"récompense suffisante → bâtiment automatiquement disponible")
-	# (5-6, 12 : crédit unique par question via l'étape QUESTION_ACTIVE et
-	# bonus unique via _bilan_applique, persistés au fil de l'eau —
-	# validés par captures ; 7, 9, 11 : retours et réévaluation validés
-	# par les scénarios A-D.)
+	# (5-6, 12 : la règle pure du crédit unique est testée ci-dessous —
+	# filtrer_recompense ; le branchement de l'interface de session n'est
+	# pas exécutable en headless --script : NON VÉRIFIÉ ici, observé aux
+	# captures. 7, 9, 11 : retours contextuels observés aux scénarios A-D,
+	# NON VÉRIFIÉS par cette suite.)
+
+	# ----------------------------------------- consolidation Prompts 1-5
+	# ANTI-FARMING : l'XP de connaissance ne vient QUE d'une vraie
+	# transition pédagogique (règle centralisée Cite.xp_progression).
+	verifier(Cite.xp_progression(70, "apprentissage", "acquise") == 70,
+		"transition vers ACQUISE : XP complète")
+	verifier(Cite.xp_progression(70, "acquise", "maitrisee") == 35,
+		"transition vers MAÎTRISÉE : moitié de l'XP")
+	verifier(Cite.xp_progression(70, "decouverte", "apprentissage") == 0,
+		"début d'apprentissage : pas encore d'XP")
+	verifier(Cite.xp_progression(70, "maitrisee", "acquise") == 0,
+		"régression d'état : jamais d'XP")
+	var farm := 0
+	for i in 10:
+		farm += Cite.xp_progression(70, "maitrisee", "maitrisee")
+	verifier(farm == 0, "10 sessions parfaites sur compétence maîtrisée : 0 XP")
+	verifier(int(Cite.RECOMPENSES.question_or) > 0
+		and not Cite.RECOMPENSES.has("question_xp"),
+		"pièces par question conservées, question_xp supprimé du modèle")
+
+	# IDEMPOTENCE DURABLE : une clé de récompense traitée ne crédite plus.
+	var f1 := Cite.filtrer_recompense([], "s1:question:q1")
+	verifier(not bool(f1.deja), "clé nouvelle : récompense acceptée")
+	verifier(bool(Cite.filtrer_recompense(f1.traitees, "s1:question:q1").deja),
+		"même clé rejouée : récompense refusée")
+	verifier(not bool(Cite.filtrer_recompense(f1.traitees, "s1:question:q2").deja),
+		"clé différente : acceptée")
+	var traitees: Array = []
+	for i in 250:
+		traitees = Cite.filtrer_recompense(traitees, "cle_%d" % i).traitees
+	verifier(traitees.size() == 200 and traitees.has("cle_249")
+		and not traitees.has("cle_0"),
+		"fenêtre glissante 200 : bornée, les plus récentes conservées")
+
+	# COMPÉTENCES SUPPORTED : mapping générateur explicite, zéro fallback.
+	verifier(Savoir.jouables() == ["nb_comparer", "fr_comparer"],
+		"exactement 2 compétences jouables : nb_comparer, fr_comparer")
+	verifier(Savoir.supportee("fr_comparer") and not Savoir.supportee("geo_aires"),
+		"supportée = possède un générateur adapté")
+	verifier(Savoir.recommander_parmi({"geo_aires": "a_consolider",
+		"fr_comparer": "decouverte"}) == "fr_comparer",
+		"recommandation : jamais une compétence non jouable")
+	verifier(Savoir.recommander_parmi({"nb_comparer": "apprentissage",
+		"fr_comparer": "a_consolider"}) == "fr_comparer",
+		"recommandation : à consolider avant apprentissage")
+	verifier(Savoir.recommander_parmi({"geo_aires": "apprentissage",
+		"geo_angles": "decouverte"}) == "",
+		"aucune jouable dans les états : recommandation vide, pas de fallback")
+	var src_session := FileAccess.get_file_as_string("res://scripts/session.gd")
+	verifier(src_session.contains("if generateur == \"\":")
+		and src_session.contains("\t\treturn []"),
+		"dispatch strict (source) : sans générateur, aucune question")
+
+	# ÉCONOMIE 100 % API CENTRALE : aucun crédit/débit direct dispersé.
+	var credit_direct := "pieces " + "+="
+	var debit_direct := "pieces " + "-="
+	var hors_api: Array = []
+	for fichier in DirAccess.get_files_at("res://scripts"):
+		if not fichier.ends_with(".gd") or fichier in ["profil.gd", "test_simulation.gd"]:
+			continue
+		var src := FileAccess.get_file_as_string("res://scripts/" + fichier)
+		if src.contains(credit_direct) or src.contains(debit_direct):
+			hors_api.append(fichier)
+	verifier(hors_api.is_empty(),
+		"aucun `pieces +=`/`pieces -=` hors profil.gd (trouvés : %s)" % [hors_api])
+	var credits := 0
+	var debits := 0
+	for ligne in FileAccess.get_file_as_string("res://scripts/profil.gd").split("\n"):
+		if ligne.strip_edges().begins_with("#"):
+			continue
+		credits += ligne.count(credit_direct)
+		debits += ligne.count(debit_direct)
+	verifier(credits == 1 and debits == 1,
+		"profil.gd : un seul point de crédit et un seul point de débit (l'API)")
+
+	# DÉPLACEMENT DE BÂTIMENT : transaction pure, sans économie.
+	var origine := {"type": "maison", "x": 3, "y": 4, "rot": 0, "niveau": 3}
+	var deplace := Cite.batiment_deplace(origine, 8, 9, 1)
+	verifier(int(deplace.x) == 8 and int(deplace.y) == 9 and int(deplace.rot) == 1
+		and int(deplace.niveau) == 3 and str(deplace.type) == "maison",
+		"déplacement : position changée, niveau et type conservés")
+	verifier(int(origine.x) == 3 and int(origine.niveau) == 3,
+		"déplacement : l'original n'est jamais muté (copie profonde)")
+	var occ := Cite.cases_occupees([{"type": "potager", "x": 0, "y": 0}])
+	verifier(occ.has(Vector2i(1, 1)) and not occ.has(Vector2i(2, 2)),
+		"cases occupées : empreinte 2×2 du potager exacte (collision fiable)")
+
+	# REPRISE IMMÉDIATE : même instant → durée nulle, aucun gain rejouable.
+	verifier(int(Simulation.duree_a_simuler(5000, 5000).duree_s) == 0,
+		"reprise au même instant : durée 0 — une période comptée ne rejoue pas")
 
 	print("ÉCHECS : %d" % echecs)
 

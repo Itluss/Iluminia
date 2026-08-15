@@ -75,6 +75,12 @@ static func decoder_intention(brut: String) -> Dictionary:
 		"montant": int(p[3]) if p.size() > 3 else 0,
 		"palier": int(p[4]) if p.size() > 4 else 0}
 
+## Identité unique de la session : chaque récompense porte une clé
+## `<session_id>:question:<id>` ou `<session_id>:bonus`, mémorisée de
+## façon PERSISTANTE (Profil.appliquer_recompense_unique) — un
+## rechargement ou un double traitement ne crédite jamais deux fois.
+var session_id := ""
+
 var _chrono := 0.0               ## temps passé dans l'étape courante
 var _fige := false               ## crochet de capture : gèle l'avancement
 var _debut := 0.0                ## fondu d'entrée (transition courte)
@@ -91,7 +97,19 @@ func _ready() -> void:
 	session.competence_id = id
 	session.maitrise_avant = Profil.score_competence(id)
 	session.maitrise_courante = session.maitrise_avant
-	session.questions = generer_questions(competence, domaine_cle, 5)
+	session_id = "learning_%d_%04d" % [int(Time.get_unix_time_from_system()), randi() % 10000]
+	# Une compétence sans générateur adapté ne se joue JAMAIS (aucun
+	# fallback trompeur) : on bascule sur la recommandation jouable.
+	if not Savoir.supportee(id):
+		var jouable := Savoir.recommandation()
+		if jouable != "":
+			id = jouable
+			competence = Savoir.competence(id)
+			_trouver_domaine(id)
+			session.competence_id = id
+			session.maitrise_avant = Profil.score_competence(id)
+			session.maitrise_courante = session.maitrise_avant
+	session.questions = generer_questions(competence, 5)
 
 	var couche := CanvasLayer.new()
 	add_child(couche)
@@ -198,7 +216,7 @@ func _fin_lecon(terminee: bool) -> void:
 	session.mesures.lecon_terminee = terminee
 	session.mesures.lecon_passee = not terminee
 	cine = null
-	var verif := generer_questions(competence, domaine_cle, 1)
+	var verif := generer_questions(competence, 1)
 	var q: Dictionary = verif[0]
 	q.id = "%s_verification" % str(competence.get("id", "comp"))
 	q.verification = true
@@ -286,16 +304,12 @@ func _repondre(reponse: String) -> void:
 		session.maitrise_courante = minf(float(session.maitrise_courante) + 6.0, 100.0)
 		if bool(q.get("verification", false)):
 			session.mesures.exercice_apres_lecon_juste = true
-		# RÉCOMPENSES RÉELLES, une seule fois par question (une réponse
-		# n'est acceptée qu'en QUESTION_ACTIVE — pas de double crédit) :
-		# créditées, journalisées, persistées, visibles immédiatement.
-		Profil.crediter_pieces(int(Cite.RECOMPENSES.question_or), "QUESTION_REWARD", str(q.id))
-		session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.question_or)
-		var nouveau_palier := Profil.crediter_connaissance(
-			int(Cite.RECOMPENSES.question_xp), "question", str(q.id))
-		session.xp_gagnee = int(session.xp_gagnee) + int(Cite.RECOMPENSES.question_xp)
-		if nouveau_palier >= 0:
-			session.palier_atteint = nouveau_palier
+		# PIÈCES : récompense d'activité, créditée UNE seule fois par
+		# question (clé persistée). AUCUNE XP de connaissance ici : elle
+		# ne vient que d'une vraie progression pédagogique (bilan).
+		if Profil.appliquer_recompense_unique("%s:question:%s" % [session_id, str(q.id)],
+				int(Cite.RECOMPENSES.question_or), "QUESTION_REWARD", str(q.id)):
+			session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.question_or)
 		Audio.jouer("cristal")
 	else:
 		etape = Etape.ANSWER_INCORRECT
@@ -327,10 +341,10 @@ func _afficher_bilan() -> void:
 		return
 	_bilan_applique = true
 	var avant_palier := Cite.palier(Profil.connaissance_xp)
-	Profil.crediter_pieces(int(Cite.RECOMPENSES.bonus_session_or), "SESSION_REWARD",
-		str(session.competence_id))
-	session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.bonus_session_or)
-	_appliquer_maitrise()
+	if Profil.appliquer_recompense_unique("%s:bonus" % session_id,
+			int(Cite.RECOMPENSES.bonus_session_or), "SESSION_REWARD", str(session.competence_id)):
+		session.pieces_gagnees = int(session.pieces_gagnees) + int(Cite.RECOMPENSES.bonus_session_or)
+	session.xp_gagnee = _appliquer_maitrise()
 	# La maîtrise a pu verser de l'XP (état acquis/maîtrisé) : re-tester.
 	if Cite.palier(Profil.connaissance_xp) > avant_palier:
 		session.palier_atteint = Cite.palier(Profil.connaissance_xp)
@@ -338,8 +352,10 @@ func _afficher_bilan() -> void:
 
 
 ## La maîtrise se démontre en RÉPONDANT (jamais en regardant une leçon) ;
-## appliquée une seule fois, l'état peut changer et verser son XP.
-func _appliquer_maitrise() -> void:
+## appliquée une seule fois. L'XP de connaissance versée est celle de la
+## TRANSITION PÉDAGOGIQUE RÉELLE (Cite.xp_progression via fixer_etat) —
+## zéro si l'état ne change pas : pas de farming de déblocages.
+func _appliquer_maitrise() -> int:
 	var id := str(session.competence_id)
 	var score := float(session.maitrise_courante)
 	var avant := Profil.etat_competence_brut(id)
@@ -348,7 +364,7 @@ func _appliquer_maitrise() -> void:
 		etat = "acquise"
 	elif avant == "decouverte" or avant == "a_consolider":
 		etat = "apprentissage"
-	Profil.fixer_etat_competence(id, etat, score)
+	return Profil.fixer_etat_competence(id, etat, score)
 
 
 ## Sortie de session (bilan ou départ anticipé). Une session lancée
@@ -358,7 +374,7 @@ func _terminer(destination: String) -> void:
 		# Départ anticipé : la maîtrise travaillée est conservée, sans
 		# bonus de session (l'effort complet récompense l'effort complet).
 		_bilan_applique = true
-		_appliquer_maitrise()
+		session.xp_gagnee = _appliquer_maitrise()
 	if destination == "arbre" and str(intention.get("retour", "")) == "ville":
 		destination = "ville"
 	# RESTAURATION DE CONTEXTE : la ville retrouvera le bâtiment ciblé
@@ -397,7 +413,13 @@ func achat_possible() -> Dictionary:
 ## operandes[{type, ...}], reponses, correcte, misconceptions{}} ; les
 ## types MULTIPLE_CHOICE / NUMBER_INPUT / DRAG_DROP… s'ajouteront ici
 ## sans toucher à l'écran.
-static func generer_questions(comp: Dictionary, domaine: String, nombre: int) -> Array:
+static func generer_questions(comp: Dictionary, nombre: int) -> Array:
+	# UNE SESSION NE POSE JAMAIS un exercice sans rapport avec sa
+	# compétence : le générateur vient de la donnée (Savoir), et une
+	# compétence sans générateur ne produit RIEN (aucun fallback).
+	var generateur := str(comp.get("generateur", ""))
+	if generateur == "":
+		return []
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	var sortie: Array = []
@@ -405,7 +427,7 @@ static func generer_questions(comp: Dictionary, domaine: String, nombre: int) ->
 	for i in nombre:
 		var q := {}
 		for essai in 40:
-			q = _question_compare(comp, domaine, rng, i == 2)
+			q = _question_compare(comp, generateur, rng, i == 2)
 			var cle := str(q.operandes)
 			if not vues.has(cle):
 				vues[cle] = true
@@ -415,11 +437,11 @@ static func generer_questions(comp: Dictionary, domaine: String, nombre: int) ->
 	return sortie
 
 
-static func _question_compare(comp: Dictionary, domaine: String,
+static func _question_compare(comp: Dictionary, generateur: String,
 		rng: RandomNumberGenerator, egalite: bool) -> Dictionary:
 	var q := {"competence_id": str(comp.get("id", "")), "type": "compare",
 		"reponses": ["<", "=", ">"], "misconceptions": {}}
-	if domaine == "fractions":
+	if generateur == "comparer_fractions":
 		q.consigne = "Quelle fraction est la plus grande ?"
 		var b := rng.randi_range(2, 9)
 		var a := rng.randi_range(1, b - 1)
@@ -446,8 +468,7 @@ static func _question_compare(comp: Dictionary, domaine: String,
 			q.correcte = "="
 			q.misconceptions = {"<": "NE_VOIT_PAS_L_EQUIVALENCE",
 				">": "NE_VOIT_PAS_L_EQUIVALENCE"}
-	else:
-		# Compétence non fractionnaire : comparaison de nombres (générique).
+	else:  # comparer_entiers
 		q.consigne = "Quel nombre est le plus grand ?"
 		var n1 := rng.randi_range(11, 999)
 		var n2 := rng.randi_range(11, 999)
@@ -570,11 +591,12 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 			draw_circle(g1.position + Vector2(23.0, 20.0), 8.0, Identite.OR)
 		UI.texte(self, g1.position + Vector2(40.0, 26.0), "+%d pièces" % int(s.pieces_gagnees),
 			13, Identite.OR)
-		var g2 := Rect2(cx + 10.0, y_gains, 140.0, 40.0)
-		UI.rect_degrade(self, g2, 10.0, Color("14264d"), Color("0c1a3a"))
-		UI.etoile(self, g2.position + Vector2(22.0, 20.0), 10.0, Identite.VIOLET)
-		UI.texte(self, g2.position + Vector2(40.0, 26.0), "+%d XP" % int(s.xp_gagnee),
-			13, Identite.VIOLET.lightened(0.35))
+		if int(s.xp_gagnee) > 0:
+			var g2 := Rect2(cx + 10.0, y_gains, 140.0, 40.0)
+			UI.rect_degrade(self, g2, 10.0, Color("14264d"), Color("0c1a3a"))
+			UI.etoile(self, g2.position + Vector2(22.0, 20.0), 10.0, Identite.VIOLET)
+			UI.texte(self, g2.position + Vector2(40.0, 26.0), "+%d XP" % int(s.xp_gagnee),
+				13, Identite.VIOLET.lightened(0.35))
 		# Progression de maîtrise avant → après.
 		UI.texte(self, Vector2(cx, y_gains + 62.0), "Progression : %d %%  →  %d %%" %
 			[int(s.maitrise_avant), int(s.maitrise_courante)], 12, Identite.CYAN, true, 2)
@@ -767,8 +789,7 @@ class SurfaceSession extends Accueil.SurfaceAccueil:
 					draw_circle(panneau.position + Vector2(panneau.size.x - 112.0, 12.0), 5.0, Identite.OR)
 				UI.texte(self, panneau.position + Vector2(panneau.size.x - 102.0, 16.0),
 					"+%d" % int(Cite.RECOMPENSES.question_or), 10, Identite.OR)
-				UI.texte(self, panneau.position + Vector2(panneau.size.x - 76.0, 16.0),
-					"+%d XP" % int(Cite.RECOMPENSES.question_xp), 10, Identite.VIOLET.lightened(0.35))
+
 			Session.Etape.ANSWER_INCORRECT:
 				UI.contour_arrondi(self, panneau, 10.0, Identite.ORANGE, 1.5)
 				_croix(panneau.position + Vector2(24.0, 17.0), 7.0, Identite.ORANGE)
