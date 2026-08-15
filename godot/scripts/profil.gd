@@ -113,6 +113,7 @@ var population := 2                   ## habitants actuels (capacité = logement
 var croissance_progres := 0.0         ## secondes accumulées vers le prochain habitant
 var or_fraction := 0.0                ## production de pièces en cours (< 1)
 var dernier_tick := 0                 ## unix — prêt pour la simulation hors-ligne
+var batiments_decouverts: Array = []  ## mémoire des opportunités déjà vues
 var stats_semaine := {"acquises": 0, "maitrisees": 0, "difficultes": 0, "corrigees": 0,
 	"minutes_apprentissage": 0}       ## le résumé de l'Espace Parent
 var semaine_stats := 0                ## n° de semaine des stats (remise à zéro auto)
@@ -644,6 +645,7 @@ func sauver() -> void:
 	cfg.set_value("profil", "croissance_progres", croissance_progres)
 	cfg.set_value("profil", "or_fraction", or_fraction)
 	cfg.set_value("profil", "dernier_tick", dernier_tick)
+	cfg.set_value("profil", "batiments_decouverts", batiments_decouverts)
 	cfg.set_value("profil", "ville", ville)
 	cfg.set_value("profil", "stats_semaine", stats_semaine)
 	cfg.set_value("profil", "semaine_stats", semaine_stats)
@@ -708,6 +710,9 @@ func charger() -> void:
 	croissance_progres = float(cfg.get_value("profil", "croissance_progres", croissance_progres))
 	or_fraction = float(cfg.get_value("profil", "or_fraction", or_fraction))
 	dernier_tick = int(cfg.get_value("profil", "dernier_tick", dernier_tick))
+	var bd = cfg.get_value("profil", "batiments_decouverts", batiments_decouverts)
+	if bd is Array:
+		batiments_decouverts = bd
 	var vi = cfg.get_value("profil", "ville", ville)
 	if vi is Array:
 		ville = vi

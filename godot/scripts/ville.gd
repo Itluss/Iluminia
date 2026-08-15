@@ -30,6 +30,25 @@ var _t := 0.0
 var _tick_accumule := 0.0
 var rapport_retour := {}         ## OfflineReport significatif (modal BON RETOUR)
 var _t_rapport := 0.0            ## temps d'ouverture (count-up des gains)
+var blocage := {}                ## CityActionBlocker (l'intention du joueur)
+var _alerte_nourriture := false  ## hystérésis de l'alerte nourriture
+
+
+## L'état lu par le moteur de besoins (dérivé, jamais persisté).
+func etat_besoins() -> Dictionary:
+	return {"ville": Profil.ville, "population": Profil.population,
+		"nourriture": Profil.nourriture, "connaissance_xp": Profil.connaissance_xp,
+		"pieces": Profil.pieces}
+
+
+func besoins_courants() -> Array:
+	var besoins := Besoins.evaluer(etat_besoins(),
+		{"batiments_decouverts": Profil.batiments_decouverts}, _alerte_nourriture)
+	_alerte_nourriture = false
+	for b in besoins:
+		if str(b.genre) == "FOOD_WARNING" or str(b.genre) == "FOOD_SHORTAGE":
+			_alerte_nourriture = true
+	return besoins
 
 
 func _ready() -> void:
@@ -67,6 +86,8 @@ func _ready() -> void:
 		Profil.connaissance_xp = int(OS.get_environment("ILUMINIA_XP"))
 	if OS.get_environment("ILUMINIA_POP") != "":
 		Profil.population = int(OS.get_environment("ILUMINIA_POP"))
+	if OS.get_environment("ILUMINIA_NOURRITURE") != "":
+		Profil.nourriture = float(OS.get_environment("ILUMINIA_NOURRITURE"))
 	if OS.get_environment("ILUMINIA_SIM_AVANCE") != "":
 		# Avance rapide de la simulation (tests du scénario manuel).
 		var restant := float(OS.get_environment("ILUMINIA_SIM_AVANCE"))
@@ -94,6 +115,12 @@ func _ready() -> void:
 			# Test d'intégration : achat réel du potager (débit atomique).
 			entrer_construction.call_deferred("potager")
 			valider_construction.call_deferred()
+		"blocage_potager":
+			_executer.call_deferred("blocage:potager")
+		"blocage_atelier":
+			_executer.call_deferred("blocage:atelier")
+		"decouvrir":
+			_executer.call_deferred("reco:DISCOVER_BUILDING:atelier")
 
 
 ## Le terrain sobre et beau : herbe douce à nuances, bordure de terre et
@@ -536,6 +563,42 @@ func _executer(action: String) -> void:
 		"fermer_rapport":
 			Audio.jouer("depart")
 			rapport_retour = {}
+		"blocage":
+			# Le joueur exprime une INTENTION sur un bâtiment verrouillé :
+			# le panneau explique la vraie cause (jamais en permanence).
+			Audio.jouer("clic")
+			blocage = Besoins.blocage_achat(morceaux[1], etat_besoins())
+			selection = -1
+		"fermer_blocage":
+			Audio.jouer("clic")
+			blocage = {}
+		"reco":
+			# CityActionRecommendation → l'action du monde.
+			blocage = {}
+			match morceaux[1]:
+				"OPEN_BUILDING":
+					if Simulation.disponibilite(morceaux[2], Profil.connaissance_xp,
+							Profil.pieces, Profil.population) == "DISPONIBLE":
+						Audio.jouer("clic")
+						entrer_construction(morceaux[2])
+					else:
+						Audio.jouer("clic")
+						blocage = Besoins.blocage_achat(morceaux[2], etat_besoins())
+				"UPGRADE_HOUSING":
+					Audio.jouer("clic")
+					for i in Profil.ville.size():
+						if str(Profil.ville[i].type) == "maison":
+							selection = i
+							break
+				"DISCOVER_BUILDING":
+					# Découvert : l'opportunité ne se représentera plus.
+					Audio.jouer("victoire")
+					if not Profil.batiments_decouverts.has(morceaux[2]):
+						Profil.batiments_decouverts.append(morceaux[2])
+						Profil.sauver()
+					catalogue_ouvert = true
+					surface.toast("%s t'attend dans le catalogue !" %
+						str(Cite.BATIMENTS.get(morceaux[2], {}).get("titre", "")))
 		"boutique":
 			Audio.jouer("clic")
 			surface.toast("La boutique arrive — jamais de raccourci sur la connaissance !")
@@ -856,12 +919,14 @@ class SurfaceVille extends Control:
 				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0), "Construite : 1/1", 9, Identite.VERT)
 				UI.pastille(self, ligne.position + Vector2(ligne.size.x - 20.0, h / 2.0), 10.0, Identite.VERT, "✓", 12)
 			elif not accessible:
-				# Le verrou EXPLIQUE toujours pourquoi (connaissance ou habitants).
+				# Le verrou EXPLIQUE toujours pourquoi (connaissance ou habitants) ;
+				# le toucher ouvre le panneau de cause (l'intention du joueur).
 				UI.texte(self, ligne.position + Vector2(46.0, h / 2.0 + 11.0),
-					"Niv. connaissance %d requis" % int(fiche.palier) if dispo == "VERROU_CONNAISSANCE"
+					"Niv. connaissance %d requis" % (int(fiche.palier) + 1) if dispo == "VERROU_CONNAISSANCE"
 					else "%d habitants requis" % int(fiche.get("population_requise", 0)),
 					9, Identite.TEXTE_ATTENUE)
 				UI.image(self, "icon-lock", Rect2(ligne.position + Vector2(ligne.size.x - 30.0, h / 2.0 - 9.0), Vector2(18.0, 18.0)))
+				_actions.append({"rect": ligne, "action": "blocage:%s" % type})
 			else:
 				# DÉBLOQUÉ (palier atteint) : achetable, ou « x / y » si les
 				# pièces manquent — jamais un bouton actif trompeur.
@@ -880,7 +945,7 @@ class SurfaceVille extends Control:
 						"%d / %d" % [Profil.pieces, int(fiche["or"])], 10, Identite.OR, true, 2)
 					UI.texte(self, bouton.get_center() + Vector2(0.0, 11.0), "GAGNER DES PIÈCES", 7,
 						Identite.TEXTE_ATTENUE, true, 2)
-					_actions.append({"rect": bouton, "action": "apprendre_gagner"})
+					_actions.append({"rect": bouton, "action": "blocage:%s" % type})
 			y += pas
 		UI.texte(self, Vector2(rect.get_center().x, rect.end.y - 12.0),
 			"VOIR LES BÂTIMENTS VERROUILLÉS", 9, Identite.TEXTE_ATTENUE, true, 3)
@@ -959,20 +1024,113 @@ class SurfaceVille extends Control:
 
 	# --------------------------------------------------------- pied
 
-	## BESOIN DE LA VILLE (CityGoalPanel) : la ville propose un objectif ;
-	## s'il manque des pièces, le CTA envoie APPRENDRE — jamais un simple
-	## « pas assez de pièces ». Coût lu dans le catalogue, jamais ici.
+	## L'APPEL DU MONDE : un seul panneau, trois sources par priorité —
+	## 1. le BLOCAGE que le joueur vient de rencontrer (son intention),
+	## 2. le BESOIN principal dérivé de la simulation (cause réelle),
+	## 3. sinon l'OBJECTIF de la ville (CityGoal). Jamais une todo-list.
 	func _panneau_objectif() -> void:
-		var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
-		if objectif.is_empty():
+		if not ville.blocage.is_empty():
+			_panneau_blocage()
 			return
+		var besoins := ville.besoins_courants()
+		var besoin := Besoins.principal(besoins)
+		if not besoin.is_empty():
+			_panneau_besoin(besoin, besoins.size() - 1)
+			return
+		_panneau_but()
+
+	func _cadre_appel(titre: String, teinte: Color) -> Rect2:
 		var rect := Rect2(8.0, size.y - 196.0, 264.0, 132.0)
 		UI.rect_degrade(self, rect.grow(2.0), Identite.RAYON_MD, Identite.CONTOUR, Identite.CONTOUR)
 		UI.rect_degrade(self, rect, Identite.RAYON_MD, Color("142a52"), Color("0d1a3a"))
-		UI.contour_arrondi(self, rect, Identite.RAYON_MD, Color(Identite.CYAN.r, Identite.CYAN.g,
-			Identite.CYAN.b, 0.55), 1.5)
+		UI.contour_arrondi(self, rect, Identite.RAYON_MD, Color(teinte.r, teinte.g, teinte.b, 0.55), 1.5)
+		UI.texte(self, Vector2(rect.position.x + 12.0, rect.position.y + 20.0), titre, 10, teinte, false, 3)
+		return rect
+
+	## Un besoin/opportunité : cause réelle + CE QUE le joueur peut faire.
+	func _panneau_besoin(besoin: Dictionary, autres: int) -> void:
+		var genre := str(besoin.genre)
+		var opportunite: bool = str(besoin.motivation) == "OPPORTUNITY"
+		var rect := _cadre_appel("QUOI DE NEUF ?" if opportunite else "BESOIN DE LA VILLE",
+			Identite.OR if opportunite else Identite.CYAN)
 		var x := rect.position.x + 12.0
-		UI.texte(self, Vector2(x, rect.position.y + 20.0), "BESOIN DE LA VILLE", 10, Identite.CYAN, false, 3)
+		var textes: Dictionary = Besoins.TEXTES.get(genre, {})
+		var type := str(besoin.batiment)
+		var titre_bat := str(Cite.BATIMENTS.get(type, {}).get("titre", type))
+		_mini_batiment_type(rect.position + Vector2(26.0, 44.0), 13.0, type)
+		UI.texte(self, Vector2(x + 34.0, rect.position.y + 42.0), str(textes.get("titre", "")), 11,
+			Identite.OR if opportunite else Identite.TEXTE)
+		var descr := str(textes.get("description", ""))
+		if descr.contains("%s"):
+			descr = descr % titre_bat
+		var lignes := _couper_texte(descr, 46)
+		for i in lignes.size():
+			UI.texte(self, Vector2(x, rect.position.y + 62.0 + i * 13.0), lignes[i], 9, Identite.TEXTE_ATTENUE)
+		if autres > 0:
+			UI.texte(self, Vector2(x, rect.position.y + 90.0),
+				"%d autre%s chose%s à voir" % [autres, "s" if autres > 1 else "", "s" if autres > 1 else ""],
+				8, Color(0.55, 0.6, 0.78))
+		var reco := Besoins.recommandation(besoin)
+		var cta := Rect2(x, rect.position.y + 94.0, rect.size.x - 24.0, 30.0)
+		UI.bouton(self, cta, Identite.OR_SOMBRE if opportunite else Identite.ORANGE,
+			"vb_%s" % genre, false, Identite.RAYON_SM)
+		UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), str(reco.get("label", "")), 11,
+			Identite.TEXTE, true, 2)
+		_actions.append({"rect": cta, "action": "reco:%s:%s" % [str(reco.get("action", "")), type]})
+
+	## Le blocage rencontré : la VRAIE cause + le CTA qui la lève.
+	func _panneau_blocage() -> void:
+		var b: Dictionary = ville.blocage
+		var genre := str(b.type)
+		var rect := _cadre_appel("ENCORE VERROUILLÉ", Identite.VIOLET)
+		var x := rect.position.x + 12.0
+		var type := str(b.batiment)
+		var titre_bat := str(Cite.BATIMENTS.get(type, {}).get("titre", type))
+		var textes: Dictionary = Besoins.TEXTES.get(genre, {})
+		var titre := str(textes.get("titre", ""))
+		var cta_txt := str(textes.get("cta", ""))
+		var action := "apprendre"
+		match genre:
+			"NOT_ENOUGH_COINS":
+				titre = titre % int(b.manquant)
+				action = "apprendre_gagner"
+			"KNOWLEDGE_LOCK":
+				titre = titre % int(b.palier_requis)
+				action = "apprendre"
+			"POPULATION_LOCK":
+				titre = titre % [int(b.habitants_manquants), "S" if int(b.habitants_manquants) > 1 else ""]
+				action = "fermer_blocage"
+		_mini_batiment_type(rect.position + Vector2(26.0, 44.0), 13.0, type)
+		UI.texte(self, Vector2(x + 34.0, rect.position.y + 42.0), titre, 11, Identite.TEXTE)
+		var descr := str(textes.get("description", ""))
+		if descr.contains("%s"):
+			descr = descr % titre_bat
+		# CHAÎNE DE CAUSALITÉ : la cause profonde derrière le manque.
+		if b.has("cause"):
+			descr = str(Besoins.TEXTES.get(str(b.cause), {}).get("description", descr))
+			cta_txt = str(Besoins.TEXTES.get(str(b.cause), {}).get("cta", cta_txt))
+			if str(b.cause) == "HOUSING_FULL":
+				action = "reco:UPGRADE_HOUSING:maison"
+			elif str(b.cause) == "FOOD_SHORTAGE":
+				action = "reco:OPEN_BUILDING:potager"
+		var lignes := _couper_texte(descr, 46)
+		for i in lignes.size():
+			UI.texte(self, Vector2(x, rect.position.y + 62.0 + i * 13.0), lignes[i], 9, Identite.TEXTE_ATTENUE)
+		var cta := Rect2(x, rect.position.y + 94.0, rect.size.x - 24.0, 30.0)
+		UI.bouton(self, cta, Identite.ORANGE, "vbl_%s" % genre, false, Identite.RAYON_SM)
+		UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), cta_txt, 11, Identite.TEXTE, true, 2)
+		_actions.append({"rect": cta, "action": action})
+		var fermer := Rect2(rect.end.x - 26.0, rect.position.y + 6.0, 20.0, 20.0)
+		UI.texte(self, fermer.get_center() + Vector2(0.0, 5.0), "×", 14, Identite.TEXTE_ATTENUE, true)
+		_actions.append({"rect": fermer, "action": "fermer_blocage"})
+
+	## L'objectif de la ville (CityGoal) quand aucun besoin ne presse.
+	func _panneau_but() -> void:
+		var objectif := Cite.objectif_courant(Profil.connaissance_xp, Profil.pieces, Profil.ville)
+		if objectif.is_empty():
+			return
+		var rect := _cadre_appel("BESOIN DE LA VILLE", Identite.CYAN)
+		var x := rect.position.x + 12.0
 		var type := str(objectif.get("batiment", ""))
 		_mini_batiment_type(rect.position + Vector2(26.0, 44.0), 13.0, type)
 		UI.texte(self, Vector2(x + 34.0, rect.position.y + 42.0), str(objectif.titre), 12, Identite.TEXTE)
@@ -994,12 +1152,20 @@ class SurfaceVille extends Control:
 				UI.bouton(self, cta, Identite.ORANGE, "vo_gagner", false, Identite.RAYON_SM)
 				UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), "GAGNER DES PIÈCES", 11,
 					Identite.TEXTE, true, 3)
-				_actions.append({"rect": cta, "action": "apprendre_gagner"})
+				_actions.append({"rect": cta, "action": "blocage:%s" % type})
 			"BLOCKED":
 				UI.bouton(self, cta, Identite.VIOLET, "vo_debloquer", false, Identite.RAYON_SM)
 				UI.texte(self, cta.get_center() + Vector2(0.0, 4.0), "APPRENDRE POUR DÉBLOQUER", 10,
 					Identite.TEXTE, true, 2)
 				_actions.append({"rect": cta, "action": "apprendre"})
+
+	func _couper_texte(txt: String, max_car: int) -> Array:
+		if txt.length() <= max_car:
+			return [txt]
+		var coupe := txt.rfind(" ", max_car)
+		if coupe <= 0:
+			return [txt.left(max_car)]
+		return [txt.substr(0, coupe), txt.substr(coupe + 1).left(max_car)]
 
 	func _pied() -> void:
 		var y := size.y - 56.0

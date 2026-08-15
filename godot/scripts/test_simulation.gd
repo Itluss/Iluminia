@@ -106,7 +106,85 @@ func _initialize() -> void:
 	# timestamp avance en mémoire avant la première persistance, la
 	# période comptabilisée ne peut pas être rejouée (validé au scénario).
 
+	# ------------------------------------------------- moteur de besoins
+	var memoire_vide := {"batiments_decouverts": []}
+	# 1. Nourriture positive + grosse réserve → aucun besoin nourriture.
+	var b1 := Besoins.evaluer({"ville": maison_potager, "population": 2,
+		"nourriture": 500.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(not _contient(b1, "FOOD_WARNING") and not _contient(b1, "FOOD_SHORTAGE"),
+		"surplus : aucun besoin nourriture")
+	# 2. Net négatif mais réserve confortable → pas encore d'alerte.
+	var b2 := Besoins.evaluer({"ville": maison, "population": 2,
+		"nourriture": 500.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(not _contient(b2, "FOOD_WARNING"), "réserve de 41 h : pas de fausse urgence")
+	# 3. Rupture proche → FOOD_WARNING (2 hab × 0.1/min, 4 unités = 20 min < 30).
+	var b3 := Besoins.evaluer({"ville": maison, "population": 2,
+		"nourriture": 4.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(_contient(b3, "FOOD_WARNING"), "rupture dans 20 min : alerte")
+	# Hystérésis : à 35 min, l'alerte déjà active persiste, sinon non.
+	var b3b := Besoins.evaluer({"ville": maison, "population": 2,
+		"nourriture": 7.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide, true)
+	var b3c := Besoins.evaluer({"ville": maison, "population": 2,
+		"nourriture": 7.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide, false)
+	verifier(_contient(b3b, "FOOD_WARNING") and not _contient(b3c, "FOOD_WARNING"),
+		"hystérésis 30/45 min : pas de clignotement")
+	# 4. Nourriture à zéro → FOOD_SHORTAGE.
+	var b4 := Besoins.evaluer({"ville": maison, "population": 2,
+		"nourriture": 0.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(_contient(b4, "FOOD_SHORTAGE"), "zéro nourriture : pénurie")
+	# 5-6. Logements : sous la capacité non, à la capacité oui.
+	verifier(not _contient(Besoins.evaluer({"ville": maison_potager, "population": 2,
+		"nourriture": 100.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide), "HOUSING_FULL"),
+		"2/4 : pas de logements complets")
+	var b6 := Besoins.evaluer({"ville": maison_potager, "population": 4,
+		"nourriture": 100.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(_contient(b6, "HOUSING_FULL"), "4/4 : logements complets")
+	# 7-8. Opportunité : atelier débloqué (palier 2, 4 hab) → une fois.
+	var b7 := Besoins.evaluer({"ville": maison_potager, "population": 4,
+		"nourriture": 100.0, "connaissance_xp": 250, "pieces": 0}, memoire_vide)
+	verifier(_contient(b7, "BUILDING_AVAILABLE"), "atelier débloqué : opportunité")
+	var b8 := Besoins.evaluer({"ville": maison_potager, "population": 4,
+		"nourriture": 100.0, "connaissance_xp": 250, "pieces": 0},
+		{"batiments_decouverts": ["atelier"]})
+	verifier(not _contient(b8, "BUILDING_AVAILABLE"), "déjà découvert : plus de nouveauté")
+	# 9-10. Blocage à l'intention : pièces manquantes, montant exact.
+	var bl := Besoins.blocage_achat("potager", {"ville": maison, "population": 2,
+		"nourriture": 10.0, "connaissance_xp": 100, "pieces": 80})
+	verifier(str(bl.type) == "NOT_ENOUGH_COINS" and int(bl.manquant) == 20,
+		"potager à 100 avec 80 pièces : il manque 20")
+	# 11. Verrou de connaissance : la bonne cause.
+	var bl2 := Besoins.blocage_achat("atelier", {"ville": maison, "population": 6,
+		"nourriture": 10.0, "connaissance_xp": 100, "pieces": 10000})
+	verifier(str(bl2.type) == "KNOWLEDGE_LOCK" and int(bl2.palier_requis) == 3,
+		"atelier : verrou connaissance (palier affiché 3)")
+	# Chaîne de causalité : population manquante ET logements complets.
+	var bl4 := Besoins.blocage_achat("forge", {"ville": maison, "population": 4,
+		"nourriture": 100.0, "connaissance_xp": 800, "pieces": 10000})
+	verifier(str(bl4.type) == "POPULATION_LOCK" and int(bl4.habitants_manquants) == 2
+		and str(bl4.get("cause", "")) == "HOUSING_FULL",
+		"forge : manque 2 habitants CAR logements complets (causalité)")
+	# 12. Le besoin nourriture disparaît quand la production suffit.
+	var b12 := Besoins.evaluer({"ville": maison_potager, "population": 4,
+		"nourriture": 4.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(not _contient(b12, "FOOD_WARNING") and not _contient(b12, "FOOD_SHORTAGE"),
+		"potager construit : besoin nourriture résolu automatiquement")
+	# 13. La priorité renvoie le plus important (pénurie > logements).
+	var b13 := Besoins.evaluer({"ville": maison, "population": 4,
+		"nourriture": 0.0, "connaissance_xp": 0, "pieces": 0}, memoire_vide)
+	verifier(str(Besoins.principal(b13).genre) == "FOOD_SHORTAGE",
+		"priorité : la pénurie passe avant les logements")
+	# Capacité × niveau : une maison niveau 2 loge 8 habitants.
+	verifier(Simulation.capacite_population([{"type": "maison", "niveau": 2}]) == 8,
+		"maison améliorée : capacité doublée")
+
 	print("ÉCHECS : %d" % echecs)
+
+
+func _contient(besoins: Array, genre: String) -> bool:
+	for b in besoins:
+		if str(b.genre) == genre:
+			return true
+	return false
 
 
 func verifier(condition: bool, nom: String) -> void:

@@ -59,11 +59,13 @@ static func production_or_min(ville_posee: Array) -> float:
 	return total
 
 
-## Capacité d'accueil totale (logements).
+## Capacité d'accueil totale — la capacité d'un logement grandit avec
+## son NIVEAU (améliorer sa maison devient un vrai choix).
 static func capacite_population(ville_posee: Array) -> int:
 	var total := 0
 	for b in ville_posee:
-		total += int(Cite.BATIMENTS.get(str(b.type), {}).get("capacite_population", 0))
+		total += int(Cite.BATIMENTS.get(str(b.type), {}).get("capacite_population", 0)) \
+			* maxi(int(b.get("niveau", 1)), 1)
 	return total
 
 
